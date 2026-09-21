@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>انضم كمندوب توصيل | نَسَق</title>
+  <meta name="description" content="انضم لأسطول توصيل نَسَق ووصّل الطلبات بمرونة وأرباح إضافية.">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2315171c'/%3E%3Ccircle cx='16' cy='16' r='5' fill='%232f45d4'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Readex+Pro:wght@400;600;700&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+  <link rel="stylesheet" href="css/onboarding.css">
+
+  <script defer src="js/cloud.js"></script>
+  <script defer src="js/products.js"></script>
+  <script defer src="js/market.js"></script>
+  <script defer src="js/cart.js"></script>
+  <script defer src="js/i18n.js"></script>
+  <script defer src="js/geo.js"></script>
+  <script defer src="js/ui.js"></script>
+  <script defer src="js/onboarding.js"></script>
+</head>
+<body data-page="become-rider">
+  <header id="site-header" class="site-header"></header>
+  <noscript><p style="padding:1rem;text-align:center">يحتاج هذا النموذج إلى تفعيل JavaScript.</p></noscript>
+
+  <main id="main" tabindex="-1">
+    <div class="container">
+      <div class="onboarding onboarding--wide">
+        <div class="tabs" role="list" aria-label="نوع الانضمام">
+          <a class="tab" role="listitem" href="become-seller.html">تاجر / صاحب محل</a>
+          <a class="tab" role="listitem" href="become-rider.html" aria-current="page">مندوب توصيل</a>
+        </div>
+
+        <div class="onboarding__head">
+          <h1>إنشاء حساب مندوب توصيل</h1>
+          <p class="onboarding__sub">انضم لأسطول توصيل نَسَق وحقق دخلاً مرناً ومجزياً مع كل طلب تقوم بتوصيله.</p>
+        </div>
+
+        <form id="rider-form" class="checkout__form" novalidate style="margin-top:var(--sp-7)">
+          <fieldset class="fieldset">
+            <legend class="step-legend"><span class="step-legend__num">1</span> بياناتك الشخصية</legend>
+            <div class="form-grid form-grid--2">
+              <div class="field span-2">
+                <label for="r-name">الاسم بالكامل</label>
+                <input class="input" id="r-name" type="text" placeholder="أدخل اسمك الثلاثي كما في البطاقة" autocomplete="name" required data-field-name>
+              </div>
+              <div class="field">
+                <label for="r-phone">رقم الهاتف (واتساب والتواصل)</label>
+                <input class="input" id="r-phone" type="tel" inputmode="tel" dir="ltr" placeholder="01050447879" required data-field-phone>
+              </div>
+              <div class="field">
+                <label for="r-nid">الرقم القومي (14 رقم)</label>
+                <input class="input" id="r-nid" type="text" inputmode="numeric" dir="ltr" placeholder="أدخل الـ 14 رقماً بالبطاقة" required>
+              </div>
+              <div class="field">
+                <label>صورة البطاقة الشخصية (وجه وظهر)</label>
+                <div class="dropzone">
+                  <svg class="icon dropzone__icon" aria-hidden="true"><use href="#i-idcard"></use></svg>
+                  <strong data-dz-label data-default="ارفع صورة الوجه والظهر للبطاقة">ارفع صورة الوجه والظهر للبطاقة</strong>
+                  <small>تأكد من وضوح الأرقام وسريان البطاقة</small>
+                  <input type="file" accept="image/*" aria-label="صورة البطاقة الشخصية">
+                </div>
+              </div>
+              <div class="field">
+                <label>صورة شخصية حديثة</label>
+                <div class="dropzone">
+                  <svg class="icon dropzone__icon" aria-hidden="true"><use href="#i-camera"></use></svg>
+                  <strong data-dz-label data-default="اضغط لرفع الصورة أو التقاطها">اضغط لرفع الصورة أو التقاطها</strong>
+                  <small>خلفية بيضاء وواضحة (PNG أو JPG)</small>
+                  <input type="file" accept="image/*" aria-label="صورة شخصية حديثة">
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="step-legend"><span class="step-legend__num">2</span> منطقة ووسيلة التوصيل</legend>
+            <div class="form-grid form-grid--2">
+              <div class="field">
+                <label for="r-gov">المحافظة</label>
+                <select class="select" id="r-gov" required>
+                  <option value="" selected disabled>اختر المحافظة</option>
+                  <option>القاهرة</option>
+                  <option>الجيزة</option>
+                  <option>القليوبية</option>
+                  <option>الإسكندرية</option>
+                  <option>الدقهلية</option>
+                  <option>الشرقية</option>
+                  <option>أخرى</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="r-area">الحي / المدينة</label>
+                <input class="input" id="r-area" type="text" placeholder="مثال: المعادي، مدينتي" required>
+              </div>
+              <div class="field span-2">
+                <label for="r-range">حدود ونطاق التوصيل المتاح لك</label>
+                <textarea class="textarea" id="r-range" rows="2" placeholder="مثال: التجمع، المعادي، مدينتي (أو نطاق 15 كم)"></textarea>
+              </div>
+              <div class="field span-2">
+                <label>وسيلة التوصيل المتوفرة معك</label>
+                <div class="vehicle-grid" role="radiogroup" aria-label="وسيلة التوصيل">
+                  <label class="vehicle-option">
+                    <input type="radio" name="vehicle" value="motorbike" checked>
+                    <svg class="icon" aria-hidden="true"><use href="#i-motorbike"></use></svg>
+                    <span>موتوسيكل</span>
+                  </label>
+                  <label class="vehicle-option">
+                    <input type="radio" name="vehicle" value="scooter">
+                    <svg class="icon" aria-hidden="true"><use href="#i-motorbike"></use></svg>
+                    <span>سكوتر</span>
+                  </label>
+                  <label class="vehicle-option">
+                    <input type="radio" name="vehicle" value="car">
+                    <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+                    <span>سيارة</span>
+                  </label>
+                  <label class="vehicle-option">
+                    <input type="radio" name="vehicle" value="bike">
+                    <svg class="icon" aria-hidden="true"><use href="#i-bicycle"></use></svg>
+                    <span>عجلة / هوائية</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="fieldset">
+            <legend class="step-legend"><span class="step-legend__num">3</span> بيانات الدخول والأمان</legend>
+            <div class="form-grid form-grid--2">
+              <div class="field">
+                <label for="r-pass">كلمة المرور</label>
+                <input class="input" id="r-pass" type="password" placeholder="6 أحرف أو أرقام على الأقل" autocomplete="new-password" required data-pass>
+              </div>
+              <div class="field">
+                <label for="r-pass2">تأكيد كلمة المرور</label>
+                <input class="input" id="r-pass2" type="password" placeholder="أعد إدخال كلمة المرور" autocomplete="new-password" required data-pass-confirm aria-describedby="err-r-pass2">
+                <p class="field__error" id="err-r-pass2"></p>
+              </div>
+            </div>
+          </fieldset>
+
+          <div class="notice">
+            <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+            <div>
+              <strong>ملاحظة هامة وتأكيد الحساب</strong>
+              <p>سيتم مراجعة بياناتك وصور المستندات المسجلة وتأكيد تفعيل الحساب خلال <strong>12 ساعة</strong> من قِبل فريق عمليات نَسَق، وسنرسل لك إشعاراً عبر واتساب والرسائل النصية.</p>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="check" for="f-terms">
+              <input type="checkbox" id="f-terms" required>
+              <span>أوافق على شروط الاستخدام واتفاقية مندوبي التوصيل وإشعار الخصوصية المعمول به في منصة نَسَق</span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn--accent btn--lg btn--block">تقديم طلب الانضمام كمندوب توصيل</button>
+        </form>
+
+        <p class="onboarding__crosslink">لديك حساب مسجل بالفعل؟ <a href="auth.html">تسجيل الدخول</a></p>
+      </div>
+    </div>
+  </main>
+
+  <footer id="site-footer" class="site-footer"></footer>
+</body>
+</html>

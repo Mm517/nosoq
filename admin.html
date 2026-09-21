@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>لوحة إدارة نَسَق</title>
+  <link rel="icon" href="public/favicon.svg">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/admin.css">
+  <script defer src="js/admin.js"></script>
+</head>
+<body class="admin-body">
+  <main class="admin-shell">
+    <section class="admin-login" id="admin-login">
+      <div class="admin-brand"><span class="admin-brand__dot"></span><strong>نَسَق</strong></div>
+      <h1>لوحة الإدارة</h1>
+      <p>سجّل الدخول بحساب Supabase Auth المضاف إلى قائمة مشرفي نَسَق.</p>
+      <form id="admin-login-form" class="admin-form">
+        <label>البريد الإلكتروني<input id="admin-email" type="email" autocomplete="username" required></label>
+        <label>كلمة المرور<input id="admin-password" type="password" autocomplete="current-password" required></label>
+        <button class="admin-button admin-button--primary" type="submit">دخول</button>
+        <p class="admin-error" id="admin-login-error" role="alert"></p>
+      </form>
+    </section>
+
+    <section class="admin-app" id="admin-app" hidden>
+      <header class="admin-header">
+        <div>
+          <div class="admin-brand"><span class="admin-brand__dot"></span><strong>نَسَق</strong></div>
+          <h1>لوحة الإدارة</h1>
+          <p id="admin-identity">إدارة الطلبات والدعم</p>
+        </div>
+        <div class="admin-header__actions">
+          <button class="admin-button" id="admin-refresh" type="button">تحديث البيانات</button>
+          <button class="admin-button admin-button--quiet" id="admin-logout" type="button">خروج</button>
+        </div>
+      </header>
+
+      <div class="admin-notice" id="admin-notice" hidden></div>
+      <section class="admin-stats" id="admin-stats" aria-label="ملخص المتجر"></section>
+
+      <section class="admin-grid">
+        <article class="admin-card admin-card--wide">
+          <div class="admin-card__head">
+            <div><h2>الطلبات</h2><p>تابع الطلبات وغيّر حالتها للفريق والعميل.</p></div>
+            <select class="admin-select" id="order-filter" aria-label="فلترة الطلبات">
+              <option value="">كل الحالات</option>
+              <option value="new">جديد</option>
+              <option value="processing">قيد التجهيز</option>
+              <option value="shipped">تم الشحن</option>
+              <option value="completed">مكتمل</option>
+              <option value="cancelled">ملغى</option>
+            </select>
+          </div>
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>الطلب</th><th>العميل</th><th>الإجمالي</th><th>التاريخ</th><th>الحالة</th></tr></thead>
+            <tbody id="orders-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="orders-empty" hidden>لا توجد طلبات محفوظة بعد.</p>
+        </article>
+
+        <article class="admin-card admin-card--wide">
+          <div class="admin-card__head">
+            <div><h2>الدعم</h2><p>كل تذاكر العملاء والبائعين في مكان واحد.</p></div>
+            <span class="admin-count" id="support-count">0 مفتوحة</span>
+          </div>
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>التذكرة</th><th>الموضوع</th><th>المرسل</th><th>الأولوية</th><th>الحالة</th></tr></thead>
+            <tbody id="support-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="support-empty" hidden>لا توجد تذاكر دعم بعد.</p>
+        </article>
+      </section>
+    </section>
+  </main>
+</body>
+</html>
