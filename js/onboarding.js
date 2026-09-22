@@ -26,6 +26,76 @@
     if (wanted && tabs.some((t) => t.dataset.tab === wanted)) activate(wanted);
   }
 
+  function formError(form, message) {
+    let node = $('.auth-form__error', form);
+    if (!node) {
+      node = document.createElement('p');
+      node.className = 'auth-form__error field__error';
+      node.setAttribute('role', 'alert');
+      form.insertBefore(node, form.querySelector('button[type="submit"]'));
+    }
+    node.textContent = message || '';
+  }
+
+  function initAuthForms() {
+    const loginForm = $('#panel-login form');
+    const signupForm = $('#panel-signup form');
+    if (!loginForm || !signupForm) return;
+
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      formError(loginForm, '');
+      const button = $('button[type="submit"]', loginForm);
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            identifier: $('#login-id', loginForm).value.trim(),
+            password: $('#login-pass', loginForm).value
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'بيانات الدخول غير صحيحة.');
+        if (window.NasaqCloud) window.NasaqCloud.saveSession(data);
+        location.href = 'index.html';
+      } catch (error) {
+        formError(loginForm, error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    signupForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      formError(signupForm, '');
+      const button = $('button[type="submit"]', signupForm);
+      button.disabled = true;
+      try {
+        const fields = {
+          email: $('#su-email', signupForm).value.trim(),
+          name: $('#su-name', signupForm).value.trim(),
+          phone: $('#su-phone', signupForm).value.trim(),
+          password: $('#su-pass', signupForm).value
+        };
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(fields)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'تعذّر إنشاء الحساب.');
+        if (window.NasaqCloud) window.NasaqCloud.saveSession(data);
+        location.href = 'index.html';
+      } catch (error) {
+        formError(signupForm, error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
   /* ---------- مناطق رفع الملفات ---------- */
   function initDropzones() {
     $$('.dropzone').forEach((zone) => {
@@ -52,30 +122,65 @@
     return ok;
   }
 
-  /* ---------- إرسال نموذج التاجر / المندوب ---------- */
-  function initApplicationForm(formId, accountType) {
+  /* ---------- إرسال نموذج التاجر / المندوب ----------
+     الخطوتان: (1) إنشاء حساب دخول حقيقي عبر Supabase Auth،
+     (2) إنشاء سجل المتجر/المندوب بحالة "قيد المراجعة" في قاعدة البيانات.
+     المتجر/الحساب لا يعمل فعلياً إلا بعد اعتماد الإدمن له من لوحة الإدارة. */
+  function initApplicationForm(formId, kind) {
     const form = $('#' + formId);
     if (!form) return;
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!passwordsMatch(form)) { $('[data-pass-confirm]', form).focus(); return; }
       const terms = $('#f-terms', form);
       if (terms && !terms.checked) { terms.focus(); return; }
+      if (!window.NasaqCloud) { formError(form, 'تعذّر الاتصال بالخادم.'); return; }
 
       const name = ($('[data-field-name]', form) || {}).value || '';
       const phone = ($('[data-field-phone]', form) || {}).value || '';
-      const requestId = 'NSQ-' + new Date().getFullYear() + '-' + Math.floor(1000 + Math.random() * 9000);
+      const email = ($('[data-field-email]', form) || {}).value || '';
+      const password = ($('[data-pass]', form) || {}).value || '';
+      const button = $('button[type="submit"]', form);
+      if (button) button.disabled = true;
+      formError(form, '');
 
-      sessionStorage.setItem('nasaqApplication', JSON.stringify({
-        requestId, accountType, name, phone, submittedAt: Date.now()
-      }));
-      if (window.NasaqCloud) {
-        window.NasaqCloud.submitApplication({
-          requestId, accountType, name, phone, email: ($('[data-field-email]', form) || {}).value || ''
-        });
-        window.NasaqCloud.syncUser({ name, phone, role: accountType === 'مندوب توصيل' ? 'rider' : 'seller' });
+      try {
+        await window.NasaqCloud.signup({ name, email, phone, password });
+        let application, entityId;
+        if (kind === 'seller') {
+          const out = await window.NasaqCloud.sellerApplication({
+            ownerName: name,
+            nationalId: ($('#s-nid', form) || {}).value || '',
+            phone,
+            storeName: ($('#s-store-name', form) || {}).value || '',
+            license: ($('#s-license', form) || {}).value || '',
+            address: ($('#s-address', form) || {}).value || '',
+            category: 'clothes'
+          });
+          application = out && out.application; entityId = out && out.store && out.store.id;
+        } else {
+          const vehicleEl = $('input[name="vehicle"]:checked', form);
+          const out = await window.NasaqCloud.riderApplication({
+            name, phone,
+            nationalId: ($('#r-nid', form) || {}).value || '',
+            city: ($('#r-gov', form) || {}).value || '',
+            area: ($('#r-area', form) || {}).value || '',
+            coverage: ($('#r-range', form) || {}).value || '',
+            vehicle: vehicleEl ? vehicleEl.value : 'motorbike'
+          });
+          application = out && out.application; entityId = out && out.rider && out.rider.id;
+        }
+        sessionStorage.setItem('nasaqApplication', JSON.stringify({
+          requestId: (application && application.request_id) || '—',
+          accountType: kind === 'seller' ? 'تاجر / صاحب محل' : 'مندوب توصيل',
+          name, phone, entityId, submittedAt: Date.now()
+        }));
+        location.href = 'application-status.html';
+      } catch (error) {
+        formError(form, (error && error.message) || 'تعذّر إرسال الطلب، حاول مرة أخرى.');
+      } finally {
+        if (button) button.disabled = false;
       }
-      location.href = 'application-status.html';
     });
   }
 
@@ -93,6 +198,12 @@
     $('[data-d-type]').textContent = data.accountType;
     $('[data-d-phone]').textContent = data.phone || '—';
     $('[data-d-time]').textContent = minsAgo <= 1 ? 'الآن' : ('منذ ' + minsAgo + ' دقيقة');
+
+    /* ملاحظة: خطوة رمز التحقق (OTP) أدناه عرض تجريبي فقط لعدم ربط مزود SMS/واتساب
+       فعلي بعد؛ حالة اعتماد الحساب نفسها حقيقية ومقروءة من قاعدة البيانات. */
+    const dest = data.accountType === 'مندوب توصيل' ? 'rider.html' : 'seller.html';
+    const confirmLink = $('[data-status-dest]');
+    if (confirmLink) confirmLink.setAttribute('href', dest);
 
     /* أرقام OTP */
     const boxes = $$('.otp input');
@@ -151,9 +262,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     initAuthTabs();
+    initAuthForms();
     initDropzones();
-    initApplicationForm('seller-form', 'تاجر / صاحب متجر');
-    initApplicationForm('rider-form', 'مندوب توصيل');
+    initApplicationForm('seller-form', 'seller');
+    initApplicationForm('rider-form', 'rider');
     initStatusPage();
   });
 })();

@@ -375,7 +375,32 @@
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const p = $('[data-bell-panel]'); if (p && !p.hidden) { p.hidden = true; $('.bell__btn').focus(); } $('#dash') && $('#dash').classList.remove('is-nav'); } });
   window.addEventListener('hashchange', render);
 
-  function boot() { root.innerHTML = ''; render(); }
+  /* ---------- بوابة اعتماد المتجر ----------
+     لا يُعرض أي شيء من لوحة البائع الحقيقية قبل أن يتحقق seller-gate.js من
+     حالة المتجر في قاعدة البيانات (pending / active / rejected / suspended). */
+  function gateScreen(gate) {
+    const byStatus = {
+      'signed-out': { icon: 'user', title: 'سجّل دخولك أولاً', text: 'تحتاج لتسجيل الدخول بحساب البائع لعرض لوحة التحكم.', action: { href: 'auth.html', label: 'تسجيل الدخول' } },
+      'no-store': { icon: 'store', title: 'لم تنشئ متجراً بعد', text: 'قدّم طلب فتح متجر تاجر لتبدأ البيع على نَسَق.', action: { href: 'become-seller.html', label: 'إنشاء متجر جديد' } },
+      pending: { icon: 'clock', title: 'متجرك قيد المراجعة', text: 'فريق عمليات نَسَق يراجع بيانات متجرك الآن، وسيصلك إشعار فور تفعيله (عادة خلال 12 ساعة).' },
+      rejected: { icon: 'close', title: 'تعذّر اعتماد المتجر', text: (gate.store && gate.store.review_note) || 'لم تتم الموافقة على طلب المتجر. تواصل مع الدعم لمزيد من التفاصيل.', action: { href: 'mailto:partners@nasaq.example', label: 'تواصل مع الدعم' } },
+      suspended: { icon: 'close', title: 'متجرك موقوف حالياً', text: (gate.store && gate.store.review_note) || 'تم إيقاف متجرك مؤقتاً من قِبل الإدارة. تواصل مع الدعم لمعرفة السبب.', action: { href: 'mailto:partners@nasaq.example', label: 'تواصل مع الدعم' } },
+      offline: { icon: 'alert', title: 'تعذّر الاتصال بالخادم', text: 'تحقق من اتصالك بالإنترنت وأعد المحاولة.' },
+      error: { icon: 'alert', title: 'حدث خطأ غير متوقع', text: 'حاول تحديث الصفحة، وإن استمرت المشكلة تواصل مع الدعم.' }
+    };
+    const info = byStatus[gate.status] || byStatus.error;
+    root.innerHTML = '<div class="dash-gate">' + empty({
+      icon: info.icon, title: info.title, text: info.text,
+      action: info.action
+    }) + '</div>';
+  }
+
+  async function boot() {
+    root.innerHTML = '';
+    const gate = await (window.NasaqSellerGateReady || Promise.resolve({ status: 'active' }));
+    if (gate.status !== 'active') { gateScreen(gate); return; }
+    render();
+  }
   /* ملفات الأقسام (المنتجات/الطلبات/المحفظة…) تُحمَّل بعد هذا الملف، فننتظر DOMContentLoaded
      حتى تكون كل الأقسام مسجّلة قبل أول رسم (وإلا فتح رابط مباشر مثل #/orders يعرض الرئيسية). */
   if (document.readyState === 'complete') boot(); else document.addEventListener('DOMContentLoaded', boot);

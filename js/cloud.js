@@ -6,8 +6,15 @@
   'use strict';
 
   const USER_KEY = 'nasaq_cloud_user_v1';
+  const TOKEN_KEY = 'nasaq_access_token_v1';
+  const SESSION_KEY = 'nasaq_session_v1';
+  const getSession = () => {
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch (_) { return null; }
+  };
   const getUserId = () => {
     try {
+      const session = getSession();
+      if (session && session.userId) return session.userId;
       let id = localStorage.getItem(USER_KEY);
       if (!id) {
         id = 'browser-' + crypto.randomUUID();
@@ -20,9 +27,10 @@
   };
 
   async function request(path, body, method) {
+    const token = localStorage.getItem(TOKEN_KEY);
     const response = await fetch('/api' + path, {
       method: method || 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      headers: Object.assign({ 'Content-Type': 'application/json', Accept: 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
       body: body == null ? undefined : JSON.stringify(body)
     });
     const text = await response.text();
@@ -127,18 +135,61 @@
     return request('/store/applications', data);
   }
 
+  /* تسجيل حساب جديد عبر Supabase Auth (بريد + كلمة مرور)، يُستخدم كخطوة أولى
+     قبل تقديم طلب بائع أو مندوب، حتى يكون لصاحب الطلب حساب دخول فوراً. */
+  async function signup(fields) {
+    const out = await request('/auth/signup', fields);
+    if (out) window.NasaqCloud.saveSession(out);
+    return out;
+  }
+
+  async function sellerApplication(data) {
+    const out = await request('/store/seller-application', data);
+    if (out && out.access_token) window.NasaqCloud.saveSession(out);
+    return out;
+  }
+
+  async function riderApplication(data) {
+    const out = await request('/store/rider-application', data);
+    if (out && out.access_token) window.NasaqCloud.saveSession(out);
+    return out;
+  }
+
+  async function applicationStatus() {
+    return request('/store/application-status', null, 'GET');
+  }
+
   async function submitSupport(data) {
     return request('/store/support', data);
   }
 
   window.NasaqCloud = {
     getUserId, request,
+    getSession,
+    saveSession(data) {
+      if (!data) return;
+      try {
+        if (data.access_token) localStorage.setItem(TOKEN_KEY, data.access_token);
+        if (data.user) localStorage.setItem(SESSION_KEY, JSON.stringify(data.user));
+        if (data.user && data.user.userId) localStorage.setItem(USER_KEY, data.user.userId);
+      } catch (_) { /* التخزين غير متاح */ }
+    },
+    clearSession() {
+      try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); } catch (_) { /* تجاهل */ }
+    },
+    token() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; } },
     syncUser: (data) => safe(syncUser(data)),
     syncProduct: (p) => safe(syncProduct(p)),
     syncOrder: (o, source) => safe(syncOrder(o, source)),
     syncStore: (s) => safe(syncStore(s)),
     submitApplication: (data) => safe(submitApplication(data)),
     submitSupport: (data) => safe(submitSupport(data)),
+    /* هذه الثلاثة لا تُغلَّف بـ safe() عمداً: الصفحة التي تستدعيها تحتاج أن
+       تعرض رسالة الخطأ نفسها للمستخدم (مثلاً بريد مسجَّل من قبل). */
+    signup: (fields) => signup(fields),
+    sellerApplication: (data) => sellerApplication(data),
+    riderApplication: (data) => riderApplication(data),
+    applicationStatus: () => applicationStatus(),
     uploadImage: (dataUrl, filename) => safe(uploadImage(dataUrl, filename))
   };
 })();

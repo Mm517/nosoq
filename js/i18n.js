@@ -17,12 +17,9 @@
   const SOURCE = 'ar';
   /* [الكود عند جوجل، الاسم بلغته، اتجاه الكتابة] */
   const LANGS = [
-    ['ar', 'العربية', 'rtl'], ['en', 'English'], ['fr', 'Français'], ['es', 'Español'], ['de', 'Deutsch'],
-    ['it', 'Italiano'], ['pt', 'Português'], ['tr', 'Türkçe'], ['ru', 'Русский'], ['zh-CN', '中文 (简体)'],
-    ['ja', '日本語'], ['ko', '한국어'], ['hi', 'हिन्दी'], ['bn', 'বাংলা'], ['ur', 'اردو', 'rtl'],
-    ['fa', 'فارسی', 'rtl'], ['he', 'עברית', 'rtl'], ['id', 'Bahasa Indonesia'], ['ms', 'Bahasa Melayu'],
-    ['th', 'ไทย'], ['vi', 'Tiếng Việt'], ['nl', 'Nederlands'], ['pl', 'Polski'], ['uk', 'Українська'],
-    ['el', 'Ελληνικά'], ['sv', 'Svenska'], ['ro', 'Română'], ['cs', 'Čeština'], ['sw', 'Kiswahili'], ['am', 'አማርኛ']
+    ['ar', 'العربية', 'rtl'], ['en', 'English']
+    
+  
   ];
   const by = (code) => LANGS.find((l) => l[0] === code) || LANGS[0];
 

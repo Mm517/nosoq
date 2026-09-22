@@ -32,11 +32,25 @@
       '</div>';
   }
 
+  /* زر يحتاج تأكيداً (بدل confirm()): أول نقرة تُسلّحه وتغيّر نصه، والثانية تنفّذ */
   root.addEventListener('click', (e) => {
-    if (e.target.closest('[data-clear-cart]') && window.confirm('هل تريد إفراغ السلة بالكامل؟')) {
+    const btn = e.target.closest('[data-clear-cart]');
+    if (!btn) return;
+    if (btn.dataset.armed) {
+      delete btn.dataset.armed;
       Cart.clear();
       UI.announce('تم إفراغ السلة');
+      return;
     }
+    btn.dataset.armed = '1';
+    btn.dataset.label = btn.textContent;
+    btn.textContent = 'اضغط للتأكيد';
+    setTimeout(() => {
+      if (btn.isConnected && btn.dataset.armed) {
+        delete btn.dataset.armed;
+        btn.textContent = btn.dataset.label;
+      }
+    }, 3500);
   });
 
   Cart.subscribe(render);

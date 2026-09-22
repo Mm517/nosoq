@@ -282,6 +282,26 @@
 .setup__card h1 { font-size: var(--fs-xl); }
 .setup__lead { color: var(--c-ink-2); }
 
+/* ---------- لوحة مندوب التوصيل (rider.html) ---------- */
+.rider-wrap { display: grid; gap: var(--sp-5); width: min(1100px, 100%); margin: 0 auto; padding: var(--sp-6) var(--sp-4); background: var(--c-surface); color: var(--c-ink); min-height: 100vh; }
+.rider-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.rider-head h1 { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xl); }
+.rider-head p { margin-top: 0.2rem; font-size: var(--fs-sm); color: var(--c-ink-3); }
+.dev-badge { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.1rem 0.65rem; border-radius: var(--r-pill); background: var(--c-warning-soft); color: var(--c-warning-ink); font-size: var(--fs-xs); font-weight: 600; vertical-align: middle; }
+.rider-online { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1rem; border: 1px solid var(--c-line-strong); border-radius: var(--r-pill); background: var(--c-bg); color: var(--c-ink); font: inherit; font-weight: 600; cursor: pointer; }
+.rider-online .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-ink-3); }
+.rider-online[data-online="1"] { border-color: var(--c-success); color: var(--c-success); }
+.rider-online[data-online="1"] .dot { background: var(--c-success); }
+.rider-section { display: grid; gap: var(--sp-3); }
+.rider-section h2 { font-size: var(--fs-md); }
+.rider-list { display: grid; gap: var(--sp-3); }
+.rider-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4); background: var(--c-bg); border: 1px solid var(--c-line); border-radius: var(--r-md); }
+.rider-card__info { display: grid; gap: 0.2rem; min-width: 0; }
+.rider-card__info strong { font-size: var(--fs-base); }
+.rider-card__info small { display: flex; align-items: center; gap: 0.3rem; color: var(--c-ink-3); font-size: var(--fs-xs); }
+.rider-fee { font-family: var(--font-display); font-weight: 700; white-space: nowrap; }
+.rider-card__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
 /* ---------- صفحة المتجر العامة ---------- */
 .storehead { display: flex; align-items: center; gap: var(--sp-5); padding-block: var(--sp-6); }
 .storehead__logo { display: grid; place-items: center; width: 88px; height: 88px; flex: none; overflow: hidden; border-radius: 50%; background: var(--c-surface); color: var(--c-ink-3); }
