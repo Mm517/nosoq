@@ -63,7 +63,14 @@
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return null;
     const role = await getRole(user.id);
-    return { userId: user.id, email: user.email, role, name: user.user_metadata && user.user_metadata.name };
+    const { data: profile } = await sb.from('marketplace_users').select('name,phone').eq('external_id', user.id).maybeSingle();
+    return {
+      userId: user.id,
+      email: user.email,
+      role,
+      name: (profile && profile.name) || (user.user_metadata && user.user_metadata.name),
+      phone: (profile && profile.phone) || (user.user_metadata && user.user_metadata.phone) || null
+    };
   }
 
   function persistLocal(accessToken, sessionUser) {
@@ -85,7 +92,8 @@
       phone: extra.phone || (user.user_metadata && user.user_metadata.phone) || null,
       role: role || 'customer'
     };
-    await sb.from('marketplace_users').upsert(row, { onConflict: 'external_id' });
+    const { error } = await sb.from('marketplace_users').upsert(row, { onConflict: 'external_id' });
+    if (error) throw new Error(error.message);
     return row;
   }
 
@@ -168,6 +176,41 @@
   });
 
   /* ===================== STORE (عام) ===================== */
+  on('GET', 'store/profile', async () => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const { data, error } = await sb.from('marketplace_users').select('external_id,email,name,phone,role,created_at').eq('external_id', session.userId).maybeSingle();
+    if (error) return errRes(error.message, 400);
+    const profile = data || {
+      external_id: session.userId,
+      email: session.email || null,
+      name: session.name || 'عميل نَسَق',
+      phone: session.phone || null,
+      role: session.role
+    };
+    return okRes({ profile });
+  });
+
+  on('PATCH', 'store/profile', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    body = body || {};
+    const name = String(body.name || '').trim();
+    const phone = String(body.phone || '').trim();
+    if (name.length < 2) return errRes('اكتب الاسم بالكامل.');
+    if (phone.length < 3) return errRes('اكتب رقم هاتف صحيحاً.');
+    const { data, error } = await sb.from('marketplace_users').upsert({
+      external_id: session.userId,
+      email: session.email || null,
+      name,
+      phone,
+      role: session.role
+    }, { onConflict: 'external_id' }).select('external_id,email,name,phone,role,created_at').maybeSingle();
+    if (error) return errRes(error.message, 400);
+    await sb.auth.updateUser({ data: { name, phone } });
+    return okRes({ profile: data || { external_id: session.userId, email: session.email, name, phone, role: session.role } });
+  });
+
   on('POST', 'store/users/upsert', async (params, query, body) => {
     body = body || {};
     const session = await currentSession();

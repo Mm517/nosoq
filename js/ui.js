@@ -509,6 +509,33 @@
   }
 
   /* ---------- الهيدر: شعار + موقع + بحث بفئة + حساب + مفضلة + سلة ---------- */
+  function currentAccount() {
+    try {
+      const raw = localStorage.getItem('nasaq_session_v1');
+      const account = raw ? JSON.parse(raw) : null;
+      return account && account.userId ? account : null;
+    } catch (_) { return null; }
+  }
+
+  function accountLinks() {
+    const account = currentAccount();
+    if (!account) {
+      return '<a class="btn btn--primary btn--block btn--sm" href="auth.html">تسجيل الدخول</a>' +
+        '<p class="acct__new">عميل جديد؟ <a href="auth.html?tab=signup">أنشئ حسابك</a></p>' +
+        '<ul><li><a href="shop.html?wishlist=1">المفضلة</a></li><li><a href="cart.html">سلة التسوق</a></li>' +
+        '<li><a href="become-seller.html">بيع منتجاتك معنا</a></li><li><a href="become-rider.html">انضم كمندوب توصيل</a></li></ul>';
+    }
+    const name = esc(account.name || account.email || 'حسابي');
+    let roleLink = '';
+    if (account.role === 'admin') roleLink = '<li><a href="admin.html">لوحة الإدارة</a></li>';
+    else if (account.role === 'seller') roleLink = '<li><a href="seller.html">لوحة البائع</a></li>';
+    else if (account.role === 'rider') roleLink = '<li><a href="rider.html">لوحة المندوب</a></li>';
+    else roleLink = '<li><a href="become-seller.html">بيع منتجاتك معنا</a></li><li><a href="become-rider.html">انضم كمندوب توصيل</a></li>';
+    return '<a class="acct__welcome" href="profile.html"><strong>' + name + '</strong><small>إدارة الحساب</small></a>' +
+      '<ul><li><a href="profile.html">الملف الشخصي والطلبات</a></li><li><a href="shop.html?wishlist=1">المفضلة</a></li><li><a href="cart.html">سلة التسوق</a></li>' +
+      roleLink + '</ul><button type="button" class="link-btn acct__logout" data-account-logout>تسجيل الخروج</button>';
+  }
+
   function buildHeader() {
     const P = new URLSearchParams(location.search);
     const catOpts = '<option value="">الكل</option>' + Products.categories.map((c) =>
@@ -529,13 +556,9 @@
         '<button type="button" class="lang-btn" data-lang-open aria-haspopup="dialog" aria-label="تغيير اللغة">' + icon('globe') +
           '<span class="lang-btn__code notranslate" translate="no">' + (window.I18n ? window.I18n.shortCode() : 'AR') + '</span></button>' +
         '<div class="acct">' +
-          '<a class="acct__trigger" href="auth.html" aria-label="تسجيل الدخول والحساب">' + icon('user', 'acct__icon') +
-            '<span class="acct__text"><small>أهلاً، سجّل الدخول</small><strong>الحساب والمفضلة</strong></span></a>' +
-          '<div class="acct__menu">' +
-            '<a class="btn btn--primary btn--block btn--sm" href="auth.html">تسجيل الدخول</a>' +
-            '<p class="acct__new">عميل جديد؟ <a href="auth.html?tab=signup">أنشئ حسابك</a></p>' +
-            '<ul><li><a href="shop.html?wishlist=1">المفضلة</a></li><li><a href="cart.html">سلة التسوق</a></li>' +
-            '<li><a href="seller.html">' + (window.Market && window.Market.seller.exists() ? 'لوحة البائع' : 'بيع منتجاتك معنا') + '</a></li><li><a href="become-rider.html">انضم كمندوب توصيل</a></li></ul></div>' +
+          '<a class="acct__trigger" href="profile.html" aria-label="تسجيل الدخول والحساب">' + icon('user', 'acct__icon') +
+            '<span class="acct__text"><small>' + (currentAccount() ? 'مرحباً بعودتك' : 'أهلاً، سجّل الدخول') + '</small><strong>' + (currentAccount() ? esc(currentAccount().name || 'حسابي') : 'الحساب والمفضلة') + '</strong></span></a>' +
+          '<div class="acct__menu">' + accountLinks() + '</div>' +
         '</div>' +
         '<a class="icon-btn header__wish" href="shop.html?wishlist=1" aria-label="المفضلة">' + icon('heart') + '<span class="count-badge" data-wish-count hidden>0</span></a>' +
         '<button type="button" class="cart-btn" data-cart-open aria-label="السلة">' +
@@ -582,16 +605,22 @@
   /* ---------- القائمة الجانبية (زر «الكل») ---------- */
   function buildSideMenu() {
     const li = (href, label) => '<li><a href="' + href + '">' + label + '</a></li>';
+    const account = currentAccount();
+    const accountTitle = account ? esc(account.name || account.email || 'حسابي') : 'أهلاً، سجّل الدخول';
+    const roleItems = account && account.role === 'admin' ? li('admin.html', 'لوحة الإدارة') :
+      account && account.role === 'seller' ? li('seller.html', 'لوحة البائع') :
+      account && account.role === 'rider' ? li('rider.html', 'لوحة المندوب') :
+      li('become-seller.html', 'بيع منتجاتك معنا') + li('become-rider.html', 'انضم كمندوب توصيل');
     return '<aside class="sidenav" id="side-menu" role="dialog" aria-modal="true" aria-labelledby="side-title" aria-hidden="true">' +
-      '<div class="sidenav__head"><a class="sidenav__user" href="auth.html">' + icon('user') + '<span id="side-title">أهلاً، سجّل الدخول</span></a>' +
+      '<div class="sidenav__head"><a class="sidenav__user" href="' + (account ? 'profile.html' : 'auth.html') + '">' + icon('user') + '<span id="side-title">' + accountTitle + '</span></a>' +
         '<button type="button" class="icon-btn" data-panel-close aria-label="إغلاق القائمة">' + icon('close') + '</button></div>' +
       '<div class="sidenav__body">' +
         '<button type="button" class="sidenav__loc" data-lang-open>' + icon('globe') + '<span>اللغة: <strong class="notranslate" translate="no">' + (window.I18n ? window.I18n.label() : 'العربية') + '</strong></span></button>' +
         '<button type="button" class="sidenav__loc" data-loc-open>' + icon('pin') + '<span>التوصيل إلى <strong data-loc-label>' + esc(loc.get() || 'تحديث الموقع') + '</strong></span></button>' +
         '<h3>تسوّق حسب الفئة</h3><ul>' + Products.categories.map((c) => li('shop.html?cat=' + c.id, c.name)).join('') + li('shop.html', 'كل المنتجات') + '</ul>' +
         '<h3>عروض ومزايا</h3><ul>' + li('shop.html?sale=1', 'عروض اليوم') + li('index.html#coupons', 'الكوبونات وأكواد الخصم') + li('shop.html?sort=new', 'وصل حديثاً') + li('shop.html?sort=rating', 'الأعلى تقييماً') + '</ul>' +
-        '<h3>حسابك</h3><ul>' + li('auth.html', 'تسجيل الدخول') + li('shop.html?wishlist=1', 'المفضلة') + li('cart.html', 'سلة التسوق') + '</ul>' +
-        '<h3>انضم إلينا</h3><ul>' + li('seller.html', window.Market && window.Market.seller.exists() ? 'لوحة البائع' : 'بيع منتجاتك معنا') + li('become-rider.html', 'انضم كمندوب توصيل') + '</ul>' +
+         '<h3>حسابك</h3><ul>' + li(account ? 'profile.html' : 'auth.html', account ? 'الملف الشخصي والطلبات' : 'تسجيل الدخول') + li('shop.html?wishlist=1', 'المفضلة') + li('cart.html', 'سلة التسوق') + '</ul>' +
+         '<h3>' + (account ? 'مساحتك' : 'انضم إلينا') + '</h3><ul>' + roleItems + '</ul>' +
       '</div></aside>';
   }
 
@@ -672,6 +701,13 @@
       if (t.closest('[data-cart-open]')) { openCart(); return; }
       if (t.closest('[data-panel-close]') || t === overlay) { closePanel(); return; }
       if (t.closest('[data-menu-open]')) { openPanel($('#side-menu')); return; }
+      if (t.closest('[data-account-logout]')) {
+        e.preventDefault();
+        const finish = () => { if (window.NasaqCloud) window.NasaqCloud.clearSession(); location.href = 'index.html'; };
+        if (window.NasaqCloud) window.NasaqCloud.request('/auth/logout', null, 'POST').then(finish).catch(finish);
+        else finish();
+        return;
+      }
       if (t.closest('[data-loc-open]')) { ensureGeo(); openPanel($('#loc-modal')); return; }
       if (t.closest('[data-lang-open]')) { openPanel($('#lang-modal')); return; }
       const lg = t.closest('[data-lang]');

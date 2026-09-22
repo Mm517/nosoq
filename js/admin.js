@@ -6,7 +6,10 @@
   const labels = {
     new: 'جديد', processing: 'قيد التجهيز', shipped: 'تم الشحن',
     completed: 'مكتمل', cancelled: 'ملغى', open: 'مفتوحة',
-    in_progress: 'قيد المتابعة', resolved: 'تم الحل', closed: 'مغلقة'
+    in_progress: 'قيد المتابعة', resolved: 'تم الحل', closed: 'مغلقة',
+    pending: 'قيد المراجعة', active: 'مفعّل', rejected: 'مرفوض',
+    suspended: 'موقوف', unassigned: 'غير معيّن', assigned: 'مُسنَد',
+    picked_up: 'تم الاستلام', delivered: 'تم التسليم', failed: 'تعذّر التسليم'
   };
   const api = async (path, options) => {
     const response = await fetch('/api' + path, Object.assign({
@@ -67,14 +70,53 @@
       statusSelect(ticket.status, ['open','in_progress','resolved','closed'], ticket.id, 'support') + '</td></tr>').join('');
   }
 
+  function renderStores(stores) {
+    const body = $('#stores-body');
+    $('#stores-empty').hidden = stores.length > 0;
+    body.innerHTML = stores.map((store) => '<tr><td><strong>' + esc(store.name || 'متجر بلا اسم') + '</strong><small dir="ltr">' + esc(store.slug || '') + '</small></td>' +
+      '<td>' + esc(store.phone || store.email || '—') + '</td><td>' + esc(store.category || '—') + '</td><td>' + esc(labels[store.status] || store.status || '—') + '</td><td>' +
+      statusSelect(store.status, ['active','rejected','suspended'], store.id, 'store') + '</td></tr>').join('');
+  }
+
+  function renderRiders(riders) {
+    const body = $('#riders-body');
+    $('#riders-empty').hidden = riders.length > 0;
+    body.innerHTML = riders.map((rider) => '<tr><td><strong>' + esc(rider.name || 'مندوب') + '</strong><small>' + esc(rider.user_external_id || '') + '</small></td>' +
+      '<td dir="ltr">' + esc(rider.phone || '—') + '</td><td>' + esc(rider.vehicle || '—') + '</td><td>' + esc(rider.city || '—') + '</td><td>' +
+      statusSelect(rider.status, ['active','rejected','suspended'], rider.id, 'rider') + '</td></tr>').join('');
+  }
+
+  function riderOptions(riders, selected) {
+    return '<option value="">اختر مندوباً</option>' + riders.filter((rider) => rider.status === 'active').map((rider) =>
+      '<option value="' + esc(rider.id) + '"' + (String(rider.id) === String(selected || '') ? ' selected' : '') + '>' + esc(rider.name || rider.phone || 'مندوب') + '</option>').join('');
+  }
+
+  function renderDeliveries(deliveries, riders) {
+    const body = $('#deliveries-body');
+    $('#deliveries-empty').hidden = deliveries.length > 0;
+    body.innerHTML = deliveries.map((delivery) => {
+      const store = delivery.stores || {};
+      const currentRider = delivery.riders || {};
+      return '<tr><td><strong dir="ltr">' + esc(delivery.order_number || delivery.order_id || delivery.id) + '</strong></td>' +
+        '<td>' + esc(store.name || '—') + '</td><td>' + esc(delivery.delivery_address || delivery.address || '—') + '</td>' +
+        '<td>' + esc(labels[delivery.status] || delivery.status || '—') + '</td><td><select class="admin-select admin-delivery-rider" data-delivery-id="' + esc(delivery.id) + '">' +
+        (currentRider.name ? '<option value="' + esc(delivery.rider_id) + '">' + esc(currentRider.name) + '</option>' : '') +
+        riderOptions(riders, delivery.rider_id) + '</select></td></tr>';
+    }).join('');
+  }
+
   async function load() {
     setNotice('');
-    const [summary, orders, tickets] = await Promise.all([
+    const [summary, orders, tickets, stores, riders, deliveries] = await Promise.all([
       api('/admin/summary'),
       api('/admin/orders' + ($('#order-filter').value ? '?status=' + encodeURIComponent($('#order-filter').value) : '')),
-      api('/admin/support')
+      api('/admin/support'),
+      api('/admin/stores'),
+      api('/admin/riders'),
+      api('/admin/deliveries')
     ]);
     renderStats(summary); renderOrders(orders); renderSupport(tickets);
+    renderStores(stores || []); renderRiders(riders || []); renderDeliveries(deliveries || [], riders || []);
   }
 
   async function showApp() {
@@ -93,23 +135,49 @@
         body: JSON.stringify({ email: $('#admin-email').value, password: $('#admin-password').value })
       }).then(async (response) => { const value = await response.json(); if (!response.ok) throw new Error(value.error || 'فشل الدخول'); return value; });
       localStorage.setItem(TOKEN_KEY, data.access_token);
+      localStorage.setItem('nasaq_access_token_v1', data.access_token);
+      localStorage.setItem('nasaq_session_v1', JSON.stringify(data.user));
       await showApp();
     } catch (err) { error.textContent = err.message; }
   });
 
-  $('#admin-logout').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); location.reload(); });
+  $('#admin-logout').addEventListener('click', () => {
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {}).finally(() => {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('nasaq_access_token_v1');
+      localStorage.removeItem('nasaq_session_v1');
+      location.reload();
+    });
+  });
   $('#admin-refresh').addEventListener('click', () => load().catch((err) => setNotice(err.message)));
   $('#order-filter').addEventListener('change', () => load().catch((err) => setNotice(err.message)));
   document.addEventListener('change', async (event) => {
     const select = event.target.closest('[data-status-type]');
-    if (!select) return;
+    if (select) {
+      try {
+        let path = '';
+        if (select.dataset.statusType === 'order') path = '/admin/orders/' + select.dataset.id + '/status';
+        else if (select.dataset.statusType === 'support') path = '/admin/support/' + select.dataset.id + '/status';
+        else if (select.dataset.statusType === 'store') path = '/admin/stores/' + select.dataset.id + '/review';
+        else if (select.dataset.statusType === 'rider') path = '/admin/riders/' + select.dataset.id + '/review';
+        await postJson(path, { status: select.value }, select.dataset.statusType === 'order' || select.dataset.statusType === 'support' ? 'PATCH' : 'POST');
+        setNotice('تم تحديث الحالة.');
+        await load();
+      } catch (err) { setNotice(err.message); }
+      return;
+    }
+    const deliverySelect = event.target.closest('[data-delivery-id]');
+    if (!deliverySelect || !deliverySelect.value) return;
     try {
-      const path = select.dataset.statusType === 'order' ? '/admin/orders/' + select.dataset.id + '/status' : '/admin/support/' + select.dataset.id + '/status';
-      await postJson(path, { status: select.value }, 'PATCH');
-      setNotice('تم تحديث الحالة.');
+      await postJson('/admin/deliveries/' + deliverySelect.dataset.deliveryId + '/assign', { riderId: deliverySelect.value });
+      setNotice('تم إسناد التوصيلة.');
       await load();
     } catch (err) { setNotice(err.message); }
   });
 
-  if (localStorage.getItem(TOKEN_KEY)) showApp().catch(() => { localStorage.removeItem(TOKEN_KEY); });
+  /* Supabase keeps its session across reloads, so an admin who signed in from
+     the normal auth page must also be able to open this dashboard directly. */
+  showApp().catch(() => {
+    localStorage.removeItem(TOKEN_KEY);
+  });
 })();
