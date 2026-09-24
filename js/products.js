@@ -1,7 +1,8 @@
 /* ==========================================================================
-   js/products.js — إعدادات المتجر + بيانات 12 منتجاً + مولّد صور SVG مؤقتة
-   الصور: عشوائية من photoHost لكل منتج (مربوطة بـ id المنتج واللون). لو فشل تحميل صورة تظهر رسمة SVG بدلاً منها.
-   لاستبدالها بصور حقيقية أضف photos: ['img/a.jpg', ...] داخل المنتج.
+   js/products.js — إعدادات المتجر + كتالوج المنتجات الحقيقي من Supabase
+   لا بيانات وهمية هنا: المنتجات تُقرأ مباشرة من جدول public.products (المنتجات
+   التي تضيفها المتاجر الحقيقية المفعّلة فقط). أي منتج بلا صور حقيقية يظهر
+   برسمة SVG بديلة حسب تصنيفه بدل صورة عشوائية من الإنترنت.
    ========================================================================== */
 (function () {
   'use strict';
@@ -16,10 +17,6 @@
     returnDays: 14,
     email: 'hello@nasaq.example',
     cities: ['القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة', 'طنطا', 'الزقازيق', 'أسيوط', 'الأقصر'],
-    /* صور عشوائية مؤقتة، كل منتج له صوره الثابتة (نفس المنتج = نفس الصور دائماً).
-       لاستخدام صور حقيقية أضف photos: ['img/a.jpg', ...] داخل المنتج */
-    photoHost: 'https://picsum.photos/seed/',
-    photoCount: 8,
 
     /* ---- منصة البائعين ---- */
     commission: 0.10,                       // عمولة المنصة على مبيعات كل بائع (10%)
@@ -187,139 +184,79 @@
     return uri;
   }
 
-  /* ---------- بيانات المنتجات ---------- */
-  const S = ['S', 'M', 'L', 'XL'];
-  const SH = ['40', '41', '42', '43', '44', '45'];
-
-  const PRODUCTS = [
-    {
-      id: 1, name: 'تيشيرت قطن عضوي', category: 'clothes',
-      price: 189, oldPrice: null, isNew: true, rating: 4.6, reviews: 128, stock: 24,
-      sizes: S, soldOutSizes: [], art: 'tee', sku: 'NQ-TS-001', addedAt: '2026-09-10',
-      colors: [{ name: 'أبيض', hex: '#f1eee7' }, { name: 'أسود', hex: '#1d1d1b' }, { name: 'رملي', hex: '#c9b79c' }],
-      description: 'تيشيرت بقصّة مريحة من القطن العضوي بملمس ناعم يحافظ على شكله بعد الغسيل. تصميم بلا شعارات يناسب كل يوم.',
-      details: ['قطن عضوي 100%', 'قصّة عادية مريحة', 'يُغسل في الغسالة على 30 درجة', 'خياطة مزدوجة عند الرقبة']
-    },
-    {
-      id: 2, name: 'هودي أوفر سايز', category: 'clothes',
-      price: 449, oldPrice: 599, isNew: false, rating: 4.8, reviews: 342, stock: 12,
-      sizes: S, soldOutSizes: [], art: 'hoodie', sku: 'NQ-HD-002', addedAt: '2026-07-02',
-      colors: [{ name: 'رمادي', hex: '#8e908f' }, { name: 'زيتوني', hex: '#5b6248' }, { name: 'أسود', hex: '#1d1d1b' }],
-      description: 'هودي بقصّة واسعة من قطن فرنسي ثقيل مبطّن من الداخل بنعومة. جيب أمامي عميق وقبعة بحبل قابل للتعديل.',
-      details: ['قطن فرنسي 380 غرام', 'بطانة داخلية ناعمة', 'جيب كنغر أمامي', 'قصّة أوفر سايز، اطلب مقاسك المعتاد']
-    },
-    {
-      id: 3, name: 'جاكيت دنيم كلاسيكي', category: 'clothes',
-      price: 699, oldPrice: null, isNew: true, rating: 4.5, reviews: 76, stock: 8,
-      sizes: S, soldOutSizes: ['S'], art: 'jacket', sku: 'NQ-JK-003', addedAt: '2026-09-14',
-      colors: [{ name: 'أزرق دنيم', hex: '#3f5b7e' }, { name: 'أسود', hex: '#222220' }],
-      description: 'جاكيت دنيم بقصّة كلاسيكية وغسلة ناعمة. أزرار معدنية وجيوب أمامية تجمع بين الأناقة والعملية.',
-      details: ['دنيم قطني 12 أونصة', 'أزرار معدنية مطفّية', 'جيبان أماميان وجيب داخلي', 'يُغسل مقلوباً بالماء البارد']
-    },
-    {
-      id: 4, name: 'فستان كتان صيفي', category: 'clothes',
-      price: 549, oldPrice: 690, isNew: false, rating: 4.7, reviews: 211, stock: 0,
-      sizes: S, soldOutSizes: [], art: 'dress', sku: 'NQ-DR-004', addedAt: '2026-05-20',
-      colors: [{ name: 'أخضر مريمي', hex: '#8fa08a' }, { name: 'كريمي', hex: '#e9dfcb' }, { name: 'أزرق سماوي', hex: '#8fa9c4' }],
-      description: 'فستان من الكتان الطبيعي بقصّة واسعة تنساب مع الحركة وتمنح الجسم تهوية مثالية في الأيام الحارة.',
-      details: ['كتان طبيعي 100%', 'بدون بطانة، خفيف الوزن', 'الطول حتى منتصف الساق', 'يُكوى على حرارة متوسطة']
-    },
-    {
-      id: 5, name: 'بنطلون شينو مريح', category: 'clothes',
-      price: 379, oldPrice: null, isNew: false, rating: 4.3, reviews: 95, stock: 30,
-      sizes: S, soldOutSizes: ['XL'], art: 'pants', sku: 'NQ-PN-005', addedAt: '2026-06-11',
-      colors: [{ name: 'كاكي', hex: '#b5a27e' }, { name: 'كحلي', hex: '#26324a' }],
-      description: 'بنطلون شينو بقصّة مستقيمة وقماش قطني مرن يمنحك راحة طوال اليوم من الدوام حتى السهرة.',
-      details: ['قطن مع 2% إيلاستان', 'قصّة مستقيمة', 'خصر مريح بجيوب جانبية', 'يحتفظ بلونه بعد الغسيل']
-    },
-    {
-      id: 6, name: 'حقيبة جلد طبيعي', category: 'bags',
-      price: 899, oldPrice: 1199, isNew: false, rating: 4.9, reviews: 187, stock: 6,
-      sizes: [], soldOutSizes: [], art: 'bag', sku: 'NQ-BG-006', addedAt: '2026-04-03',
-      colors: [{ name: 'بني', hex: '#7a4e2d' }, { name: 'أسود', hex: '#1d1d1b' }, { name: 'جملي', hex: '#b98555' }],
-      description: 'حقيبة يد من الجلد الطبيعي المدبوغ نباتياً، بتصميم واسع يتّسع للابتوب الصغير ويزداد جمالاً مع الاستخدام.',
-      details: ['جلد بقري مدبوغ نباتياً', 'بطانة قطنية وجيب بسحّاب', 'حزام كتف قابل للفك', 'الأبعاد 32 × 26 × 12 سم']
-    },
-    {
-      id: 7, name: 'حذاء سنيكرز أبيض', category: 'shoes',
-      price: 649, oldPrice: null, isNew: true, rating: 4.7, reviews: 264, stock: 15,
-      sizes: SH, soldOutSizes: ['40'], art: 'shoe', sku: 'NQ-SN-007', addedAt: '2026-09-12',
-      colors: [{ name: 'أبيض', hex: '#f4f4f2' }, { name: 'رمادي فاتح', hex: '#cfd0cc' }],
-      description: 'سنيكرز جلدي بخطوط نظيفة ونعل مطاطي خفيف. يتماشى مع الجينز والبدلة على حدّ سواء.',
-      details: ['جلد صناعي عالي الجودة', 'نعل مطاطي مضاد للانزلاق', 'بطانة داخلية قابلة للسحب', 'المقاسات أوروبية']
-    },
-    {
-      id: 8, name: 'ساعة مينيمال', category: 'accessories',
-      price: 1299, oldPrice: 1599, isNew: false, rating: 4.8, reviews: 143, stock: 5,
-      sizes: [], soldOutSizes: [], art: 'watch', sku: 'NQ-WT-008', addedAt: '2026-03-15',
-      colors: [{ name: 'فضي', hex: '#c9cbce' }, { name: 'ذهبي', hex: '#c7a54a' }, { name: 'أسود', hex: '#1d1d1b' }],
-      description: 'ساعة بمينا نظيف وعقارب دقيقة وسوار من الستانلس ستيل. مقاومة للماء حتى 50 متراً.',
-      details: ['حركة كوارتز يابانية', 'قطر العلبة 38 مم', 'زجاج ياقوت مقاوم للخدش', 'ضمان سنتين']
-    },
-    {
-      id: 9, name: 'كاب قطني', category: 'accessories',
-      price: 129, oldPrice: null, isNew: false, rating: 4.2, reviews: 61, stock: 40,
-      sizes: [], soldOutSizes: [], art: 'cap', sku: 'NQ-CP-009', addedAt: '2026-05-02',
-      colors: [{ name: 'أسود', hex: '#1d1d1b' }, { name: 'بيج', hex: '#cdbb9a' }, { name: 'كحلي', hex: '#26324a' }],
-      description: 'كاب من القطن المغسول بحافة منحنية وإبزيم معدني خلفي لتعديل المقاس بسهولة.',
-      details: ['قطن مغسول 100%', 'مقاس واحد قابل للتعديل', 'فتحات تهوية مطرّزة', 'حافة منحنية']
-    },
-    {
-      id: 10, name: 'وشاح صوف ناعم', category: 'accessories',
-      price: 259, oldPrice: null, isNew: true, rating: 4.6, reviews: 52, stock: 18,
-      sizes: [], soldOutSizes: [], art: 'scarf', sku: 'NQ-SC-010', addedAt: '2026-09-08',
-      colors: [{ name: 'رمادي', hex: '#9a9c9f' }, { name: 'نيلي', hex: '#3d4a8a' }, { name: 'عنابي', hex: '#7b2f3f' }],
-      description: 'وشاح من مزيج الصوف والأكريليك بملمس دافئ لا يسبّب الحكّة، بأطراف مهدّبة وحجم يكفي للف مزدوج.',
-      details: ['صوف 60% أكريليك 40%', 'الأبعاد 180 × 70 سم', 'يُغسل يدوياً', 'أطراف مهدّبة']
-    },
-    {
-      id: 11, name: 'نظارة شمسية', category: 'accessories',
-      price: 349, oldPrice: 449, isNew: false, rating: 4.4, reviews: 88, stock: 10,
-      sizes: [], soldOutSizes: [], art: 'glasses', sku: 'NQ-SG-011', addedAt: '2026-05-28',
-      colors: [{ name: 'أسود', hex: '#1d1d1b' }, { name: 'سلحفاة', hex: '#7b5334' }],
-      description: 'نظارة بإطار خفيف وعدسات مستقطبة تحجب 100% من الأشعة فوق البنفسجية، مع علبة صلبة وقطعة تنظيف.',
-      details: ['عدسات مستقطبة UV400', 'إطار أسيتات خفيف', 'مفصّلات معدنية', 'تشمل علبة صلبة']
-    },
-    {
-      id: 12, name: 'محفظة جلدية رفيعة', category: 'bags',
-      price: 229, oldPrice: null, isNew: false, rating: 4.5, reviews: 119, stock: 22,
-      sizes: [], soldOutSizes: [], art: 'wallet', sku: 'NQ-WL-012', addedAt: '2026-06-24',
-      colors: [{ name: 'بني', hex: '#7a4e2d' }, { name: 'أسود', hex: '#1d1d1b' }, { name: 'كحلي', hex: '#26324a' }],
-      description: 'محفظة نحيفة تتّسع لـ 8 بطاقات وأوراق نقدية دون أن تنتفخ في الجيب. حماية RFID مدمجة.',
-      details: ['جلد بقري ناعم', '8 فتحات بطاقات وجيب للنقود', 'حماية RFID', 'سماكة 7 مم فقط']
-    }
-  ];
-
-  /* ---------- منتجات البائعين: تُقرأ من التخزين المحلي وتنضم للكتالوج ----------
-     (نموذج تجريبي بلا خادم. عند الإطلاق تأتي هذه المنتجات من قاعدة البيانات) */
+  /* ---------- بيانات المنتجات: تُقرأ مباشرة من Supabase (لا كتالوج تجريبي) ----------
+     يُنفَّذ الطلب بشكل متزامن (XMLHttpRequest) لأن باقي ملفات الموقع (home.js,
+     shop.js, product-page.js, store-page.js...) تفترض أن window.Products.all()
+     جاهزة فوراً عند تحميلها؛ وهذا الملف يُحمَّل مؤجَّلاً (defer) بعد supabase-js
+     و js/api-shim.js، فالبيانات تصل قبل أي صفحة تحتاجها. */
   const ART_BY_CAT = { clothes: 'tee', bags: 'bag', shoes: 'shoe', accessories: 'watch' };
-  function readLS(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (_) { return d; } }
-  const SELLER = readLS('nasaq_seller_v1', null);
-  if (SELLER) {
-    const sellerRef = { id: SELLER.id, name: SELLER.name, slug: SELLER.slug };
-    readLS('nasaq_sprod_v1', []).filter((x) => x && x.status === 'active').forEach((x) => {
-      PRODUCTS.push(Object.assign({
-        art: ART_BY_CAT[x.category] || 'tee', soldOutSizes: [], sizes: [], details: [], rating: 0, reviews: 0,
-        colors: [{ name: 'أساسي', hex: '#c5cad3' }], sku: 'SL-' + x.id, oldPrice: null
-      }, x, {
-        colors: x.colors && x.colors.length ? x.colors : [{ name: 'أساسي', hex: '#c5cad3' }],
-        isNew: Date.now() - new Date(x.addedAt).getTime() < 14 * 864e5,
-        sellerId: SELLER.id, seller: sellerRef
-      }));
+
+  function sbGet(path) {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', window.NASAQ_SUPABASE_URL + '/rest/v1/' + path, false);
+      xhr.setRequestHeader('apikey', window.NASAQ_SUPABASE_ANON_KEY);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + window.NASAQ_SUPABASE_ANON_KEY);
+      xhr.send(null);
+      if (xhr.status >= 200 && xhr.status < 300) return JSON.parse(xhr.responseText || '[]');
+      console.error('[nasaq] تعذّر تحميل المنتجات من Supabase:', xhr.status, xhr.responseText);
+    } catch (err) {
+      console.error('[nasaq] تعذّر الاتصال بـ Supabase لتحميل المنتجات:', err);
+    }
+    return [];
+  }
+
+  function buildCatalog() {
+    const rows = sbGet('products?select=*,stores(id,name,slug,status)&status=eq.active&order=added_at.desc&limit=500');
+    const reviewRows = rows.length ? sbGet('reviews?select=product_id,rating&limit=5000') : [];
+    const agg = {};
+    reviewRows.forEach((r) => {
+      const a = agg[r.product_id] || (agg[r.product_id] = { sum: 0, count: 0 });
+      a.sum += Number(r.rating || 0); a.count += 1;
     });
+    return rows
+      .filter((row) => row.legacy_id != null && (!row.stores || row.stores.status === 'active'))
+      .map((row) => {
+        const store = row.stores || null;
+        const a = agg[row.id];
+        const colors = Array.isArray(row.colors) && row.colors.length ? row.colors : [{ name: 'أساسي', hex: '#c5cad3' }];
+        return {
+          id: row.legacy_id,
+          uuid: row.id,
+          storeId: store ? store.id : null,
+          sellerId: store ? store.id : null,
+          seller: store ? { id: store.id, name: store.name, slug: store.slug } : null,
+          name: row.name || '',
+          category: row.category || 'clothes',
+          price: Number(row.price || 0),
+          oldPrice: row.old_price == null ? null : Number(row.old_price),
+          isNew: Date.now() - new Date(row.added_at).getTime() < 14 * 864e5,
+          rating: a ? Math.round((a.sum / a.count) * 10) / 10 : 0,
+          reviews: a ? a.count : 0,
+          stock: Number(row.stock || 0),
+          sizes: Array.isArray(row.sizes) ? row.sizes : [],
+          soldOutSizes: [],
+          art: ART_BY_CAT[row.category] || 'tee',
+          sku: row.sku || ('NQ-' + row.legacy_id),
+          addedAt: row.added_at,
+          colors,
+          description: row.description || '',
+          details: Array.isArray(row.details) ? row.details : [],
+          photos: Array.isArray(row.photos) ? row.photos.filter(Boolean) : []
+        };
+      });
   }
 
-  /* ---------- الصور: عشوائية مربوطة بالمنتج + رسمة احتياطية ---------- */
-  const PHOTO_SIZES = { xs: [160, 200], sm: [320, 400], md: [480, 600], lg: [900, 1125] };
+  const PRODUCTS = buildCatalog();
 
-  function photoURL(p, i, colorIdx, size) {
+  /* ---------- الصور: من صور المنتج الحقيقية، أو رسمة SVG بديلة حسب التصنيف ---------- */
+  function photoURL(p, i, colorIdx) {
     if (p.photos && p.photos.length) return p.photos[i % p.photos.length];
-    const wh = PHOTO_SIZES[size] || PHOTO_SIZES.md;
-    return STORE.photoHost + 'nq' + p.id + 'c' + (colorIdx || 0) + 'i' + (i % STORE.photoCount) + '/' + wh[0] + '/' + wh[1];
+    return artFor(p.id, i, colorIdx);
   }
-  function photoCount(p) { return p.photos && p.photos.length ? p.photos.length : STORE.photoCount; }
-  function gallery(p, colorIdx, size) {
-    return Array.from({ length: photoCount(p) }, (_, i) => photoURL(p, i, colorIdx, size || 'md'));
+  function photoCount(p) { return (p.photos && p.photos.length) ? p.photos.length : 1; }
+  function gallery(p, colorIdx) {
+    return Array.from({ length: photoCount(p) }, (_, i) => photoURL(p, i, colorIdx));
   }
   function artFor(id, i, colorIdx) {
     const p = PRODUCTS.find((x) => x.id === Number(id));

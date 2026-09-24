@@ -14,6 +14,7 @@
     admin: ['لوحة الإدارة', 'شغّل السوق وتابع الدعم والطلبات', 'admin.html'],
     customer: ['ابدأ البيع معنا', 'حوّل منتجاتك إلى متجر على نَسَق', 'become-seller.html']
   };
+  const ORDER_STATUS = { new: 'جديد', processing: 'قيد المعالجة', shipped: 'تم الشحن', completed: 'مكتمل', cancelled: 'ملغي' };
   function readSession() {
     try { return JSON.parse(localStorage.getItem('nasaq_session_v1') || 'null'); } catch (_) { return null; }
   }
@@ -21,19 +22,28 @@
     const item = roleCopy[account.role] || roleCopy.customer;
     return '<a class="profile-role-link" href="' + item[2] + '"><span><strong>' + item[0] + '</strong><br><small>' + item[1] + '</small></span><span aria-hidden="true">←</span></a>';
   }
-  function render(account) {
+  function orderMarkupFrom(orders) {
+    if (!orders || !orders.length) return '<div class="profile-orders__empty">لا توجد طلبات محفوظة بعد. <a href="shop.html">تصفّح المنتجات</a></div>';
+    return '<div class="profile-order-list">' + orders.map((order) => {
+      const itemsCount = (order.order_items || []).reduce((n, l) => n + Number(l.quantity || 1), 0);
+      const total = window.Store ? window.Store.money(order.total || 0) : (order.total || 0);
+      return '<div class="profile-order"><span><strong dir="ltr">' + esc(order.order_number || order.id) + '</strong><small>' + itemsCount + ' قطعة</small></span><span><strong>' + esc(total) + '</strong><small>' + esc(ORDER_STATUS[order.status] || order.status || 'قيد المعالجة') + '</small></span></div>';
+    }).join('') + '</div>';
+  }
+  function render(account, orders) {
     if (!account) {
       root.innerHTML = '<section class="profile-card profile-login-card"><h1>حسابك في نَسَق</h1><p class="profile-card__sub">سجّل الدخول لمتابعة طلباتك ومفضلاتك وإدارة مساحتك.</p><a class="btn btn--accent btn--lg" href="auth.html">تسجيل الدخول</a><a class="btn btn--ghost btn--lg" href="auth.html?tab=signup">إنشاء حساب</a></section>';
       return;
     }
     const name = account.name || (account.email || '').split('@')[0] || 'عميل نَسَق';
     const initials = name.trim().slice(0, 1);
-    const orders = window.Market && window.Market.orders ? window.Market.orders.list().filter((order) => !account.email || !order.customer || order.customer.email === account.email).slice(0, 5) : [];
-    const orderMarkup = orders.length ? '<div class="profile-order-list">' + orders.map((order) => '<div class="profile-order"><span><strong dir="ltr">' + esc(order.number || order.id) + '</strong><small>' + esc(order.customer && order.customer.name || 'طلب نَسَق') + '</small></span><span><strong>' + esc(window.Store ? window.Store.money(order.totals && order.totals.total || order.total || 0) : '') + '</strong><small>' + esc(order.status || 'قيد المعالجة') + '</small></span></div>').join('') + '</div>' : '<div class="profile-orders__empty">لا توجد طلبات محفوظة بعد. <a href="shop.html">تصفّح المنتجات</a></div>';
+    const orderMarkup = orders === null
+      ? '<div class="profile-orders__empty">تعذّر تحميل طلباتك الآن. <a href="javascript:location.reload()">أعد المحاولة</a></div>'
+      : orderMarkupFrom(orders);
     root.innerHTML = '<section class="profile-hero"><div class="profile-identity"><div class="profile-avatar" aria-hidden="true">' + esc(initials) + '</div><div><p class="profile-kicker">مرحباً بك في نَسَق</p><h1>' + esc(name) + '</h1><p class="profile-email">' + esc(account.email || '') + '</p></div></div><span class="profile-role">' + esc(roleNames[account.role] || roleNames.customer) + '</span></section>' +
       '<div class="profile-grid"><section class="profile-card"><h2>بيانات الحساب</h2><p class="profile-card__sub">عدّل بياناتك وستظهر في حسابك وكل طلباتك القادمة.</p><form class="profile-form" data-profile-form><div class="profile-fields"><div class="field"><label for="profile-name">الاسم</label><input class="input" id="profile-name" name="name" value="' + esc(name) + '" autocomplete="name" required></div><div class="field"><label for="profile-phone">رقم الهاتف</label><input class="input" id="profile-phone" name="phone" value="' + esc(account.phone || '') + '" autocomplete="tel" dir="ltr" required></div><div class="field"><label for="profile-email">البريد الإلكتروني</label><input class="input" id="profile-email" value="' + esc(account.email || '') + '" dir="ltr" readonly></div></div><p class="profile-form__message" data-profile-message role="status"></p><div class="profile-actions"><button class="btn btn--primary" type="submit">حفظ البيانات</button><a class="btn btn--ghost" href="shop.html?wishlist=1">المفضلة</a><a class="btn btn--ghost" href="cart.html">سلة التسوق</a><button class="btn btn--quiet" type="button" data-profile-logout>تسجيل الخروج</button></div></form></section>' +
       '<section class="profile-card"><h2>مساحتك في نَسَق</h2><p class="profile-card__sub">الوصول السريع للأدوات المناسبة لدورك.</p><div class="profile-role-nav">' + roleLink(account) + (account.role === 'customer' ? '<a class="profile-role-link" href="become-rider.html"><span><strong>انضم كمندوب توصيل</strong><br><small>قدّم طلبك وابدأ رحلتك مع نَسَق</small></span><span aria-hidden="true">←</span></a>' : '') + '</div></section>' +
-      '<section class="profile-card profile-orders"><h2>طلباتك</h2><p class="profile-card__sub">آخر الطلبات المرتبطة بحسابك.</p>' + orderMarkup + '</section></div>';
+      '<section class="profile-card profile-orders"><h2>طلباتك</h2><p class="profile-card__sub">آخر الطلبات المرتبطة بحسابك، محدّثة مباشرة من قاعدة البيانات.</p>' + orderMarkup + '</section></div>';
     const form = root.querySelector('[data-profile-form]');
     if (form) form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -48,7 +58,7 @@
         }, 'PATCH');
         const next = Object.assign({}, account, response.profile || {});
         localStorage.setItem('nasaq_session_v1', JSON.stringify(next));
-        render(next);
+        render(next, orders);
         const nextMessage = root.querySelector('[data-profile-message]');
         if (nextMessage) nextMessage.textContent = 'تم حفظ بياناتك بنجاح.';
       } catch (error) {
@@ -64,6 +74,7 @@
   }
   async function boot() {
     let account = readSession();
+    let orders = [];
     try {
       if (window.NasaqCloud && account) {
         const response = await window.NasaqCloud.request('/store/profile', null, 'GET');
@@ -75,7 +86,15 @@
     } catch (_) {
       /* الصفحة تظل مفيدة بالجلسة المحلية إذا تعذر الاتصال مؤقتاً */
     }
-    render(account);
+    if (account) {
+      try {
+        orders = await window.NasaqCloud.request('/store/orders/mine', null, 'GET');
+        if (!Array.isArray(orders)) orders = [];
+      } catch (_) {
+        orders = null; /* يعرض رسالة تعذّر التحميل بدل قائمة فارغة مضلِّلة */
+      }
+    }
+    render(account, orders);
   }
   boot();
 })();

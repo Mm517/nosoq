@@ -32,10 +32,13 @@
   const isoNow = () => new Date().toISOString();
   const cloud = () => window.NasaqCloud;
 
-  const STATUS = { new: 'جديد', processing: 'قيد التجهيز', shipped: 'تم الشحن', completed: 'مكتمل', cancelled: 'ملغي' };
-  const NEXT = { new: 'processing', processing: 'shipped', shipped: 'completed' };
+  /* حالات الطلب الحقيقية من قاعدة البيانات (store_orders.status) */
+  const STATUS = { new: 'جديد', accepted: 'مقبول', preparing: 'قيد التجهيز', ready: 'جاهز للتوصيل', out_for_delivery: 'مع المندوب', delivered: 'تم التسليم', processing: 'قيد التجهيز', shipped: 'تم الشحن', completed: 'مكتمل', cancelled: 'ملغي', returned: 'مرتجع' };
+  const NEXT = { new: 'accepted', accepted: 'preparing', preparing: 'ready' };
 
-  /* ---------- البائع ---------- */
+  /* ---------- البائع ----------
+     المتجر الحقيقي (المعتمد من الإدارة) يُقرأ من Supabase عبر seller-gate.js ثم
+     يُنسخ هنا (syncFromCloud) ليبقى شكل بيانات لوحة البائع كما هو. */
   const seller = {
     get: () => ls.get(K.seller, null),
     exists: () => !!ls.get(K.seller, null),
@@ -52,28 +55,123 @@
       const s = Object.assign(seller.get() || {}, patch);
       return ls.set(K.seller, s) ? s : null;
     },
+    /* يُستدعى بعد نجاح seller-gate.js: يربط لوحة البائع بالمتجر الحقيقي المعتمد
+       في Supabase (نفس id المتجر الحقيقي uuid) بدل أي متجر محلي وهمي قديم. */
+    syncFromCloud(store) {
+      if (!store) return null;
+      const a = store.address || {};
+      const s = {
+        id: store.id, cloudId: store.id, name: store.name, slug: store.slug, category: store.category,
+        phone: store.phone || '', email: store.email || '', description: store.description || '',
+        logo: store.logo_url || '', address: { city: a.city || '', area: a.area || '' }, ownerId: store.owner_external_id,
+        createdAt: store.created_at || isoNow(), returnDays: CFG.returnDays, demo: false, prepDays: 2
+      };
+      ls.set(K.seller, s);
+      cloudOrders = null; cloudProducts = null;
+      return s;
+    },
     reset() { Object.keys(K).forEach((k) => { if (K[k] !== K.theme) ls.del(K[k]); }); ls.del('nasaq_orders_v1'); }
   };
   const me = () => seller.get();
-  const demoOn = () => !!(me() && me().demo);
+  const demoOn = () => false; /* لا بيانات تجريبية عشوائية بعد الآن — المنصة تعمل ببيانات حقيقية فقط */
 
-  /* ---------- المنتجات ---------- */
+  /* ---------- جسر الطلبات الحقيقية (store_orders من Supabase) ---------- */
+  let cloudOrders = null;
+  let cloudOrdersLoading = false;
+  function mapCloudOrder(row) {
+    const o = row.orders || {};
+    const items = row.order_items || [];
+    const gross = round2(items.reduce((t, l) => t + Number(l.unit_price || 0) * Number(l.quantity || 1), 0));
+    return {
+      id: o.order_number || row.id, _cloudId: row.id, createdAt: row.created_at || o.created_at || isoNow(),
+      status: row.status, demo: false,
+      lines: items.map((l) => ({ productId: l.legacy_product_id, name: l.product_name, qty: l.quantity, price: Number(l.unit_price || 0), size: l.size, color: l.color })),
+      customer: Object.assign({ name: '', city: '', phone: '', address: '' }, o.customer || {}),
+      payment: o.payment || 'cod', gross, commission: 0, net: gross
+    };
+  }
+  function loadCloudOrders() {
+    const s = me();
+    if (cloudOrdersLoading || !cloud() || !s || !s.cloudId) return;
+    cloudOrdersLoading = true;
+    cloud().request('/seller/orders', null, 'GET').then((rows) => {
+      cloudOrders = (rows || []).map(mapCloudOrder);
+      cloudOrdersLoading = false;
+      window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+    }).catch(() => { cloudOrders = []; cloudOrdersLoading = false; window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready')); });
+  }
+
+  /* ---------- جسر منتجات المتجر الحقيقية (products من Supabase) ---------- */
+  let cloudProducts = null;
+  let cloudProductsLoading = false;
+  function mapCloudProduct(row) {
+    return {
+      id: row.legacy_id, uuid: row.id, name: row.name, category: row.category, price: Number(row.price || 0),
+      oldPrice: row.old_price == null ? null : Number(row.old_price), stock: Number(row.stock || 0),
+      status: row.status, sku: row.sku || '', description: row.description || '',
+      details: Array.isArray(row.details) ? row.details : [], sizes: Array.isArray(row.sizes) ? row.sizes : [],
+      colors: Array.isArray(row.colors) ? row.colors : [], photos: Array.isArray(row.photos) ? row.photos : [],
+      addedAt: row.added_at, sellerId: row.store_id
+    };
+  }
+  function loadCloudProducts() {
+    const s = me();
+    if (cloudProductsLoading || !cloud() || !s || !s.cloudId) return;
+    cloudProductsLoading = true;
+    cloud().request('/seller/products', null, 'GET').then((rows) => {
+      cloudProducts = (rows || []).filter((r) => r.legacy_id != null).map(mapCloudProduct);
+      cloudProductsLoading = false;
+      window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+    }).catch(() => { cloudProducts = []; cloudProductsLoading = false; window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready')); });
+  }
+
+  /* ---------- المنتجات ----------
+     كل تعديل هنا يُزامَن فوراً مع Supabase (cloud().syncProduct) فيظهر للعملاء
+     على الفور عبر products.js. القائمة المعروضة للبائع تُقرأ من Supabase مباشرة. */
   const products = {
-    list: () => ls.get(K.prods, []),
+    list() {
+      const s = me();
+      if (s && s.cloudId) {
+        if (cloudProducts === null) loadCloudProducts();
+        return (cloudProducts || []).slice();
+      }
+      return ls.get(K.prods, []);
+    },
     get: (id) => products.list().find((p) => p.id === Number(id)),
     nextId: () => Math.max(1000, ...products.list().map((p) => p.id)) + 1,
+    /* حفظ محلي فقط (نموذج تجريبي بلا متجر حقيقي بعد) — يبقى للتوافق القديم */
     save(p) {
-      const list = products.list();
+      const list = ls.get(K.prods, []);
       const i = list.findIndex((x) => x.id === p.id);
       if (i >= 0) list[i] = p; else list.unshift(p);
       const ok = ls.set(K.prods, list);
       if (ok && cloud()) cloud().syncProduct(p);
       return ok;
     },
-    remove(id) { return ls.set(K.prods, products.list().filter((p) => p.id !== Number(id))); },
+    /* حفظ حقيقي: يرسل المنتج لـ Supabase أولاً وينتظر الرد (id الحقيقي legacy_id
+       عند الإضافة) بدل توليد id محلي عشوائي قد يتعارض مع بائع آخر، ثم يحدّث الكاش
+       المحلي ويُعيد رسم الصفحة. يُستخدم فقط عند وجود متجر حقيقي معتمد (s.cloudId). */
+    async saveCloud(p) {
+      const s = me();
+      const row = await cloud().syncProduct(Object.assign({}, p, { storeId: s.cloudId, sellerId: s.ownerId }));
+      cloudProducts = null; /* أعد التحميل من المصدر ليعكس السعر/الحالة الحقيقية */
+      window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+      return row;
+    },
+    remove(id) {
+      const s = me();
+      if (s && s.cloudId) {
+        const p = products.get(id);
+        if (p) products.saveCloud(Object.assign({}, p, { status: 'archived' }));
+        return true;
+      }
+      return ls.set(K.prods, ls.get(K.prods, []).filter((p) => p.id !== Number(id)));
+    },
     setStatus(id, status) {
+      const s = me();
       const p = products.get(id);
       if (!p) return false;
+      if (s && s.cloudId) { products.saveCloud(Object.assign({}, p, { status })); return true; }
       p.status = status;
       return products.save(p);
     },
@@ -157,6 +255,9 @@
     raw: () => ls.get(K.orders, []),
     /* يُستدعى من صفحة الدفع بعد نجاح الطلب */
     record(o) {
+      /* منطق التسجيل المحلي القديم — يبقى فقط كنسخة احتياطية بصفحة "طلباتي" المحلية
+         للمشتري نفسه؛ الطلب الحقيقي يُخزَّن في Supabase عبر cloud().syncOrder أدناه
+         ويصل تلقائياً لكل من البائع والمندوب والإدارة. */
       const s = me();
       const t = o.totals || {};
       const lines = o.lines.map((l) => ({
@@ -187,25 +288,36 @@
       notifs.add({ type: 'order', title: 'طلب جديد ' + o.number, text: mine.length + ' منتج بقيمة ' + window.Store.money(gross), href: '#/orders/' + o.number });
       return order;
     },
+    /* الطلبات الحقيقية لهذا المتجر من Supabase (store_orders)؛ تُحمَّل بالخلفية
+       وتُعاد القائمة الحالية فوراً — أول استدعاء يبدأ التحميل ويصدر حدث
+       'nasaq:seller-data-ready' عند اكتمالها حتى تُعيد الصفحة رسم نفسها. */
     list() {
-      const real = orders.raw().map(sellerView).filter(Boolean);
-      const demo = demoOn() ? demoOrders().map(sellerView).filter(Boolean) : [];
-      return real.concat(demo).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const s = me();
+      if (s && s.cloudId) {
+        if (cloudOrders === null) loadCloudOrders();
+        return (cloudOrders || []).slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      }
+      return orders.raw().map(sellerView).filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
     get: (id) => orders.list().find((o) => o.id === id),
     setStatus(id, status) {
-      if (String(id).indexOf('NQ-D') === 0) {
-        const m = ls.get(K.demoStatus, {}); m[id] = status; ls.set(K.demoStatus, m); demoCache = null; return true;
+      const o = orders.list().find((x) => x.id === id);
+      if (o && o._cloudId && cloud()) {
+        cloud().request('/seller/orders/' + o._cloudId + '/status', { status }, 'PATCH').then(() => {
+          cloudOrders = null; loadCloudOrders();
+        }).catch(() => { /* الرسالة تظهر عبر S.toast في مكان الاستدعاء */ });
+        o.status = status; /* تحديث تفاؤلي فوري في الواجهة */
+        return true;
       }
       const list = orders.raw();
-      const o = list.find((x) => x.id === id);
-      if (!o) return false;
-      o.status = status;
+      const raw = list.find((x) => x.id === id);
+      if (!raw) return false;
+      raw.status = status;
       return ls.set(K.orders, list);
     },
     counts() {
-      const c = { all: 0, new: 0, processing: 0, shipped: 0, completed: 0, cancelled: 0 };
-      orders.list().forEach((o) => { c.all++; c[o.status]++; });
+      const c = { all: 0, new: 0, accepted: 0, preparing: 0, ready: 0, out_for_delivery: 0, delivered: 0, cancelled: 0, returned: 0, processing: 0, shipped: 0, completed: 0 };
+      orders.list().forEach((o) => { c.all++; if (c[o.status] == null) c[o.status] = 0; c[o.status]++; });
       return c;
     }
   };

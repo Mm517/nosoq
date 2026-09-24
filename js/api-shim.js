@@ -132,11 +132,17 @@
     });
     if (error) return errRes(translateAuthError(error), 400);
     if (!data.user) return errRes('تعذّر إنشاء الحساب.');
+    if (!data.session) {
+      /* تأكيد البريد الإلكتروني مفعّل في إعدادات المشروع. Supabase عن قصد
+         لا يفرّق في الرد بين "بريد جديد" و"بريد مسجَّل من قبل" (حماية من
+         تخمين البريدات المسجَّلة) — لكن نقدر نكتشف الحالة الثانية: لو الحساب
+         موجود مسبقاً، data.user.identities بتيجي فاضية []. */
+      const alreadyExists = Array.isArray(data.user.identities) && data.user.identities.length === 0;
+      if (alreadyExists) return errRes('هذا البريد الإلكتروني مسجَّل بحساب من قبل. سجّل الدخول بدلاً من إنشاء حساب جديد.', 400);
+      return errRes('تم إنشاء الحساب. الرجاء تأكيد بريدك الإلكتروني من الرسالة المُرسلة إليك قبل تسجيل الدخول.', 400);
+    }
     await syncMarketplaceUser(data.user, 'customer', { name, phone });
     const sessionUser = { userId: data.user.id, email: data.user.email, role: 'customer', name: String(name).trim() };
-    if (!data.session) {
-      return errRes('تم إنشاء الحساب. الرجاء تأكيد بريدك الإلكتروني قبل تسجيل الدخول.', 202);
-    }
     persistLocal(data.session.access_token, sessionUser);
     return okRes({ access_token: data.session.access_token, user: sessionUser }, 201);
   });
@@ -209,6 +215,14 @@
     if (error) return errRes(error.message, 400);
     await sb.auth.updateUser({ data: { name, phone } });
     return okRes({ profile: data || { external_id: session.userId, email: session.email, name, phone, role: session.role } });
+  });
+
+  on('GET', 'store/orders/mine', async () => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const { data, error } = await sb.from('orders').select('*,order_items(*)').eq('customer_external_id', session.userId).order('created_at', { ascending: false }).limit(50);
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
   });
 
   on('POST', 'store/users/upsert', async (params, query, body) => {
@@ -544,6 +558,23 @@
     return okRes(data);
   });
 
+  /* إعداد Radius الطلبات القريبة (متر) — الحد الأدنى 1 والأقصى 50000 (50 كم)، الافتراضي 5000 */
+  on('GET', 'admin/settings/delivery-radius', async () => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.from('app_settings').select('value_num').eq('key', 'delivery_radius_m').maybeSingle();
+    if (error) return errRes(error.message, 400);
+    return okRes({ meters: data ? Number(data.value_num) : 5000 });
+  });
+
+  on('PUT', 'admin/settings/delivery-radius', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const meters = Number(body && body.meters);
+    if (!isFinite(meters) || meters < 1 || meters > 50000) return errRes('النطاق يجب أن يكون بين 1 متر و50000 متر (50 كم).', 400);
+    const { data, error } = await sb.rpc('admin_set_delivery_radius', { p_meters: meters });
+    if (error) return errRes(error.message, 400);
+    return okRes({ meters: Number(data) });
+  });
+
   on('POST', 'admin/stores/:id/review', async (params, query, body) => {
     const session = await requireAdmin();
     if (!session) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
@@ -571,6 +602,140 @@
     const { data, error } = await sb.from('support_tickets').update({ status: body.status }).eq('id', params.id).select().maybeSingle();
     if (error) return errRes(error.message, 400);
     return okRes(data);
+  });
+
+  /* ---------- Admin Dashboard: طلبات التقديم (Applications) ---------- */
+  on('GET', 'admin/applications', async (params, query) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    let q = sb.from('applications').select('*,stores(name,category,address,phone,logo_url),riders(name,vehicle,city,area,coverage)').order('submitted_at', { ascending: false }).limit(1000);
+    if (query.status) q = q.eq('status', query.status);
+    if (query.type) q = q.eq('account_type', query.type);
+    const { data, error } = await q;
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+
+  on('POST', 'admin/applications/:id/review', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const allowed = ['pending', 'approved', 'rejected'];
+    if (!allowed.includes(body && body.status)) return errRes('حالة غير صحيحة.');
+    if (body.status === 'rejected' && !(body.reason && String(body.reason).trim())) return errRes('اكتب سبب الرفض.');
+    const { data, error } = await sb.rpc('admin_review_application', { p_id: params.id, p_status: body.status, p_reason: (body && body.reason) || null });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  /* ---------- Admin Dashboard: المستخدمون (Users) ---------- */
+  on('GET', 'admin/users', async () => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_users_overview');
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+
+  on('GET', 'admin/users/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data: profile, error } = await sb.from('marketplace_users').select('*').eq('external_id', params.id).maybeSingle();
+    if (error) return errRes(error.message, 400);
+    if (!profile) return errRes('المستخدم غير موجود.', 404);
+    const { data: orders } = await sb.from('orders').select('*,order_items(*)').eq('customer_external_id', params.id).order('created_at', { ascending: false }).limit(100);
+    const { data: transactions } = await sb.from('transactions').select('*').eq('customer_external_id', params.id).order('created_at', { ascending: false }).limit(100);
+    return okRes({ profile, orders: orders || [], transactions: transactions || [] });
+  });
+
+  on('POST', 'admin/users/:id/status', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const allowed = ['active', 'disabled'];
+    if (!allowed.includes(body && body.status)) return errRes('حالة غير صحيحة.');
+    const { data, error } = await sb.rpc('admin_set_user_status', { p_external_id: params.id, p_status: body.status });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  on('POST', 'admin/users/:id/delete', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_soft_delete_user', { p_external_id: params.id });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  /* ---------- Admin Dashboard: البائعون (Sellers, extended) ---------- */
+  on('GET', 'admin/sellers', async () => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_sellers_overview');
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+
+  on('GET', 'admin/sellers/:id/earnings', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_seller_earnings', { p_store: params.id });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  /* ---------- Admin Dashboard: السائقون (Riders, extended) ---------- */
+  on('GET', 'admin/riders/:id/earnings', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_rider_earnings', { p_rider: params.id });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  /* ---------- Admin Dashboard: المنتجات (Products) ---------- */
+  on('GET', 'admin/products', async (params, query) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    let q = sb.from('products').select('*,stores(name,owner_external_id)').order('added_at', { ascending: false }).limit(1000);
+    if (query.status) q = q.eq('status', query.status);
+    const { data, error } = await q;
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+
+  on('POST', 'admin/products/:id/review', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const allowed = ['active', 'rejected', 'hidden', 'pending', 'archived'];
+    if (!allowed.includes(body && body.status)) return errRes('حالة غير صحيحة.');
+    if (body.status === 'rejected' && !(body.reason && String(body.reason).trim())) return errRes('اكتب سبب الرفض.');
+    const { data, error } = await sb.rpc('admin_review_product', { p_id: params.id, p_status: body.status, p_reason: (body && body.reason) || null });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  on('DELETE', 'admin/products/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { error } = await sb.from('products').delete().eq('id', params.id);
+    if (error) return errRes(error.message, 400);
+    return new Response(null, { status: 204 });
+  });
+
+  /* ---------- Admin Dashboard: تفاصيل طلب (Order detail) ---------- */
+  on('GET', 'admin/orders/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data: order, error } = await sb.from('orders').select('*,order_items(*)').eq('id', params.id).maybeSingle();
+    if (error) return errRes(error.message, 400);
+    if (!order) return errRes('الطلب غير موجود.', 404);
+    const { data: storeOrders } = await sb.from('store_orders').select('*,stores(name,phone)').eq('order_id', params.id);
+    const { data: delivery } = await sb.from('deliveries').select('*,riders(name,phone)').eq('order_id', params.id).maybeSingle();
+    const { data: transactions } = await sb.from('transactions').select('*').eq('order_id', params.id);
+    return okRes({ order, storeOrders: storeOrders || [], delivery: delivery || null, transactions: transactions || [] });
+  });
+
+  /* ---------- Admin Dashboard: اللوحة المالية والمعاملات ---------- */
+  on('GET', 'admin/financial-summary', async () => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_financial_summary');
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  on('GET', 'admin/transactions', async (params, query) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    let q = sb.from('transactions').select('*,orders(order_number),stores(name),riders(name)').order('created_at', { ascending: false }).limit(1000);
+    if (query.status) q = q.eq('status', query.status);
+    const { data, error } = await q;
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
   });
 
   /* ===================== SELLER ===================== */
@@ -665,6 +830,25 @@
     return okRes(data);
   });
 
+  /* تحديث موقع المندوب — يُقبل فقط لمندوب مفعّل وهو متصل (is_online = true) */
+  on('PATCH', 'rider/location', async (params, query, body) => {
+    const session = await requireRider();
+    if (!session) return errRes('هذه الصفحة مخصصة لمناديب التوصيل.', 403);
+    const lat = body && body.latitude, lng = body && body.longitude, acc = body && body.accuracy;
+    if (typeof lat !== 'number' || typeof lng !== 'number' || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return errRes('إحداثيات الموقع غير صحيحة.', 400);
+    }
+    const { data, error } = await sb.from('riders').update({
+      latitude: lat,
+      longitude: lng,
+      location_accuracy: (typeof acc === 'number' && isFinite(acc) && acc >= 0) ? acc : null,
+      location_updated_at: new Date().toISOString()
+    }).eq('user_external_id', session.userId).eq('status', 'active').eq('is_online', true).select('id').maybeSingle();
+    if (error) return errRes(error.message, 400);
+    if (!data) return errRes('يجب أن تكون متصلاً لإرسال الموقع.', 409);
+    return okRes({ ok: true });
+  });
+
   on('GET', 'rider/dashboard', async () => {
     const session = await requireRider();
     if (!session) return errRes('هذه الصفحة مخصصة لمناديب التوصيل.', 403);
@@ -685,13 +869,22 @@
     return okRes(data || []);
   });
 
+  /* الطلبات المتاحة + بيانات المتجر + قيمة الطلب + Radius الحالي (الفلترة بالمسافة تتم في rider.js بـ GPS السائق) */
+  on('GET', 'rider/deliveries/nearby', async () => {
+    const session = await requireRider();
+    if (!session) return errRes('هذه الصفحة مخصصة لمناديب التوصيل.', 403);
+    const { data, error } = await sb.rpc('rider_nearby_deliveries');
+    if (error) return errRes(error.message, 400);
+    return okRes(data || { radius_m: 5000, deliveries: [] });
+  });
+
   on('GET', 'rider/deliveries/mine', async (params, query) => {
     const session = await requireRider();
     if (!session) return errRes('هذه الصفحة مخصصة لمناديب التوصيل.', 403);
     const rider = await myRider(session.userId);
     if (!rider) return okRes([]);
     let q = sb.from('deliveries').select('*,stores(name,phone,address)').eq('rider_id', rider.id).order('requested_at', { ascending: false }).limit(200);
-    q = query.status ? q.eq('status', query.status) : q.in('status', ['assigned', 'picked_up']);
+    q = query.status ? q.eq('status', query.status) : q.in('status', ['assigned', 'picked_up', 'out_for_delivery']);
     const { data, error } = await q;
     if (error) return errRes(error.message, 400);
     return okRes(data || []);
@@ -702,7 +895,7 @@
     if (!session) return errRes('هذه الصفحة مخصصة لمناديب التوصيل.', 403);
     const rider = await myRider(session.userId);
     if (!rider) return errRes('لا يوجد حساب مندوب بعد.', 404);
-    const allowed = ['accept', 'release', 'pickup', 'deliver', 'fail'];
+    const allowed = ['accept', 'release', 'pickup', 'out_for_delivery', 'deliver', 'fail'];
     if (!allowed.includes(params.action)) return errRes('إجراء غير معروف.');
     const { data, error } = await sb.rpc('rider_delivery_action', { p_rider: rider.id, p_delivery: params.id, p_action: params.action, p_note: (body && body.note) || null });
     if (error) return errRes(error.message, 400);

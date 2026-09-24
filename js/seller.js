@@ -24,8 +24,8 @@
   const shortKey = (k) => F_SHORT.format(M.util.parseKey(k));
   const dowKey = (k) => F_DOW.format(M.util.parseKey(k));
 
-  const STATUS_CLS = { new: 'new', processing: 'processing', shipped: 'shipped', completed: 'completed', cancelled: 'cancelled' };
-  const pill = (status, label) => '<span class="pill pill--' + status + '">' + esc(label || M.STATUS[status] || status) + '</span>';
+  const STATUS_CLS = { new: 'new', accepted: 'processing', preparing: 'processing', ready: 'shipped', out_for_delivery: 'shipped', delivered: 'completed', cancelled: 'cancelled', returned: 'cancelled', processing: 'processing', shipped: 'shipped', completed: 'completed' };
+  const pill = (status, label) => '<span class="pill pill--' + (STATUS_CLS[status] || 'new') + '">' + esc(label || M.STATUS[status] || status) + '</span>';
   function growth(g) {
     const cls = g > 0 ? 'up' : g < 0 ? 'down' : 'flat';
     return '<span class="growth growth--' + cls + '" title="مقارنة بالفترة السابقة"><span aria-hidden="true">' + (g > 0 ? '▲' : g < 0 ? '▼' : '–') + '</span>' + Math.abs(g) + '%<span class="sr-only">' + (g > 0 ? ' زيادة' : g < 0 ? ' انخفاض' : ' بلا تغيير') + '</span></span>';
@@ -399,6 +399,10 @@
     root.innerHTML = '';
     const gate = await (window.NasaqSellerGateReady || Promise.resolve({ status: 'active' }));
     if (gate.status !== 'active') { gateScreen(gate); return; }
+    /* يربط لوحة البائع بمتجره الحقيقي المعتمد في Supabase (بدل أي متجر محلي
+       وهمي قديم)، فتُقرأ منتجاته وطلباته من قاعدة البيانات مباشرة. */
+    M.seller.syncFromCloud(gate.store);
+    window.addEventListener('nasaq:seller-data-ready', render);
     render();
   }
   /* ملفات الأقسام (المنتجات/الطلبات/المحفظة…) تُحمَّل بعد هذا الملف، فننتظر DOMContentLoaded

@@ -11,6 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/nasaq-config.js"></script>
   <script src="js/api-shim.js"></script>
+  <script defer src="js/distance.js"></script>
   <script defer src="js/admin.js"></script>
 </head>
 <body class="admin-body">
@@ -32,7 +33,7 @@
         <div>
           <div class="admin-brand"><span class="admin-brand__dot"></span><strong>نَسَق</strong></div>
           <h1>لوحة الإدارة</h1>
-          <p id="admin-identity">إدارة الطلبات والدعم</p>
+          <p id="admin-identity">إدارة كاملة للمنصة</p>
         </div>
         <div class="admin-header__actions">
           <button class="admin-button" id="admin-refresh" type="button">تحديث البيانات</button>
@@ -43,10 +44,102 @@
       <div class="admin-notice" id="admin-notice" hidden></div>
       <section class="admin-stats" id="admin-stats" aria-label="ملخص المتجر"></section>
 
-      <section class="admin-grid">
+      <nav class="admin-tabs" id="admin-tabs" aria-label="أقسام لوحة الإدارة">
+        <button class="admin-tab is-active" data-tab="applications" type="button">طلبات التقديم</button>
+        <button class="admin-tab" data-tab="users" type="button">المستخدمون</button>
+        <button class="admin-tab" data-tab="sellers" type="button">البائعون</button>
+        <button class="admin-tab" data-tab="riders" type="button">السائقون</button>
+        <button class="admin-tab" data-tab="products" type="button">المنتجات</button>
+        <button class="admin-tab" data-tab="orders" type="button">الطلبات</button>
+        <button class="admin-tab" data-tab="financial" type="button">اللوحة المالية</button>
+        <button class="admin-tab" data-tab="transactions" type="button">المعاملات</button>
+        <button class="admin-tab" data-tab="support" type="button">الدعم</button>
+        <button class="admin-tab" data-tab="deliveries" type="button">التوصيلات</button>
+      </nav>
+
+      <!-- 2) طلبات التقديم -->
+      <section class="admin-panel is-active" id="panel-applications">
+        <div class="admin-toolbar">
+          <div><h1>طلبات التقديم</h1><p>طلبات البائعين والسائقين — راجع البيانات والمرفقات ثم اقبل أو ارفض مع ذكر السبب.</p></div>
+          <div class="admin-toolbar__filters">
+            <select class="admin-select" id="app-type-filter"><option value="">كل الأنواع</option><option value="seller">بائعين</option><option value="rider">سائقين</option></select>
+            <select class="admin-select" id="app-status-filter"><option value="">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="approved">مقبول</option><option value="rejected">مرفوض</option></select>
+          </div>
+        </div>
         <article class="admin-card admin-card--wide">
-          <div class="admin-card__head">
-            <div><h2>الطلبات</h2><p>تابع الطلبات وغيّر حالتها للفريق والعميل.</p></div>
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>الطلب</th><th>مقدّم الطلب</th><th>النوع</th><th>التواصل</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="applications-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="applications-empty" hidden>لا توجد طلبات.</p>
+        </article>
+      </section>
+
+      <!-- 3) المستخدمون -->
+      <section class="admin-panel" id="panel-users">
+        <div class="admin-toolbar"><div><h1>المستخدمون</h1><p>كل حسابات نَسَق — العملاء والبائعون والسائقون والإدمن.</p></div></div>
+        <article class="admin-card admin-card--wide">
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>الاسم</th><th>التواصل</th><th>الدور</th><th>تاريخ التسجيل</th><th>الطلبات</th><th>إجمالي الإنفاق</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="users-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="users-empty" hidden>لا يوجد مستخدمون.</p>
+        </article>
+      </section>
+
+      <!-- 4) البائعون -->
+      <section class="admin-panel" id="panel-sellers">
+        <div class="admin-toolbar"><div><h1>البائعون</h1><p>كل المتاجر — المبيعات، الأرباح، العمولة، وإجراءات القبول/الرفض/الإيقاف.</p></div></div>
+        <article class="admin-card admin-card--wide">
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>المتجر</th><th>المنتجات</th><th>الطلبات</th><th>إجمالي المبيعات</th><th>العمولة</th><th>صافي الأرباح</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="sellers-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="sellers-empty" hidden>لا يوجد بائعون.</p>
+        </article>
+      </section>
+
+      <!-- 5) السائقون -->
+      <section class="admin-panel" id="panel-riders">
+        <div class="admin-toolbar"><div><h1>السائقون</h1><p>حالة الاتصال، الطلبات الحالية، الأرباح، وإجراءات المراجعة.</p></div></div>
+        <article class="admin-card admin-card--wide">
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>المندوب</th><th>الهاتف</th><th>المركبة</th><th>المدينة</th><th>الحالة الآن</th><th>الحساب</th><th></th></tr></thead>
+            <tbody id="riders-full-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="riders-full-empty" hidden>لا يوجد سائقون.</p>
+        </article>
+      </section>
+
+      <!-- 6) المنتجات -->
+      <section class="admin-panel" id="panel-products">
+        <div class="admin-toolbar">
+          <div><h1>المنتجات</h1><p>كل المنتجات المرفوعة — قبول، رفض بسبب، إخفاء، أو حذف.</p></div>
+          <div class="admin-toolbar__filters">
+            <select class="admin-select" id="product-status-filter">
+              <option value="">كل الحالات</option>
+              <option value="pending">قيد المراجعة</option>
+              <option value="active">مقبول</option>
+              <option value="rejected">مرفوض</option>
+              <option value="hidden">مخفي</option>
+              <option value="archived">مؤرشف</option>
+            </select>
+          </div>
+        </div>
+        <article class="admin-card admin-card--wide">
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>صورة</th><th>المنتج</th><th>السعر</th><th>المخزون</th><th>المتجر</th><th>الحالة</th><th></th></tr></thead>
+            <tbody id="products-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="products-empty" hidden>لا توجد منتجات.</p>
+        </article>
+      </section>
+
+      <!-- 7) الطلبات -->
+      <section class="admin-panel" id="panel-orders">
+        <div class="admin-toolbar">
+          <div><h1>الطلبات</h1><p>تابع الطلبات وغيّر حالتها، وافتح تفاصيل أي طلب.</p></div>
+          <div class="admin-toolbar__filters">
             <select class="admin-select" id="order-filter" aria-label="فلترة الطلبات">
               <option value="">كل الحالات</option>
               <option value="new">جديد</option>
@@ -56,51 +149,71 @@
               <option value="cancelled">ملغى</option>
             </select>
           </div>
+        </div>
+        <article class="admin-card admin-card--wide">
           <div class="admin-table-wrap"><table class="admin-table">
-            <thead><tr><th>الطلب</th><th>العميل</th><th>الإجمالي</th><th>التاريخ</th><th>الحالة</th></tr></thead>
+            <thead><tr><th>الطلب</th><th>العميل</th><th>الإجمالي</th><th>الشحن</th><th>الخصم</th><th>طريقة الدفع</th><th>التاريخ</th><th>الحالة</th><th></th></tr></thead>
             <tbody id="orders-body"></tbody>
           </table></div>
           <p class="admin-empty" id="orders-empty" hidden>لا توجد طلبات محفوظة بعد.</p>
         </article>
+      </section>
 
-        <article class="admin-card admin-card--wide">
-          <div class="admin-card__head">
-            <div><h2>الدعم</h2><p>كل تذاكر العملاء والبائعين في مكان واحد.</p></div>
-            <span class="admin-count" id="support-count">0 مفتوحة</span>
+      <!-- 8) اللوحة المالية -->
+      <section class="admin-panel" id="panel-financial">
+        <div class="admin-toolbar"><div><h1>اللوحة المالية</h1><p>ملخص شامل لمبيعات وعمولات ومدفوعات المنصة.</p></div></div>
+        <div class="admin-financial-grid" id="financial-grid"></div>
+      </section>
+
+      <!-- 9) المعاملات -->
+      <section class="admin-panel" id="panel-transactions">
+        <div class="admin-toolbar">
+          <div><h1>المعاملات المالية</h1><p>كل معاملة مرتبطة بطلب، مع العمولة والصافي.</p></div>
+          <div class="admin-toolbar__filters">
+            <select class="admin-select" id="transaction-status-filter">
+              <option value="">كل الحالات</option>
+              <option value="pending">معلّق</option>
+              <option value="paid">مدفوع</option>
+              <option value="refunded">مسترد</option>
+              <option value="failed">فشل</option>
+            </select>
           </div>
+        </div>
+        <article class="admin-card admin-card--wide">
+          <div class="admin-table-wrap"><table class="admin-table">
+            <thead><tr><th>المعاملة</th><th>الطلب</th><th>البائع</th><th>السائق</th><th>المبلغ</th><th>العمولة</th><th>الصافي</th><th>الحالة</th><th>التاريخ</th></tr></thead>
+            <tbody id="transactions-body"></tbody>
+          </table></div>
+          <p class="admin-empty" id="transactions-empty" hidden>لا توجد معاملات بعد.</p>
+        </article>
+      </section>
+
+      <!-- الدعم (موجود مسبقاً) -->
+      <section class="admin-panel" id="panel-support">
+        <div class="admin-toolbar"><div><h1>الدعم</h1><p>كل تذاكر العملاء والبائعين في مكان واحد.</p></div><span class="admin-count" id="support-count">0 مفتوحة</span></div>
+        <article class="admin-card admin-card--wide">
           <div class="admin-table-wrap"><table class="admin-table">
             <thead><tr><th>التذكرة</th><th>الموضوع</th><th>المرسل</th><th>الأولوية</th><th>الحالة</th></tr></thead>
             <tbody id="support-body"></tbody>
           </table></div>
           <p class="admin-empty" id="support-empty" hidden>لا توجد تذاكر دعم بعد.</p>
         </article>
+      </section>
 
-        <article class="admin-card admin-card--wide">
-          <div class="admin-card__head">
-            <div><h2>طلبات المتاجر</h2><p>راجع طلبات البائعين وفعّل المتاجر أو أوقفها.</p></div>
+      <!-- التوصيلات (موجود مسبقاً) -->
+      <section class="admin-panel" id="panel-deliveries">
+        <div class="admin-toolbar"><div><h1>التوصيلات</h1><p>وزّع الطلبات غير المعيّنة وتابع حالة التسليم.</p></div></div>
+        <article class="admin-card admin-card--wide" id="radius-card">
+          <h2>نطاق «الطلبات القريبة» للسائق</h2>
+          <p>أقصى مسافة بين السائق والمتجر ليظهر له الطلب ضمن «الطلبات القريبة». من 1 متر إلى 50000 متر (50 كم). أمثلة: 1000 = 1 كم، 5000 = 5 كم، 50000 = 50 كم.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <label for="radius-input"><strong>النطاق (بالمتر)</strong></label>
+            <input class="admin-select" id="radius-input" type="number" min="1" max="50000" step="1" inputmode="numeric" dir="ltr" style="width:140px">
+            <button class="admin-button admin-button--primary" id="radius-save" type="button">حفظ</button>
+            <span id="radius-current" role="status"></span>
           </div>
-          <div class="admin-table-wrap"><table class="admin-table">
-            <thead><tr><th>المتجر</th><th>التواصل</th><th>التصنيف</th><th>الحالة</th><th>الإجراء</th></tr></thead>
-            <tbody id="stores-body"></tbody>
-          </table></div>
-          <p class="admin-empty" id="stores-empty" hidden>لا توجد متاجر أو طلبات مراجعة.</p>
         </article>
-
         <article class="admin-card admin-card--wide">
-          <div class="admin-card__head">
-            <div><h2>طلبات المندوبين</h2><p>راجع بيانات السائقين وفعّل الحسابات المقبولة.</p></div>
-          </div>
-          <div class="admin-table-wrap"><table class="admin-table">
-            <thead><tr><th>المندوب</th><th>الهاتف</th><th>المركبة</th><th>المدينة</th><th>الإجراء</th></tr></thead>
-            <tbody id="riders-body"></tbody>
-          </table></div>
-          <p class="admin-empty" id="riders-empty" hidden>لا توجد طلبات مندوبين.</p>
-        </article>
-
-        <article class="admin-card admin-card--wide">
-          <div class="admin-card__head">
-            <div><h2>التوصيلات</h2><p>وزّع الطلبات غير المعيّنة وتابع حالة التسليم.</p></div>
-          </div>
           <div class="admin-table-wrap"><table class="admin-table">
             <thead><tr><th>الطلب</th><th>المتجر</th><th>العنوان</th><th>الحالة</th><th>المندوب</th></tr></thead>
             <tbody id="deliveries-body"></tbody>
@@ -110,5 +223,21 @@
       </section>
     </section>
   </main>
+
+  <!-- Modal عام لكل التفاصيل والمراجعة -->
+  <div class="admin-modal-backdrop" id="admin-modal-backdrop" hidden>
+    <div class="admin-modal" role="dialog" aria-modal="true">
+      <div class="admin-modal__head">
+        <h2 id="admin-modal-title">التفاصيل</h2>
+        <button class="admin-modal__close" id="admin-modal-close" type="button" aria-label="إغلاق">×</button>
+      </div>
+      <div class="admin-modal__body" id="admin-modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Lightbox لتكبير الصور -->
+  <div class="admin-lightbox" id="admin-lightbox" hidden>
+    <img id="admin-lightbox-img" src="" alt="صورة مكبّرة">
+  </div>
 </body>
 </html>

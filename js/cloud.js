@@ -84,12 +84,19 @@
 
   async function syncOrder(order, source) {
     const customer = (order && order.customer) || {};
-    await syncUser({
-      email: customer.email || null,
-      name: customer.name || 'عميل نَسَق',
-      phone: customer.phone || null,
-      role: 'customer'
-    });
+    /* مزامنة ملف العميل فقط لو مسجّل دخول فعلاً؛ عميل زائر (بدون حساب) لا يملك
+       جلسة Supabase حقيقية فتفشل RLS هنا — وتفشل معها مزامنة الطلب كله لو لم
+       نتجاهل الخطأ، فيختفي الطلب عن البائع والمندوب والإدارة رغم دفعه فعلياً. */
+    if (getSession()) {
+      try {
+        await syncUser({
+          email: customer.email || null,
+          name: customer.name || 'عميل نَسَق',
+          phone: customer.phone || null,
+          role: 'customer'
+        });
+      } catch (_) { /* لا نمنع حفظ الطلب بسبب فشل تحديث الملف الشخصي فقط */ }
+    }
     return request('/store/orders', {
       orderNumber: order.id,
       customerExternalId: getUserId(),

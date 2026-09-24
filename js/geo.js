@@ -42,6 +42,20 @@
     });
   }
 
+  /* متابعة الموقع باستمرار (watchPosition) — تُرجع دالة لإيقاف المتابعة.
+     onErr يُستدعى بأخطاء فيها fatal=true لو كان الخطأ دائمًا (غير مدعوم / غير آمن / تم رفض الإذن)،
+     أما أخطاء المهلة وعدم توفر الموقع مؤقتًا فتُتجاهل لأن المتصفح يواصل المحاولة تلقائيًا. */
+  function watch(onPos, onErr) {
+    const fail = (msg, code) => { if (onErr) onErr(Object.assign(new Error(msg), { fatal: true, code: code })); return function () {}; };
+    if (!navigator.geolocation) return fail('متصفحك لا يدعم تحديد الموقع.', 0);
+    if (window.isSecureContext === false) return fail('تحديد الموقع يعمل فقط على اتصال آمن (https).', 0);
+    const id = navigator.geolocation.watchPosition(
+      (p) => onPos({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy, timestamp: p.timestamp }),
+      (e) => { if (e.code === 1 && onErr) onErr(Object.assign(new Error('تم رفض إذن الموقع. فعّله من إعدادات المتصفح ليتم تحديث موقعك.'), { fatal: true, code: 1 })); },
+      { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 });
+    return function () { navigator.geolocation.clearWatch(id); };
+  }
+
   /* ---------- OpenStreetMap Nominatim (بدون مفتاح) ---------- */
   function fromNominatim(j, lat, lng) {
     const a = j.address || {};
@@ -272,5 +286,5 @@
     };
   }
 
-  window.Geo = { locate, reverse: nomReverse, search: nomSearch, mount, mapLink, embedURL, loadGoogle, fromGoogle, fromNominatim };
+  window.Geo = { locate, watch, reverse: nomReverse, search: nomSearch, mount, mapLink, embedURL, loadGoogle, fromGoogle, fromNominatim };
 })();

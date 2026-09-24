@@ -54,6 +54,65 @@
       '</div></div>';
   }
 
+  const STATUS_AR = {
+    unassigned: 'متاح', assigned: 'تم القبول', picked_up: 'تم الاستلام من المتجر',
+    out_for_delivery: 'في الطريق للعميل', delivered: 'تم التسليم', failed: 'تعذّر التسليم', cancelled: 'ملغى'
+  };
+
+  /* ---------- إرسال موقع المندوب (فقط وهو متصل) ---------- */
+  const LOC_MIN_INTERVAL = 15000;   // أقصى معدّل: تحديث واحد كل 15 ثانية مهما كثرت قراءات GPS
+  const tracker = { active: false, stopWatch: null, latest: null, pos: null, lastSent: 0, timer: 0, sending: false };
+
+  function flushLocation() {
+    tracker.timer = 0;
+    if (!tracker.active || !tracker.latest || tracker.sending) return;
+    const p = tracker.latest;
+    tracker.latest = null;
+    renderNearby();                  // تحديث المسافات بآخر موقع (بدون طلب شبكة)
+    tracker.lastSent = Date.now();   // يُحدَّث قبل الإرسال حتى الفشل المتكرر لا يزيد المعدّل
+    tracker.sending = true;
+    patchJson('/rider/location', {
+      latitude: Math.round(p.lat * 1e6) / 1e6,
+      longitude: Math.round(p.lng * 1e6) / 1e6,
+      accuracy: p.accuracy == null ? null : Math.round(p.accuracy)
+    }).catch(() => { /* تحديث الموقع غير حرج — يُعاد مع القراءة التالية */ })
+      .then(() => { tracker.sending = false; });
+  }
+
+  function onFix(p) {
+    if (!tracker.active) return;
+    const first = !tracker.pos;
+    tracker.pos = p;      // آخر موقع معروف (لعرض الطلبات القريبة)
+    if (first) renderNearby();
+    tracker.latest = p;   // نحتفظ بأحدث قراءة فقط
+    const wait = LOC_MIN_INTERVAL - (Date.now() - tracker.lastSent);
+    if (wait <= 0) flushLocation();
+    else if (!tracker.timer) tracker.timer = setTimeout(flushLocation, wait);
+  }
+
+  function stopTracking() {
+    tracker.active = false;
+    clearTimeout(tracker.timer);
+    tracker.timer = 0;
+    tracker.latest = null;
+    tracker.pos = null;
+    if (tracker.stopWatch) { tracker.stopWatch(); tracker.stopWatch = null; }
+    renderNearby();
+  }
+
+  function startTracking() {
+    if (tracker.active || !window.Geo || !window.Geo.watch) return;
+    tracker.active = true;
+    tracker.lastSent = 0;
+    const stop = window.Geo.watch(onFix, (err) => {
+      if (err && err.fatal) {
+        stopTracking();
+        window.UI && UI.toast(err.message, { type: 'error' });
+      }
+    });
+    if (tracker.active) tracker.stopWatch = stop; else if (stop) stop();
+  }
+
   /* ---------- اللوحة الفعلية ---------- */
   let rider = null;
 
@@ -67,6 +126,11 @@
             '<span class="dot"></span><span id="online-label">' + (rider.is_online ? 'متصل — تستقبل طلبات' : 'غير متصل') + '</span></button>' +
         '</div>' +
         '<section class="admin-stats" id="rider-stats" aria-label="ملخص المندوب"></section>' +
+        '<section class="rider-section" id="nearby-section">' +
+          '<h2>الطلبات القريبة</h2>' +
+          '<p class="admin-empty" id="nearby-info" style="padding:0 0 8px"></p>' +
+          '<div class="rider-list" id="nearby-list"></div>' +
+        '</section>' +
         '<section class="rider-section">' +
           '<h2>طلبات متاحة الآن</h2>' +
           '<div class="rider-list" id="available-list"></div>' +
@@ -99,15 +163,75 @@
       assigned: '<button type="button" class="admin-button" data-action="release" data-id="' + d.id + '">تخلٍّ</button>' +
         '<button type="button" class="admin-button admin-button--primary" data-action="pickup" data-id="' + d.id + '">تم الاستلام من المتجر</button>',
       picked_up: '<button type="button" class="admin-button" data-action="fail" data-id="' + d.id + '">تعذّر التسليم</button>' +
+        '<button type="button" class="admin-button admin-button--primary" data-action="out_for_delivery" data-id="' + d.id + '">خرجت للتوصيل</button>',
+      out_for_delivery: '<button type="button" class="admin-button" data-action="fail" data-id="' + d.id + '">تعذّر التسليم</button>' +
         '<button type="button" class="admin-button admin-button--primary" data-action="deliver" data-id="' + d.id + '">تم التسليم</button>'
     };
     return '<div class="rider-card">' +
       '<div class="rider-card__info"><strong>' + esc(store.name || 'متجر') + '</strong>' +
         '<small>' + esc((d.pickup && d.pickup.phone) || store.phone || '') + ' · طلب منذ ' + fmtDate(d.requested_at) + '</small>' +
+        (mode !== 'available' ? '<small>الحالة: ' + esc(STATUS_AR[d.status] || d.status || '') + '</small>' : '') +
         (addr ? '<small>' + ic('pin') + ' ' + esc(addr) + '</small>' : '') + '</div>' +
       '<div class="rider-fee">' + money(d.fee) + (d.cod_amount > 0 ? ' · تحصيل ' + money(d.cod_amount) : '') + '</div>' +
       '<div class="rider-card__actions">' + (actions[mode] || '') + '</div>' +
     '</div>';
+  }
+
+  /* ---------- الطلبات القريبة (داخل Radius) ---------- */
+  let nearbyData = null;   // { radius_m, deliveries } من قاعدة البيانات
+
+  const finite = (v) => { const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : v; return typeof n === 'number' && isFinite(n) ? n : null; };
+  function storePoint(store) {
+    const a = (store && store.address && typeof store.address === 'object') ? store.address : {};
+    const lat = finite(store && store.latitude) != null ? finite(store.latitude) : finite(a.lat);
+    const lng = finite(store && store.longitude) != null ? finite(store.longitude) : finite(a.lng);
+    return lat != null && lng != null ? { lat: lat, lng: lng } : null;
+  }
+  function storeAddress(store) {
+    const a = (store && store.address && typeof store.address === 'object') ? store.address : {};
+    return a.formatted || [a.city, a.area, a.street].filter(Boolean).join('، ') || a.raw || '';
+  }
+
+  function nearbyCard(item) {
+    return '<div class="rider-card">' +
+      '<div class="rider-card__info"><strong>' + esc(item.store.name || 'متجر') + '</strong>' +
+        '<small>' + ic('pin') + ' ' + esc(window.Distance.format(item.meters)) + (storeAddress(item.store) ? ' · ' + esc(storeAddress(item.store)) : '') + '</small>' +
+        '<small>قيمة الطلب: ' + money(item.order_value) + ' · الحالة: ' + esc(STATUS_AR[item.status] || item.status) + '</small></div>' +
+      '<div class="rider-fee">' + money(item.fee) + ' <small>أجرة التوصيل</small></div>' +
+      '<div class="rider-card__actions"><button type="button" class="admin-button admin-button--primary" data-action="accept" data-id="' + item.id + '">قبول الطلب</button></div>' +
+    '</div>';
+  }
+
+  function renderNearby() {
+    const list = $('#nearby-list'), info = $('#nearby-info');
+    if (!list || !info) return;
+    const D = window.Distance;
+    if (!nearbyData || !D) { list.innerHTML = ''; info.textContent = ''; return; }
+    const radius = Number(nearbyData.radius_m) || 0;
+    if (!tracker.pos) {
+      list.innerHTML = '';
+      info.textContent = tracker.active ? 'جارٍ تحديد موقعك…' : 'اضغط «متصل» ليتم تحديد موقعك وعرض الطلبات القريبة منك.';
+      return;
+    }
+    let noLocation = 0;
+    const near = [];
+    (nearbyData.deliveries || []).forEach((d) => {
+      const store = d.store || {};
+      const pt = storePoint(store);
+      if (!pt) { noLocation++; return; }
+      const meters = D.meters(tracker.pos.lat, tracker.pos.lng, pt.lat, pt.lng);
+      if (meters != null && meters <= radius) near.push(Object.assign({}, d, { store: store, meters: meters }));
+    });
+    near.sort((a, b) => a.meters - b.meters);
+    list.innerHTML = near.map(nearbyCard).join('');
+    info.textContent = (near.length ? '' : 'لا توجد طلبات داخل نطاق ' + D.format(radius) + ' منك حالياً. ') +
+      (near.length ? 'النطاق: ' + D.format(radius) + '. ' : '') +
+      (noLocation ? noLocation + ' طلب متاح لمتجر لم يحدد موقعه بعد (لا يظهر هنا).' : '');
+  }
+
+  async function loadNearby() {
+    try { nearbyData = await api('/rider/deliveries/nearby'); } catch (_) { nearbyData = null; }
+    renderNearby();
   }
 
   async function loadLists() {
@@ -119,6 +243,7 @@
     $('#available-empty').hidden = available.length > 0;
     $('#mine-list').innerHTML = mine.map((d) => deliveryCard(d, d.status)).join('');
     $('#mine-empty').hidden = mine.length > 0;
+    await loadNearby();
   }
 
   async function loadAll() {
@@ -138,6 +263,7 @@
       gateScreen({ status: 'error' });
       return;
     }
+    if (rider && rider.is_online) startTracking();
 
     root.addEventListener('click', async (e) => {
       const btn = e.target.closest('[data-action][data-id]');
@@ -153,6 +279,7 @@
         } catch (error) {
           window.UI && UI.toast(error.message, { type: 'error' });
           btn.disabled = false;
+          if (action === 'accept') loadLists().catch(() => {});   // الطلب ربما أُخذ من سائق آخر: نحدّث القوائم
         }
         return;
       }
@@ -160,11 +287,14 @@
       if (toggle) {
         const next = toggle.dataset.online !== '1';
         toggle.disabled = true;
+        if (!next) stopTracking();   // Offline: نوقف إرسال الموقع قبل أي شيء
         try {
           await patchJson('/rider/online', { online: next });
           toggle.dataset.online = next ? '1' : '0';
           $('#online-label').textContent = next ? 'متصل — تستقبل طلبات' : 'غير متصل';
+          if (next) startTracking();   // Online: نبدأ المتابعة بعد تأكيد الحالة في قاعدة البيانات
         } catch (error) {
+          if (!next) startTracking();  // فشل الخروج من الاتصال => ما زال متصلاً
           window.UI && UI.toast(error.message, { type: 'error' });
         } finally {
           toggle.disabled = false;

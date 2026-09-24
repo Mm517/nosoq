@@ -52,7 +52,7 @@
 
   S.actions['prod-toggle'] = (b) => {
     const p = M.products.get(b.dataset.id); if (!p) return;
-    M.products.setStatus(p.id, p.status === 'active' ? 'paused' : 'active');
+    M.products.setStatus(p.id, p.status === 'active' ? 'archived' : 'active');
     S.toast(p.status === 'active' ? 'تم تفعيل المنتج وسيظهر في المتجر' : 'تم إيقاف المنتج وأُخفي من المتجر');
     S.rerender();
   };
@@ -159,16 +159,33 @@
         else if (a === 'photo-del') { d.photos.splice(i, 1); renderPhotos(); }
         else if (a === 'photo-cover') { d.photos.unshift(d.photos.splice(i, 1)[0]); renderPhotos(); }
       });
-      g('prod-form').addEventListener('submit', (e) => {
+      g('prod-form').addEventListener('submit', async (e) => {
         e.preventDefault(); refresh();
         const err = g('prod-error');
         const bad = d.name.trim().length < 3 ? 'اسم المنتج 3 أحرف على الأقل' : !(d.price > 0) ? 'أدخل سعراً أكبر من صفر' : (d.oldPrice && d.oldPrice <= d.price) ? 'السعر قبل الخصم يجب أن يكون أكبر من السعر الحالي' : '';
         if (bad) { err.textContent = bad; return; }
         err.textContent = '';
+        const submitBtn = g('prod-form').querySelector('button[type="submit"]');
         const rec = Object.assign({}, d, {
-          id: edit ? p.id : M.products.nextId(), name: d.name.trim(), status: g('p-status').value, sellerId: seller.id,
-          addedAt: edit ? p.addedAt : new Date().toISOString(), sku: edit ? p.sku : 'SL-' + M.products.nextId()
+          id: edit ? p.id : null, name: d.name.trim(), status: g('p-status').value, sellerId: seller.id,
+          addedAt: edit ? p.addedAt : new Date().toISOString(), sku: edit ? p.sku : ('SL-' + Date.now().toString(36).toUpperCase())
         });
+        if (seller.cloudId) {
+          /* متجر حقيقي معتمد: يُرسَل المنتج لقاعدة البيانات مباشرة ويظهر فوراً
+             لكل العملاء في المتجر والصفحة الرئيسية — لا حفظ محلي وهمي هنا. */
+          if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'جارٍ الحفظ…'; }
+          try {
+            const row = await M.products.saveCloud(rec);
+            if (!row) { err.textContent = 'تعذّر حفظ المنتج، تحقّق من اتصالك وحاول مجدداً.'; if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = edit ? 'حفظ التعديلات' : 'نشر المنتج'; } return; }
+            S.toast(edit ? 'تم حفظ التعديلات' : 'تم نشر منتجك، وسيظهر للعملاء الآن');
+            location.hash = '#/products';
+          } catch (ex) {
+            err.textContent = ex && ex.message || 'تعذّر حفظ المنتج.';
+            if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = edit ? 'حفظ التعديلات' : 'نشر المنتج'; }
+          }
+          return;
+        }
+        rec.id = edit ? p.id : M.products.nextId();
         if (!M.products.save(rec)) { err.textContent = 'مساحة التخزين ممتلئة. احذف بعض الصور أو المنتجات القديمة.'; return; }
         S.toast(edit ? 'تم حفظ التعديلات' : 'تم نشر منتجك، سيظهر في المتجر عند تحديث الصفحة');
         location.hash = '#/products';
@@ -187,7 +204,7 @@
   /* =====================================================================
      الطلبات
      ===================================================================== */
-  const NEXT_LABEL = { new: 'قبول وبدء التجهيز', processing: 'تم الشحن', shipped: 'تم التسليم' };
+  const NEXT_LABEL = { new: 'قبول الطلب', accepted: 'بدء التجهيز', preparing: 'الطلب جاهز للتوصيل' };
   const PAY = { cod: 'عند الاستلام', card: 'بطاقة' };
   const PER = 15;
 
@@ -196,7 +213,7 @@
     const counts = M.orders.counts();
     const all = M.orders.list().filter((o) => (tab === 'all' || o.status === tab) && (!text || (o.id + ' ' + (o.customer.name || '') + ' ' + (o.customer.city || '')).toLowerCase().includes(text)));
     const pages = Math.max(1, Math.ceil(all.length / PER)), cur = Math.min(page, pages), rows = all.slice((cur - 1) * PER, cur * PER);
-    const tabs = [['all', 'الكل'], ['new', 'جديدة'], ['processing', 'قيد التجهيز'], ['shipped', 'تم الشحن'], ['completed', 'مكتملة'], ['cancelled', 'ملغاة']];
+    const tabs = [['all', 'الكل'], ['new', 'جديدة'], ['accepted', 'مقبولة'], ['preparing', 'قيد التجهيز'], ['ready', 'جاهزة'], ['out_for_delivery', 'مع المندوب'], ['delivered', 'مسلَّمة'], ['cancelled', 'ملغاة']];
     const link = (t, pg) => '#/orders?tab=' + t + (text ? '&q=' + encodeURIComponent(text) : '') + (pg > 1 ? '&page=' + pg : '');
     const html =
       pageHead('الطلبات', 'الطلبات الواردة والمكتملة على منتجاتك', '<button type="button" class="btn btn--ghost btn--sm" data-act="ord-export" data-tab="' + tab + '">' + ic('download') + 'تصدير CSV</button>') +
@@ -214,7 +231,7 @@
   function orderDetail(id) {
     const o = M.orders.get(id);
     if (!o) return { html: pageHead('الطلب غير موجود') + empty({ icon: 'list', title: 'لم نعثر على هذا الطلب', action: { href: '#/orders', label: 'العودة للطلبات' } }) };
-    const steps = ['new', 'processing', 'shipped', 'completed'], idx = steps.indexOf(o.status);
+    const steps = ['new', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered'], idx = steps.indexOf(o.status);
     const c = o.customer || {};
     const addr = [c.address, c.city].filter(Boolean).join('، ');
     const html =
@@ -223,7 +240,7 @@
         card('حالة الطلب', o.status === 'cancelled' ? '<p class="txt-bad">' + ic('close') + ' هذا الطلب ملغي.</p>'
           : '<ol class="steps">' + steps.map((s, i) => '<li class="' + (i < idx ? 'is-done' : i === idx ? 'is-cur' : '') + '"><span>' + (i < idx ? ic('check') : i + 1) + '</span>' + M.STATUS[s] + '</li>').join('') + '</ol>' +
             '<div class="dform__foot">' + (M.NEXT[o.status] ? '<button type="button" class="btn btn--primary" data-act="ord-next" data-id="' + esc(o.id) + '" data-back="1">' + NEXT_LABEL[o.status] + '</button>' : '') +
-            (o.status === 'new' || o.status === 'processing' ? '<button type="button" class="btn btn--ghost" data-act="ord-cancel" data-id="' + esc(o.id) + '">إلغاء الطلب</button>' : '') + '</div>') +
+            (o.status === 'new' || o.status === 'accepted' || o.status === 'preparing' ? '<button type="button" class="btn btn--ghost" data-act="ord-cancel" data-id="' + esc(o.id) + '">إلغاء الطلب</button>' : '') + '</div>') +
         card('المنتجات', '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead><tbody>' +
           o.lines.map((l) => '<tr><td><div class="pcell">' + pimg(prodFor(l.productId)) + '<span>' + esc(l.name) + '<small>' + [l.size ? 'المقاس ' + l.size : '', l.color].filter(Boolean).map(esc).join(' · ') + '</small></span></div></td><td>' + money(l.price) + '</td><td>' + l.qty + '</td><td>' + money(l.price * l.qty) + '</td></tr>').join('') + '</tbody></table></div>' +
           '<dl class="totals"><div><dt>إجمالي المنتجات</dt><dd>' + money(o.gross) + '</dd></div><div><dt>عمولة المنصة (' + Math.round(CFG.commission * 100) + '%)</dt><dd>−' + money(o.commission) + '</dd></div><div class="totals__net"><dt>صافي ربحك</dt><dd>' + money(o.net) + '</dd></div></dl>') +
