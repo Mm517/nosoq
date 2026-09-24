@@ -22,7 +22,7 @@
   const newest = all.filter((p) => p.isNew && inStock(p)).sort((a, b) => new Date(b.addedAt) - new Date(a.addedAt));
   const count = (n) => (n === 1 ? 'منتج واحد' : n === 2 ? 'منتجان' : n <= 10 ? n + ' منتجات' : n + ' منتجاً');
   const img = (p, i, size) => Products.imgAttrs(p, i || 0, 0, size || 'sm');
-  const byIds = (ids) => ids.map((id) => Products.byId(id)).filter(Boolean);
+  const ofCat = (cat) => all.filter((p) => p.category === cat && inStock(p)).slice(0, 2);
 
   /* ---------- 1) شريط اللافتات ---------- */
   function art(list) {
@@ -54,9 +54,9 @@
     const cards = [brand].concat(adCards);
     if (newest.length) cards.push(slide({ tone: 'soft', title: 'وصل حديثاً', text: 'قطع جديدة هذا الأسبوع بخامات وتصاميم هادئة.', cta: 'تسوّق الجديد', href: 'shop.html?sort=new', products: newest, btn: 'btn--primary' }));
     if (discounted.length) cards.push(slide({ tone: 'ink', title: 'عروض لفترة محدودة', text: 'خصم حتى ' + maxDiscount + '% على قطع مختارة.', cta: 'شاهد العروض', href: 'shop.html?sale=1', products: discounted }));
-    cards.push(slide({ tone: 'mid', title: 'حقائب ومحافظ جلد', text: 'جلد طبيعي يزداد جمالاً مع الاستخدام.', cta: 'تسوّق الحقائب', href: 'shop.html?cat=bags', products: byIds([6, 12]), btn: 'btn--primary' }));
-    cards.push(slide({ tone: 'plain', title: 'إكسسوارات تكمل إطلالتك', text: 'ساعات ونظارات وأوشحة بلمسة بسيطة.', cta: 'تسوّق الإكسسوارات', href: 'shop.html?cat=accessories', products: byIds([8, 11]), btn: 'btn--primary' }));
-    cards.push(slide({ tone: 'deep', title: 'ملابس لكل يوم', text: 'هودي وجاكيت وتيشيرتات بقصّات مريحة.', cta: 'تسوّق الملابس', href: 'shop.html?cat=clothes', products: byIds([2, 3]) }));
+    if (ofCat('bags').length) cards.push(slide({ tone: 'mid', title: 'حقائب ومحافظ جلد', text: 'جلد طبيعي يزداد جمالاً مع الاستخدام.', cta: 'تسوّق الحقائب', href: 'shop.html?cat=bags', products: ofCat('bags'), btn: 'btn--primary' }));
+    if (ofCat('accessories').length) cards.push(slide({ tone: 'plain', title: 'إكسسوارات تكمل إطلالتك', text: 'ساعات ونظارات وأوشحة بلمسة بسيطة.', cta: 'تسوّق الإكسسوارات', href: 'shop.html?cat=accessories', products: ofCat('accessories'), btn: 'btn--primary' }));
+    if (ofCat('clothes').length) cards.push(slide({ tone: 'deep', title: 'ملابس لكل يوم', text: 'هودي وجاكيت وتيشيرتات بقصّات مريحة.', cta: 'تسوّق الملابس', href: 'shop.html?cat=clothes', products: ofCat('clothes') }));
     return cards;
   }
 
@@ -70,7 +70,7 @@
 
   row1.push(UI.tileCard({
     id: 'tc-cats', title: 'تسوّق حسب الفئة', href: 'shop.html',
-    tiles: Products.categories.map((c) => {
+    tiles: Products.categories.slice(0, 4).map((c) => {
       const list = all.filter((p) => p.category === c.id);
       const cover = list.find(inStock) || list[0];
       return UI.tile({ href: 'shop.html?cat=' + c.id, img: img(cover), label: esc(c.name), sub: count(list.length) });

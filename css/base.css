@@ -7,6 +7,7 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--header-h) + 1rem);
 }
@@ -41,6 +42,15 @@ del { text-decoration-thickness: 1px; }
 output { display: inline-block; }
 
 [hidden] { display: none !important; }
+
+/* ---- اللمس على الموبايل: بدون المربع الأزرق/الرمادي عند الضغط ---- */
+*, *::before, *::after { -webkit-tap-highlight-color: transparent; }
+a, button, summary, label, select, [role="button"], [data-carousel] { touch-action: manipulation; }
+@media (hover: none) {
+  a, button, summary, [role="button"], img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  /* الحلقة الزرقاء تظهر لمستخدم لوحة المفاتيح فقط، لا عند اللمس */
+  .car__track:focus, [tabindex="0"]:focus:not(:focus-visible) { outline: none; }
+}
 
 /* ---- إمكانية الوصول ---- */
 :focus-visible {

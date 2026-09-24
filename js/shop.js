@@ -33,9 +33,12 @@
   /* ---------- الحالة ---------- */
   function readState() {
     const p = new URLSearchParams(location.search);
-    const cat = p.get('cat');
+    let cat = p.get('cat');
+    const sub = Products.catOfSub(p.get('sub')) ? p.get('sub') : '';
+    if (sub) cat = Products.catOfSub(sub);
     return {
       cat: Products.categories.some((c) => c.id === cat) ? cat : '',
+      sub: sub,
       q: (p.get('q') || '').trim(),
       min: num(p.get('min')),
       max: num(p.get('max')),
@@ -50,6 +53,7 @@
   function writeState() {
     const p = new URLSearchParams();
     if (state.cat) p.set('cat', state.cat);
+    if (state.sub) p.set('sub', state.sub);
     if (state.q) p.set('q', state.q);
     if (state.min !== null) p.set('min', state.min);
     if (state.max !== null) p.set('max', state.max);
@@ -66,6 +70,7 @@
     const words = Products.normalize(toLatin(state.q)).split(/\s+/).filter(Boolean);
     return Products.all().filter((p) => {
       if (state.cat && p.category !== state.cat) return false;
+      if (state.sub && p.sub !== state.sub) return false;
       if (words.length) {
         const hay = Products.normalize([p.name, Products.categoryName(p.category), p.description, p.colors.map((c) => c.name).join(' ')].join(' '));
         if (!words.every((w) => hay.includes(w))) return false;
@@ -108,6 +113,7 @@
   function titleText() {
     if (state.wishlist) return 'قائمة المفضلة';
     if (state.q) return 'نتائج البحث عن «' + state.q + '»';
+    if (state.sub) return Products.categoryName(state.cat) + ' - ' + Products.subName(state.sub);
     if (state.cat) return Products.categoryName(state.cat);
     if (state.sale) return 'العروض';
     return 'كل المنتجات';
@@ -117,14 +123,17 @@
   function renderCategories() {
     const total = Products.all().length;
     const opt = (id, name, n) => '<li><button type="button" class="filter-opt" data-cat="' + id + '" aria-pressed="' + (state.cat === id) + '">' + name + '<small>' + n + '</small></button></li>';
+    const subOpt = (x) => '<li><button type="button" class="filter-opt filter-opt--sub" data-sub="' + x.id + '" aria-pressed="' + (state.sub === x.id) + '">' + x.name + '<small>' + Products.all().filter((p) => p.sub === x.id).length + '</small></button></li>';
     els.cats.innerHTML = opt('', 'الكل', total) +
-      Products.categories.map((c) => opt(c.id, c.name, Products.all().filter((p) => p.category === c.id).length)).join('');
+      Products.categories.map((c) => opt(c.id, c.name, Products.all().filter((p) => p.category === c.id).length) +
+        (state.cat === c.id && c.subs && c.subs.length ? '<li><ul class="filter-subs">' + c.subs.filter((x) => Products.all().some((p) => p.sub === x.id)).map(subOpt).join('') + '</ul></li>' : '')).join('');
   }
 
   function renderChips() {
     const chips = [];
     const chip = (key, label) => chips.push('<span class="tag">' + esc(label) + '<button type="button" data-remove-filter="' + key + '" aria-label="إزالة الفلتر: ' + esc(label) + '">' + UI.icon('close') + '</button></span>');
     if (state.cat) chip('cat', Products.categoryName(state.cat));
+    if (state.sub) chip('sub', Products.subName(state.sub));
     if (state.q) chip('q', 'بحث: ' + state.q);
     if (state.min !== null || state.max !== null) {
       chip('price', 'السعر: ' + (state.min !== null ? 'من ' + money(state.min) : '') + (state.max !== null ? ' إلى ' + money(state.max) : ''));
@@ -167,6 +176,7 @@
   function update() {
     const list = filtered();
     writeState();
+    renderCategories();
     syncControls();
     renderMeta(list);
     renderAd();
@@ -188,9 +198,12 @@
   });
 
   els.cats.addEventListener('click', (e) => {
+    const sb = e.target.closest('[data-sub]');
+    if (sb) { state.sub = state.sub === sb.dataset.sub ? '' : sb.dataset.sub; update(); return; }
     const b = e.target.closest('[data-cat]');
     if (!b) return;
     state.cat = b.dataset.cat;
+    state.sub = '';
     update();
   });
 
@@ -202,14 +215,14 @@
 
   document.addEventListener('click', (e) => {
     if (e.target.closest('[data-reset]') || e.target.closest('#reset-filters')) {
-      state = { cat: '', q: '', min: null, max: null, sort: 'featured', stock: false, sale: false, wishlist: false };
+      state = { cat: '', sub: '', q: '', min: null, max: null, sort: 'featured', stock: false, sale: false, wishlist: false };
       update();
       return;
     }
     const r = e.target.closest('[data-remove-filter]');
     if (r) {
       const k = r.dataset.removeFilter;
-      if (k === 'price') { state.min = null; state.max = null; } else if (k === 'cat') state.cat = ''; else state[k] = k === 'q' ? '' : false;
+      if (k === 'price') { state.min = null; state.max = null; } else if (k === 'cat') { state.cat = ''; state.sub = ''; } else if (k === 'sub') state.sub = ''; else state[k] = k === 'q' ? '' : false;
       update();
     }
   });

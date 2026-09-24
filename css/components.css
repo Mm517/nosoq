@@ -667,3 +667,19 @@ body > .skiptranslate, .goog-te-banner-frame, #goog-gt-tt, .goog-te-balloon-fram
 .ad-banner__body { position: relative; z-index: 2; display: grid; justify-items: start; gap: 0.35rem; max-width: 34rem; padding: var(--sp-5); }
 .ad-banner__body strong { font-family: var(--font-display); font-size: var(--fs-lg); line-height: 1.25; }
 .ad-banner__body > span:not(.badge):not(.btn) { font-size: var(--fs-sm); opacity: 0.92; }
+
+/* ---------- الموبايل: شريط التصنيفات نصي فاتح بدل الشريط الداكن ---------- */
+@media (max-width: 767px) {
+  .subnav { background: var(--c-bg); color: var(--c-ink); border-bottom: 1px solid var(--c-line); }
+  .subnav :focus-visible { outline-color: var(--c-focus); }
+  .subnav__inner { min-height: 44px; gap: 0; }
+  .subnav__all, .subnav__perks { display: none; }
+  .subnav__loc { padding: 0.5rem 0.4rem; margin-inline-end: 0.2rem; border-radius: var(--r-pill); background: var(--c-surface); font-size: var(--fs-xs); color: var(--c-ink-2); }
+  .subnav__loc .icon { width: 1rem; height: 1rem; color: var(--c-accent); }
+  .subnav__links a { padding: 0.5rem 0.7rem; font-size: 0.9rem; font-weight: 500; color: var(--c-ink-2); }
+  .subnav__links a[aria-current="page"] { color: var(--c-accent); }
+  .subnav__links a[aria-current="page"]::after { background: var(--c-accent); }
+  .subnav__links a:hover { background: transparent; }
+  .subnav__loc:hover { background: var(--c-surface); }
+  [data-page="home"] .suggest-strip { display: none; }
+}

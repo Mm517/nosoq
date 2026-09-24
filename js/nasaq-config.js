@@ -6,3 +6,7 @@
    ========================================================================== */
 window.NASAQ_SUPABASE_URL = 'https://dbzqejwsivgndftfnezb.supabase.co';
 window.NASAQ_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRienFlandzaXZnbmRmdGZuZXpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5ODUwMzAsImV4cCI6MjEwNTU2MTAzMH0.QCY4799Pg_caHK5c0WmKat-Q78uiF3PT19IxAlFBuW4';
+
+/* منتجات وهمية للعرض (js/demo-products.js): تظهر مع المنتجات الحقيقية.
+   غيّرها إلى false لإخفائها كلها عند الإطلاق الفعلي. */
+window.NASAQ_SHOW_DEMO = true;

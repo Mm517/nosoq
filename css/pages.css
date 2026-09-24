@@ -267,3 +267,7 @@
 .confirm__box { width: 100%; padding: var(--sp-5); background: var(--c-surface); border-radius: var(--r-md); text-align: start; display: grid; gap: var(--sp-3); }
 .confirm__box dl > div { display: flex; justify-content: space-between; gap: var(--sp-4); padding-block: 0.25rem; }
 .confirm__box dt { color: var(--c-ink-2); }
+
+/* ---------- تصفية الأقسام الفرعية (تظهر تحت القسم المختار) ---------- */
+.filter-subs { display: grid; gap: 2px; margin: 2px 0 6px; padding-inline-start: var(--sp-4); border-inline-start: 2px solid var(--c-line); }
+.filter-opt--sub { padding-block: 0.35rem; font-size: var(--fs-sm); }

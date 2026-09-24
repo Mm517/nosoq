@@ -34,12 +34,28 @@
     adDiscounts: [{ days: 30, off: 0.2 }, { days: 14, off: 0.15 }, { days: 7, off: 0.1 }]
   };
 
+  /* الأقسام الرئيسية (category) وتحتها أقسام فرعية (sub). المعرّفات القديمة clothes/bags/shoes/accessories
+     باقية كما هي حتى تبقى منتجات المتاجر الحالية سليمة. art = شكل الرسمة البديلة للمنتجات بلا صور. */
+  const S = (id, name, art) => ({ id, name, art });
   const CATEGORIES = [
-    { id: 'clothes', name: 'ملابس' },
-    { id: 'bags', name: 'حقائب' },
-    { id: 'shoes', name: 'أحذية' },
-    { id: 'accessories', name: 'إكسسوارات' }
+    { id: 'electronics', name: 'إلكترونيات', art: 'phone', subs: [S('tvs', 'تلفزيونات', 'tv'), S('headsets', 'سماعات', 'headset'), S('games', 'ألعاب فيديو', 'gamepad'), S('mobiles', 'موبايلات', 'phone'), S('cameras', 'كاميرات', 'camera'), S('wearables', 'ساعات ذكية', 'smartwatch'), S('laptops', 'لابتوب', 'laptop')] },
+    { id: 'appliances', name: 'أجهزة منزلية', art: 'fridge', subs: [S('fridges', 'ثلاجات', 'fridge'), S('washers', 'غسالات', 'washer'), S('ac', 'تكييفات', 'ac'), S('cookers', 'بوتاجازات', 'cooker'), S('smallapp', 'أجهزة مطبخ', 'airfryer'), S('vacuums', 'مكانس', 'vacuum')] },
+    { id: 'home', name: 'المنزل والمطبخ', art: 'sofa', subs: [S('furniture', 'أثاث', 'sofa'), S('cookware', 'أواني الطهي', 'pot'), S('lighting', 'إضاءة', 'lamp'), S('bedding', 'مفروشات', 'bedding'), S('decor', 'ديكور', 'vase'), S('storage', 'تخزين وتنظيم', 'storage')] },
+    { id: 'clothes', name: 'ملابس', art: 'tee', subs: [S('women', 'نسائي', 'dress'), S('men', 'رجالي', 'tee'), S('kids', 'أطفال', 'tee'), S('sportswear', 'ملابس رياضية', 'hoodie')] },
+    { id: 'shoes', name: 'أحذية', art: 'shoe', subs: [S('womenshoes', 'نسائي', 'shoe'), S('menshoes', 'رجالي', 'shoe'), S('kidsshoes', 'أطفال', 'shoe'), S('sportshoes', 'رياضي', 'shoe')] },
+    { id: 'bags', name: 'حقائب', art: 'bag', subs: [S('handbags', 'حقائب يد', 'bag'), S('backpacks', 'شنط ظهر', 'bag'), S('travel', 'حقائب سفر', 'bag'), S('wallets', 'محافظ', 'wallet')] },
+    { id: 'accessories', name: 'إكسسوارات', art: 'watch', subs: [S('watches', 'ساعات', 'watch'), S('sunglasses', 'نظارات', 'glasses'), S('jewelry', 'مجوهرات', 'ring'), S('hats', 'قبعات وأوشحة', 'scarf')] },
+    { id: 'beauty', name: 'الجمال والعناية', art: 'perfume', subs: [S('perfumes', 'عطور', 'perfume'), S('makeup', 'مكياج', 'lipstick'), S('skincare', 'عناية بالبشرة', 'jar'), S('haircare', 'عناية بالشعر', 'hairdryer')] },
+    { id: 'supermarket', name: 'سوبر ماركت', art: 'cereal', subs: [S('groceries', 'مواد غذائية', 'cereal'), S('drinks', 'مشروبات', 'can'), S('cooking', 'زيوت وطبخ', 'bottle'), S('cleaning', 'منظفات', 'bottle')] },
+    { id: 'toys', name: 'ألعاب وأطفال', art: 'teddy', subs: [S('plush', 'ألعاب محشوة', 'teddy'), S('building', 'ألعاب تركيب', 'blocks'), S('vehicles', 'سيارات ومركبات', 'toycar')] },
+    { id: 'sports', name: 'رياضة ولياقة', art: 'ball', subs: [S('football', 'كرات', 'ball'), S('fitness', 'أجهزة لياقة', 'dumbbell'), S('yoga', 'يوجا', 'mat'), S('cycling', 'دراجات', 'bike')] },
+    { id: 'books', name: 'كتب وقرطاسية', art: 'book', subs: [S('books', 'كتب', 'book'), S('stationery', 'قرطاسية', 'notebook'), S('school', 'شنط مدرسية', 'bag')] },
+    { id: 'auto', name: 'السيارات', art: 'tire', subs: [S('tires', 'إطارات', 'tire'), S('autooils', 'زيوت وسوائل', 'oilcan'), S('motoacc', 'إكسسوارات', 'helmet')] },
+    { id: 'pets', name: 'حيوانات أليفة', art: 'petfood', subs: [S('petfood', 'طعام', 'petfood'), S('petacc', 'مستلزمات', 'bowl'), S('pettoys', 'ألعاب', 'bone')] },
+    { id: 'tools', name: 'عدد وأدوات', art: 'drill', subs: [S('power', 'أدوات كهربائية', 'drill'), S('hand', 'عدد يدوية', 'toolbox'), S('worklight', 'إضاءة ورش', 'lamp')] }
   ];
+  const SUB2CAT = {}, SUB_INDEX = {};
+  CATEGORIES.forEach((c) => c.subs.forEach((x) => { SUB2CAT[x.id] = c.id; SUB_INDEX[x.id] = x; }));
 
   /* ---------- أدوات صغيرة مشتركة ---------- */
   const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -141,13 +157,239 @@
        <rect x="238" y="236" width="88" height="56" rx="12" fill="${d}" opacity=".65"/>
        <circle cx="268" cy="264" r="8" fill="#fff" opacity=".85"/>
        <path d="M104 186 H296" stroke="#fff" stroke-width="2" stroke-dasharray="6 6" opacity=".5"/>`
+    ,
+    /* ---- إلكترونيات ---- */
+    phone: (f, d) =>
+      `<rect x="120" y="72" width="160" height="340" rx="30" fill="${f}"/>
+       <rect x="130" y="82" width="140" height="320" rx="22" fill="#14161b"/>
+       <circle cx="200" cy="268" r="58" fill="${f}" opacity=".5"/>
+       <path d="M130 190 L270 118 V176 L130 250Z" fill="#fff" opacity=".08"/>
+       <rect x="178" y="92" width="44" height="9" rx="4.5" fill="${f}"/>`,
+    tablet: (f, d) =>
+      `<rect x="70" y="90" width="260" height="340" rx="26" fill="${f}"/>
+       <rect x="82" y="102" width="236" height="316" rx="16" fill="#14161b"/>
+       <circle cx="200" cy="262" r="70" fill="${f}" opacity=".5"/>
+       <path d="M82 230 L318 130 V196 L82 300Z" fill="#fff" opacity=".07"/>`,
+    laptop: (f, d) =>
+      `<rect x="96" y="130" width="208" height="142" rx="10" fill="${d}"/>
+       <rect x="106" y="140" width="188" height="122" rx="4" fill="#14161b"/>
+       <circle cx="200" cy="202" r="40" fill="${f}" opacity=".55"/>
+       <path d="M60 286 H340 L326 306 Q324 312 316 312 H84 Q76 312 74 306 Z" fill="${f}"/>
+       <rect x="170" y="286" width="60" height="6" rx="3" fill="${d}" opacity=".5"/>`,
+    tv: (f, d) =>
+      `<rect x="50" y="130" width="300" height="182" rx="10" fill="#15171c"/>
+       <rect x="58" y="138" width="284" height="166" rx="4" fill="${f}"/>
+       <path d="M58 250 L200 160 L342 220 V304 H58Z" fill="#fff" opacity=".18"/>
+       <rect x="176" y="312" width="48" height="24" fill="${d}"/>
+       <rect x="140" y="336" width="120" height="10" rx="5" fill="${d}"/>`,
+    headset: (f, d) =>
+      `<path d="M96 262 V232 Q96 110 200 110 Q304 110 304 232 V262" fill="none" stroke="${d}" stroke-width="14" stroke-linecap="round"/>
+       <rect x="72" y="230" width="56" height="112" rx="26" fill="${f}"/>
+       <rect x="272" y="230" width="56" height="112" rx="26" fill="${f}"/>
+       <rect x="116" y="248" width="14" height="76" rx="7" fill="${d}"/>
+       <rect x="270" y="248" width="14" height="76" rx="7" fill="${d}"/>`,
+    gamepad: (f, d) =>
+      `<path d="M110 200 Q60 200 52 300 Q48 360 86 360 Q112 360 128 330 L152 300 H248 L272 330 Q288 360 314 360 Q352 360 348 300 Q340 200 290 200 Z" fill="${f}"/>
+       <path d="M118 246 h30 M133 231 v30" stroke="${d}" stroke-width="9" stroke-linecap="round"/>
+       <circle cx="268" cy="236" r="9" fill="${d}"/><circle cx="292" cy="258" r="9" fill="${d}" opacity=".8"/>
+       <circle cx="244" cy="258" r="9" fill="${d}" opacity=".8"/><circle cx="268" cy="280" r="9" fill="${d}" opacity=".6"/>
+       <circle cx="170" cy="290" r="15" fill="${d}" opacity=".85"/><circle cx="230" cy="290" r="15" fill="${d}" opacity=".85"/>`,
+    camera: (f, d) =>
+      `<rect x="70" y="170" width="260" height="170" rx="22" fill="${f}"/>
+       <path d="M130 170 L146 140 H254 L270 170Z" fill="${d}"/>
+       <circle cx="200" cy="255" r="66" fill="#14161b"/><circle cx="200" cy="255" r="48" fill="${d}"/>
+       <circle cx="200" cy="255" r="26" fill="#14161b"/><circle cx="186" cy="242" r="8" fill="#fff" opacity=".5"/>
+       <rect x="90" y="190" width="34" height="18" rx="4" fill="#fff" opacity=".6"/>`,
+    smartwatch: (f, d) =>
+      `<rect x="150" y="40" width="100" height="140" rx="20" fill="${d}"/>
+       <rect x="150" y="320" width="100" height="140" rx="20" fill="${d}"/>
+       <rect x="118" y="150" width="164" height="200" rx="44" fill="${f}"/>
+       <rect x="130" y="162" width="140" height="176" rx="34" fill="#14161b"/>
+       <circle cx="200" cy="250" r="42" fill="none" stroke="${f}" stroke-width="9" stroke-dasharray="170 100" stroke-linecap="round"/>
+       <rect x="282" y="220" width="10" height="36" rx="5" fill="${d}"/>`,
+    /* ---- أجهزة منزلية ---- */
+    fridge: (f, d) =>
+      `<rect x="110" y="50" width="180" height="400" rx="16" fill="${f}"/>
+       <path d="M110 190 H290" stroke="${d}" stroke-width="4" opacity=".5"/>
+       <rect x="262" y="92" width="8" height="70" rx="4" fill="${d}"/><rect x="262" y="214" width="8" height="90" rx="4" fill="${d}"/>
+       <path d="M128 70 V430" stroke="#fff" stroke-width="10" opacity=".25"/>`,
+    washer: (f, d) =>
+      `<rect x="90" y="80" width="220" height="340" rx="18" fill="${f}"/>
+       <rect x="90" y="80" width="220" height="60" rx="18" fill="${d}" opacity=".25"/>
+       <circle cx="130" cy="110" r="10" fill="${d}"/><circle cx="168" cy="110" r="10" fill="${d}" opacity=".6"/>
+       <rect x="228" y="102" width="58" height="16" rx="8" fill="${d}" opacity=".7"/>
+       <circle cx="200" cy="284" r="86" fill="${d}" opacity=".55"/><circle cx="200" cy="284" r="68" fill="#14161b"/>
+       <path d="M160 262 Q200 232 240 264" stroke="#fff" stroke-width="6" fill="none" opacity=".35" stroke-linecap="round"/>`,
+    ac: (f, d) =>
+      `<rect x="50" y="130" width="300" height="112" rx="24" fill="${f}"/>
+       <rect x="72" y="202" width="256" height="18" rx="9" fill="${d}" opacity=".55"/>
+       <circle cx="318" cy="160" r="6" fill="${d}"/><rect x="74" y="152" width="70" height="8" rx="4" fill="${d}" opacity=".3"/>`,
+    cooker: (f, d) =>
+      `<rect x="90" y="140" width="220" height="290" rx="14" fill="${f}"/>
+       <path d="M90 196 L108 140 H292 L310 196Z" fill="${d}" opacity=".85"/>
+       <ellipse cx="156" cy="164" rx="28" ry="9" fill="${f}"/><ellipse cx="244" cy="164" rx="28" ry="9" fill="${f}"/>
+       <circle cx="132" cy="222" r="9" fill="${d}"/><circle cx="172" cy="222" r="9" fill="${d}"/><circle cx="228" cy="222" r="9" fill="${d}"/><circle cx="268" cy="222" r="9" fill="${d}"/>
+       <rect x="112" y="258" width="176" height="130" rx="10" fill="#14161b"/><rect x="130" y="244" width="140" height="8" rx="4" fill="${d}"/>`,
+    airfryer: (f, d) =>
+      `<path d="M110 120 Q110 90 140 90 H260 Q290 90 290 120 V370 Q290 420 240 420 H160 Q110 420 110 370 Z" fill="${f}"/>
+       <rect x="140" y="150" width="120" height="72" rx="12" fill="#14161b"/>
+       <circle cx="170" cy="326" r="18" fill="${d}"/><circle cx="230" cy="326" r="18" fill="${d}" opacity=".6"/>
+       <path d="M290 210 h32 q12 0 12 12 v40 q0 12 -12 12 h-32" fill="none" stroke="${d}" stroke-width="10"/>`,
+    vacuum: (f, d) =>
+      `<ellipse cx="200" cy="304" rx="130" ry="46" fill="${d}" opacity=".9"/>
+       <ellipse cx="200" cy="286" rx="130" ry="46" fill="${f}"/>
+       <circle cx="200" cy="284" r="24" fill="${d}" opacity=".6"/><circle cx="200" cy="284" r="9" fill="#fff" opacity=".85"/>
+       <circle cx="118" cy="268" r="7" fill="${d}" opacity=".5"/>`,
+    /* ---- المنزل والمطبخ ---- */
+    sofa: (f, d) =>
+      `<rect x="70" y="180" width="260" height="120" rx="24" fill="${f}"/>
+       <rect x="50" y="220" width="62" height="120" rx="24" fill="${f}"/><rect x="288" y="220" width="62" height="120" rx="24" fill="${f}"/>
+       <rect x="102" y="244" width="196" height="70" rx="16" fill="${d}" opacity=".25"/>
+       <rect x="72" y="336" width="14" height="28" fill="${d}"/><rect x="314" y="336" width="14" height="28" fill="${d}"/>`,
+    pot: (f, d) =>
+      `<rect x="90" y="214" width="220" height="146" rx="20" fill="${f}"/>
+       <rect x="80" y="202" width="240" height="24" rx="12" fill="${d}" opacity=".55"/>
+       <rect x="56" y="250" width="38" height="14" rx="7" fill="${d}"/><rect x="306" y="250" width="38" height="14" rx="7" fill="${d}"/>
+       <rect x="184" y="166" width="32" height="36" rx="10" fill="${d}"/>`,
+    lamp: (f, d) =>
+      `<path d="M120 152 L160 80 H240 L280 152 Z" fill="${f}"/>
+       <ellipse cx="200" cy="152" rx="80" ry="10" fill="${d}" opacity=".4"/>
+       <rect x="194" y="152" width="12" height="226" fill="${d}"/><ellipse cx="200" cy="382" rx="60" ry="12" fill="${d}"/>`,
+    bedding: (f, d) =>
+      `<rect x="60" y="232" width="280" height="110" rx="14" fill="${f}"/>
+       <rect x="60" y="232" width="280" height="34" rx="14" fill="${d}" opacity=".3"/>
+       <rect x="80" y="172" width="100" height="70" rx="20" fill="#fff" opacity=".92"/><rect x="220" y="172" width="100" height="70" rx="20" fill="#fff" opacity=".92"/>
+       <rect x="60" y="342" width="20" height="30" fill="${d}"/><rect x="320" y="342" width="20" height="30" fill="${d}"/>`,
+    vase: (f, d) =>
+      `<path d="M200 118 V50 M200 92 Q160 74 150 42 M200 84 Q240 62 250 30" stroke="#3f8f5a" stroke-width="6" fill="none" stroke-linecap="round"/>
+       <circle cx="150" cy="40" r="12" fill="#3f8f5a"/><circle cx="250" cy="32" r="12" fill="#3f8f5a"/><circle cx="200" cy="48" r="12" fill="#3f8f5a"/>
+       <path d="M160 122 H240 Q236 162 262 222 Q290 302 250 392 Q200 412 150 392 Q110 302 138 222 Q164 162 160 122 Z" fill="${f}"/>
+       <ellipse cx="200" cy="122" rx="40" ry="9" fill="${d}" opacity=".5"/>`,
+    storage: (f, d) =>
+      `<path d="M90 204 H310 L296 382 Q294 394 282 394 H118 Q106 394 104 382 Z" fill="${f}"/>
+       <rect x="80" y="180" width="240" height="32" rx="10" fill="${d}" opacity=".5"/>
+       <rect x="170" y="242" width="60" height="22" rx="11" fill="${d}" opacity=".5"/>`,
+    /* ---- إكسسوارات / جمال ---- */
+    ring: (f, d) =>
+      `<circle cx="200" cy="272" r="80" fill="none" stroke="${f}" stroke-width="14"/>
+       <circle cx="200" cy="186" r="24" fill="${d}"/><circle cx="200" cy="186" r="11" fill="#fff" opacity=".75"/>`,
+    perfume: (f, d) =>
+      `<rect x="120" y="190" width="160" height="200" rx="18" fill="${f}"/>
+       <rect x="140" y="222" width="120" height="120" rx="8" fill="#fff" opacity=".5"/>
+       <rect x="170" y="132" width="60" height="58" rx="8" fill="${d}"/><rect x="186" y="100" width="28" height="36" rx="6" fill="${d}" opacity=".8"/>`,
+    lipstick: (f, d) =>
+      `<rect x="150" y="262" width="100" height="128" rx="10" fill="${d}"/>
+       <rect x="160" y="210" width="80" height="60" rx="6" fill="#c5cad3"/>
+       <path d="M164 212 L176 124 Q200 102 224 124 L236 212Z" fill="${f}"/>`,
+    jar: (f, d) =>
+      `<rect x="100" y="240" width="200" height="132" rx="18" fill="${f}"/>
+       <rect x="92" y="196" width="216" height="52" rx="14" fill="${d}"/>
+       <rect x="120" y="270" width="160" height="72" rx="8" fill="#fff" opacity=".6"/>`,
+    hairdryer: (f, d) =>
+      `<path d="M80 172 Q80 122 150 122 H270 Q320 122 320 172 Q320 222 270 222 H150 Q80 222 80 172Z" fill="${f}"/>
+       <path d="M180 220 L210 402 H270 L250 220Z" fill="${d}"/>
+       <rect x="318" y="152" width="30" height="40" rx="6" fill="${d}" opacity=".7"/>`,
+    /* ---- سوبر ماركت ---- */
+    bottle: (f, d) =>
+      `<rect x="176" y="70" width="48" height="50" rx="10" fill="${d}"/>
+       <path d="M160 132 Q160 112 176 112 H224 Q240 112 240 132 L262 192 V392 Q262 412 242 412 H158 Q138 412 138 392 V192 Z" fill="${f}"/>
+       <rect x="138" y="240" width="124" height="96" fill="#fff" opacity=".72"/><circle cx="200" cy="288" r="22" fill="${d}" opacity=".5"/>`,
+    can: (f, d) =>
+      `<rect x="140" y="110" width="120" height="292" rx="14" fill="${f}"/>
+       <ellipse cx="200" cy="112" rx="60" ry="12" fill="${d}" opacity=".5"/>
+       <rect x="140" y="200" width="120" height="110" fill="#fff" opacity=".68"/><circle cx="200" cy="255" r="26" fill="${d}" opacity=".7"/>`,
+    cereal: (f, d) =>
+      `<rect x="110" y="90" width="180" height="312" rx="10" fill="${f}"/>
+       <path d="M290 90 L320 110 V382 L290 402Z" fill="${d}" opacity=".5"/>
+       <circle cx="200" cy="230" r="60" fill="#fff" opacity=".88"/><circle cx="200" cy="230" r="34" fill="${d}" opacity=".6"/>`,
+    /* ---- ألعاب ورياضة ---- */
+    teddy: (f, d) =>
+      `<circle cx="146" cy="120" r="28" fill="${f}"/><circle cx="254" cy="120" r="28" fill="${f}"/>
+       <ellipse cx="200" cy="304" rx="82" ry="90" fill="${f}"/>
+       <ellipse cx="112" cy="290" rx="24" ry="52" fill="${f}" transform="rotate(20 112 290)"/><ellipse cx="288" cy="290" rx="24" ry="52" fill="${f}" transform="rotate(-20 288 290)"/>
+       <circle cx="200" cy="176" r="66" fill="${f}"/>
+       <ellipse cx="200" cy="196" rx="30" ry="22" fill="#fff" opacity=".75"/>
+       <circle cx="176" cy="168" r="7" fill="${d}"/><circle cx="224" cy="168" r="7" fill="${d}"/><ellipse cx="200" cy="190" rx="9" ry="6" fill="${d}"/>
+       <ellipse cx="200" cy="316" rx="46" ry="52" fill="#fff" opacity=".3"/>`,
+    blocks: (f, d) =>
+      `<rect x="108" y="292" width="92" height="92" rx="8" fill="${f}"/><rect x="204" y="292" width="92" height="92" rx="8" fill="${d}"/>
+       <rect x="156" y="198" width="92" height="92" rx="8" fill="#e9a82a"/>
+       <circle cx="154" cy="338" r="22" fill="#fff" opacity=".55"/><circle cx="250" cy="338" r="22" fill="#fff" opacity=".35"/><circle cx="202" cy="244" r="22" fill="#fff" opacity=".55"/>`,
+    toycar: (f, d) =>
+      `<path d="M60 282 Q60 242 100 238 L140 192 Q150 182 166 182 H244 Q260 182 270 192 L310 238 Q350 242 350 282 V304 H60Z" fill="${f}"/>
+       <path d="M152 202 H196 V238 H132Z M204 202 H246 L272 238 H204Z" fill="#fff" opacity=".72"/>
+       <circle cx="122" cy="306" r="32" fill="#1b1e25"/><circle cx="122" cy="306" r="14" fill="#c5cad3"/>
+       <circle cx="288" cy="306" r="32" fill="#1b1e25"/><circle cx="288" cy="306" r="14" fill="#c5cad3"/>`,
+    ball: (f, d) =>
+      `<circle cx="200" cy="262" r="110" fill="${f}"/>
+       <path d="M200 222 L236 248 L222 290 H178 L164 248Z" fill="${d}"/>
+       <path d="M200 222 V156 M236 248 L296 228 M222 290 L256 346 M178 290 L144 346 M164 248 L104 228" stroke="${d}" stroke-width="6" stroke-linecap="round"/>`,
+    dumbbell: (f, d) =>
+      `<rect x="56" y="212" width="42" height="100" rx="8" fill="${d}"/><rect x="98" y="192" width="42" height="140" rx="10" fill="${f}"/>
+       <rect x="140" y="250" width="120" height="24" rx="8" fill="#9aa1af"/>
+       <rect x="260" y="192" width="42" height="140" rx="10" fill="${f}"/><rect x="302" y="212" width="42" height="100" rx="8" fill="${d}"/>`,
+    mat: (f, d) =>
+      `<rect x="110" y="172" width="192" height="170" rx="20" fill="${f}"/>
+       <ellipse cx="110" cy="257" rx="36" ry="85" fill="${d}"/><ellipse cx="110" cy="257" rx="24" ry="57" fill="${f}"/><ellipse cx="110" cy="257" rx="11" ry="26" fill="${d}"/>`,
+    bike: (f, d) =>
+      `<circle cx="110" cy="322" r="70" fill="none" stroke="${d}" stroke-width="10"/><circle cx="290" cy="322" r="70" fill="none" stroke="${d}" stroke-width="10"/>
+       <path d="M110 322 L172 202 H252 L290 322 M172 202 L212 322 H110 M212 322 L252 202 M160 182 H192 M252 202 L242 170 H272" stroke="${f}" stroke-width="10" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`,
+    /* ---- كتب / سيارات / حيوانات / أدوات ---- */
+    book: (f, d) =>
+      `<rect x="110" y="90" width="192" height="304" rx="8" fill="${f}"/>
+       <rect x="110" y="90" width="26" height="304" rx="6" fill="${d}" opacity=".5"/>
+       <rect x="158" y="142" width="112" height="14" rx="7" fill="#fff" opacity=".85"/><rect x="158" y="172" width="80" height="10" rx="5" fill="#fff" opacity=".6"/>
+       <rect x="118" y="386" width="184" height="14" rx="4" fill="#fff" opacity=".92"/>`,
+    notebook: (f, d) =>
+      `<rect x="96" y="110" width="172" height="272" rx="10" fill="${f}"/>
+       <circle cx="96" cy="148" r="7" fill="${d}"/><circle cx="96" cy="196" r="7" fill="${d}"/><circle cx="96" cy="244" r="7" fill="${d}"/><circle cx="96" cy="292" r="7" fill="${d}"/><circle cx="96" cy="340" r="7" fill="${d}"/>
+       <rect x="132" y="150" width="100" height="12" rx="6" fill="#fff" opacity=".8"/>
+       <path d="M296 150 H326 V350 L311 384 L296 350Z" fill="#e9a82a"/><path d="M296 350 L311 384 L326 350Z" fill="#f1d9b0"/>`,
+    tire: (f, d) =>
+      `<circle cx="200" cy="262" r="130" fill="#1b1e25"/><circle cx="200" cy="262" r="84" fill="${f}"/>
+       <circle cx="200" cy="262" r="26" fill="${d}"/>
+       <path d="M200 178 V236 M200 288 V346 M116 262 H174 M226 262 H284 M141 203 L182 244 M218 280 L259 321 M259 203 L218 244 M182 280 L141 321" stroke="${d}" stroke-width="8" stroke-linecap="round" opacity=".7"/>`,
+    oilcan: (f, d) =>
+      `<path d="M140 172 Q140 122 200 122 Q240 122 240 172" fill="none" stroke="${d}" stroke-width="14"/>
+       <path d="M110 172 H270 Q290 172 290 192 V372 Q290 392 270 392 H130 Q110 392 110 372 V192 Q110 172 130 172Z" fill="${f}"/>
+       <path d="M276 184 L340 134 H362" stroke="${d}" stroke-width="12" fill="none" stroke-linecap="round"/>
+       <rect x="150" y="232" width="100" height="90" rx="8" fill="#fff" opacity=".78"/>`,
+    helmet: (f, d) =>
+      `<path d="M90 302 Q90 130 210 130 Q320 130 320 262 V322 H90Z" fill="${f}"/>
+       <path d="M200 204 H320 V272 H204 Q192 240 200 204Z" fill="#14161b"/>
+       <path d="M90 322 H320 V350 Q200 372 90 350Z" fill="${d}" opacity=".6"/>`,
+    petfood: (f, d) =>
+      `<path d="M110 130 H290 L300 402 H100Z" fill="${f}"/>
+       <path d="M110 130 Q200 100 290 130 L288 152 Q200 124 112 152Z" fill="${d}" opacity=".5"/>
+       <circle cx="200" cy="274" r="56" fill="#fff" opacity=".88"/>
+       <circle cx="200" cy="284" r="18" fill="${d}"/><circle cx="180" cy="256" r="8" fill="${d}"/><circle cx="200" cy="248" r="8" fill="${d}"/><circle cx="220" cy="256" r="8" fill="${d}"/>`,
+    bowl: (f, d) =>
+      `<path d="M80 232 H320 Q320 342 200 352 Q80 342 80 232Z" fill="${f}"/>
+       <ellipse cx="200" cy="232" rx="120" ry="24" fill="${d}" opacity=".5"/><ellipse cx="200" cy="230" rx="100" ry="15" fill="#c98f5a"/>`,
+    bone: (f, d) =>
+      `<g transform="rotate(-35 200 250)"><rect x="110" y="236" width="180" height="30" rx="14" fill="${f}"/>
+       <circle cx="114" cy="230" r="22" fill="${f}"/><circle cx="114" cy="272" r="22" fill="${f}"/><circle cx="286" cy="230" r="22" fill="${f}"/><circle cx="286" cy="272" r="22" fill="${f}"/>
+       <rect x="150" y="242" width="100" height="6" rx="3" fill="${d}" opacity=".3"/></g>`,
+    drill: (f, d) =>
+      `<rect x="80" y="130" width="204" height="80" rx="24" fill="${f}"/>
+       <path d="M150 208 L180 382 Q182 394 194 394 H236 Q246 394 244 382 L220 208Z" fill="${d}"/>
+       <rect x="284" y="156" width="34" height="28" rx="6" fill="#9aa1af"/><rect x="318" y="164" width="58" height="12" rx="6" fill="#c5cad3"/>
+       <rect x="100" y="150" width="60" height="18" rx="9" fill="#fff" opacity=".35"/>`,
+    toolbox: (f, d) =>
+      `<path d="M150 204 V172 Q150 152 170 152 H230 Q250 152 250 172 V204" fill="none" stroke="${d}" stroke-width="12"/>
+       <rect x="70" y="200" width="260" height="172" rx="16" fill="${f}"/>
+       <rect x="70" y="200" width="260" height="46" rx="16" fill="${d}" opacity=".45"/>
+       <rect x="176" y="240" width="48" height="30" rx="6" fill="#e9a82a"/>`
   };
-  const FLOOR = { tee: 404, hoodie: 414, jacket: 412, dress: 448, pants: 446, bag: 436, shoe: 382, watch: 462, cap: 346, scarf: 444, glasses: 300, wallet: 342 };
-  const DY = { shoe: -32, bag: -12, hoodie: 18, pants: -8, wallet: -5 };
+  const FLOOR = { tee: 404, hoodie: 414, jacket: 412, dress: 448, pants: 446, bag: 436, shoe: 382, watch: 462, cap: 346, scarf: 444, glasses: 300, wallet: 342,
+    phone: 412, tablet: 430, laptop: 316, tv: 346, headset: 340, gamepad: 362, camera: 340, smartwatch: 462, fridge: 450, washer: 420, ac: 244, cooker: 430, airfryer: 420, vacuum: 346,
+    sofa: 364, pot: 360, lamp: 388, bedding: 372, vase: 400, storage: 394, ring: 360, perfume: 392, lipstick: 390, jar: 372, hairdryer: 402, bottle: 412, can: 402, cereal: 402,
+    teddy: 392, blocks: 384, toycar: 340, ball: 372, dumbbell: 332, mat: 342, bike: 392, book: 400, notebook: 384, tire: 392, oilcan: 392, helmet: 356, petfood: 402, bowl: 352, bone: 300, drill: 394, toolbox: 372 };
+  const DY = { shoe: -32, bag: -12, hoodie: 18, pants: -8, wallet: -5, laptop: 30, ac: 60, gamepad: -30, vacuum: -40, sofa: -20, pot: -12, bedding: -20, vase: 20, storage: -34, jar: -34, blocks: -38, toycar: -8, dumbbell: -10, bike: -26, bowl: -10 };
 
   const artCache = new Map();
-  function art(kind, color, variant, seed) {
-    const key = kind + color + variant + seed;
+  function art(kind, color, variant, seed, bare) {
+    const key = kind + color + variant + seed + (bare ? 'b' : '');
     if (artCache.has(key)) return artCache.get(key);
 
     const dark = shade(color, -0.34), light = shade(color, 0.28);
@@ -166,7 +408,7 @@
       view = 'translate(200 250) scale(.8) translate(-200 -250)';
       extra = '<circle cx="200" cy="250" r="168" fill="#fff" opacity=".5"/><circle cx="200" cy="250" r="118" fill="#fff" opacity=".4"/>';
     }
-    if (variant !== 2) {
+    if (variant !== 2 && !bare) {
       shadow = `<ellipse cx="200" cy="${floor + 10}" rx="${kind === 'watch' || kind === 'glasses' ? 70 : 120}" ry="10" fill="#15171c" opacity=".14" filter="url(#s)"/>`;
     }
 
@@ -176,7 +418,7 @@
       `<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${b1}"/><stop offset="1" stop-color="${b2}"/></linearGradient>` +
       `<linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${light}"/><stop offset=".55" stop-color="${color}"/><stop offset="1" stop-color="${dark}"/></linearGradient>` +
       `<filter id="s" x="-30%" y="-100%" width="160%" height="300%"><feGaussianBlur stdDeviation="8"/></filter>` +
-      `</defs><rect width="400" height="500" fill="url(#bg)"/>${extra}` +
+      `</defs>${bare ? '' : `<rect width="400" height="500" fill="url(#bg)"/>${extra}`}` +
       `<g transform="${view}">${shadow}<g transform="translate(0 ${dy})">${SHAPES[kind]('url(#g)', dark)}</g></g></svg>`;
 
     const uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
@@ -189,7 +431,8 @@
      shop.js, product-page.js, store-page.js...) تفترض أن window.Products.all()
      جاهزة فوراً عند تحميلها؛ وهذا الملف يُحمَّل مؤجَّلاً (defer) بعد supabase-js
      و js/api-shim.js، فالبيانات تصل قبل أي صفحة تحتاجها. */
-  const ART_BY_CAT = { clothes: 'tee', bags: 'bag', shoes: 'shoe', accessories: 'watch' };
+  const ART_BY_CAT = {};
+  CATEGORIES.forEach((c) => { ART_BY_CAT[c.id] = c.art; });
 
   function sbGet(path) {
     try {
@@ -247,7 +490,44 @@
       });
   }
 
-  const PRODUCTS = buildCatalog();
+  /* ---------- منتجات وهمية للعرض (js/demo-products.js) — تُخفى بـ NASAQ_SHOW_DEMO = false ---------- */
+  const PAL = {
+    k: ['أسود', '#2b2e35'], w: ['أبيض', '#eceef1'], g: ['رمادي', '#8b919d'], s: ['فضي', '#c5cad3'], b: ['أزرق', '#2f5fd0'],
+    n: ['كحلي', '#24345f'], r: ['أحمر', '#c9364a'], p: ['وردي', '#e58fb0'], y: ['أصفر', '#e6b422'], o: ['برتقالي', '#e2762b'],
+    e: ['أخضر', '#2f9a63'], t: ['بيج', '#cdb79a'], v: ['بنفسجي', '#7a4fc2'], d: ['ذهبي', '#c9a24b'], m: ['بني', '#7a5638']
+  };
+  const MULTI_COLOR = new Set(['electronics', 'appliances', 'home', 'clothes', 'shoes', 'bags', 'accessories', 'beauty']);
+  const SIZE_SETS = { clothes: ['S', 'M', 'L', 'XL'], shoes: ['38', '39', '40', '41', '42', '43'] };
+
+  function buildDemo() {
+    const rows = Array.isArray(window.NASAQ_DEMO_ROWS) ? window.NASAQ_DEMO_ROWS : [];
+    const out = [];
+    rows.forEach((line, i) => {
+      const f = line.split('|');
+      const cat = SUB2CAT[f[0]];
+      if (!cat) return;
+      const id = 900001 + out.length;
+      const main = PAL[f[7]] || PAL.k;
+      const alt = f[7] === 'w' ? PAL.k : PAL.w;
+      const fresh = i % 3 === 0;
+      out.push({
+        id, uuid: null, storeId: null, sellerId: null, seller: null, demo: true,
+        name: f[1], category: cat, sub: f[0],
+        price: Number(f[2]), oldPrice: f[3] ? Number(f[3]) : null,
+        isNew: fresh, rating: Number(f[4]), reviews: Number(f[5]), stock: Number(f[6]),
+        sizes: SIZE_SETS[cat] || [], soldOutSizes: [],
+        art: f[8] || SUB_INDEX[f[0]].art, sku: 'NQ-D' + id,
+        addedAt: new Date(Date.now() - (fresh ? (i % 10) + 1 : 20 + (i % 40)) * 864e5).toISOString(),
+        colors: MULTI_COLOR.has(cat) ? [{ name: main[0], hex: main[1] }, { name: alt[0], hex: alt[1] }] : [{ name: 'أساسي', hex: main[1] }],
+        description: f[1] + '. جودة موثوقة وسعر مناسب، مع إرجاع مجاني خلال ' + STORE.returnDays + ' يوماً.',
+        details: ['جودة موثوقة من بائع معتمد', 'إرجاع مجاني خلال ' + STORE.returnDays + ' يوماً', 'الدفع عند الاستلام متاح'],
+        photos: []
+      });
+    });
+    return out;
+  }
+
+  const PRODUCTS = buildCatalog().concat(window.NASAQ_SHOW_DEMO === false ? [] : buildDemo());
 
   /* ---------- الصور: من صور المنتج الحقيقية، أو رسمة SVG بديلة حسب التصنيف ---------- */
   function photoURL(p, i, colorIdx) {
@@ -323,6 +603,11 @@
     all: () => PRODUCTS.slice(),
     byId: (id) => PRODUCTS.find((p) => p.id === Number(id)),
     categoryName: (id) => (CATEGORIES.find((c) => c.id === id) || {}).name || '',
+    subs: (id) => (CATEGORIES.find((c) => c.id === id) || {}).subs || [],
+    subName: (id) => (SUB_INDEX[id] || {}).name || '',
+    catOfSub: (id) => SUB2CAT[id] || '',
+    /* رسمة جاهزة بلا منتج: kind = شكل، color = لون، bare = بلا خلفية (للافتات) */
+    art: (kind, color, variant, seed, bare) => art(kind, color || '#2b2e35', variant || 0, seed || 0, !!bare),
     discountPct: (p) => (p.oldPrice && p.oldPrice > p.price ? Math.round((1 - p.price / p.oldPrice) * 100) : 0),
     isSoldOut: (p) => p.stock <= 0,
     sizeSoldOut: (p, s) => (p.soldOutSizes || []).includes(s),
