@@ -324,6 +324,36 @@
     return okRes(saved || result, 201);
   });
 
+  /* ---------- صور طلبات التقديم (bucket خاص: application-documents) ---------- */
+  const DOC_KINDS = ['idPhoto', 'personalPhoto', 'storefrontPhoto', 'licensePhoto'];
+  const DOC_EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+
+  on('POST', 'store/application-uploads', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('أنشئ حسابك أولاً قبل رفع الصور.', 401);
+    body = body || {};
+    if (!DOC_KINDS.includes(body.kind)) return errRes('نوع المستند غير معروف.');
+    const match = typeof body.dataUrl === 'string' && /^data:(image\/(?:jpeg|png|webp));base64,/.exec(body.dataUrl);
+    if (!match) return errRes('صيغة الصورة غير مدعومة (JPG أو PNG أو WEBP).');
+    const blob = await dataUrlToBlob(body.dataUrl);
+    if (blob.size > 5 * 1024 * 1024) return errRes('حجم الصورة أكبر من 5 ميجابايت.', 413);
+    const path = session.userId + '/' + body.kind + '-' + crypto.randomUUID() + '.' + DOC_EXT[match[1]];
+    const { error } = await sb.storage.from('application-documents').upload(path, blob, { contentType: match[1], upsert: false });
+    if (error) return errRes('تعذّر رفع الصورة: ' + error.message, 400);
+    return okRes({ path }, 201);
+  });
+
+  /* يقبل فقط مسارات داخل مجلد المستخدم نفسه ومن الأنواع المعروفة */
+  function cleanDocuments(documents, userId) {
+    const out = {};
+    if (!documents || typeof documents !== 'object') return out;
+    DOC_KINDS.forEach((k) => {
+      const v = documents[k];
+      if (typeof v === 'string' && v.startsWith(userId + '/') && !v.includes('..')) out[k] = v;
+    });
+    return out;
+  }
+
   on('POST', 'store/seller-application', async (params, query, body) => {
     const session = await currentSession();
     if (!session) return errRes('أنشئ حسابك أولاً قبل تقديم طلب المتجر.', 401);
@@ -353,7 +383,7 @@
       status: 'pending',
       user_external_id: session.userId,
       store_id: store.id,
-      payload: { nationalId: body.nationalId || null, license: body.license || null }
+      payload: Object.assign({ nationalId: body.nationalId || null, license: body.license || null }, cleanDocuments(body.documents, session.userId))
     };
     const { data: application } = await sb.from('applications').insert(appRow).select().maybeSingle();
     const newUser = Object.assign({}, session, { role: 'seller' });
@@ -388,7 +418,7 @@
       status: 'pending',
       user_external_id: session.userId,
       rider_id: rider.id,
-      payload: {}
+      payload: cleanDocuments(body.documents, session.userId)
     };
     const { data: application } = await sb.from('applications').insert(appRow).select().maybeSingle();
     const newUser = Object.assign({}, session, { role: 'rider' });
@@ -461,6 +491,16 @@
     if (!session || session.role !== 'admin') return null;
     return session;
   }
+
+  /* روابط موقَّعة مؤقتة (ساعة) لعرض صور طلبات التقديم للإدمن فقط */
+  on('POST', 'admin/application-documents', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const paths = ((body && body.paths) || []).filter((p) => typeof p === 'string' && p && !p.includes('..')).slice(0, 10);
+    if (!paths.length) return okRes({ urls: [] });
+    const { data, error } = await sb.storage.from('application-documents').createSignedUrls(paths, 3600);
+    if (error) return errRes(error.message, 400);
+    return okRes({ urls: paths.map((p) => { const hit = (data || []).find((x) => x.path === p); return (hit && hit.signedUrl) || null; }) });
+  });
 
   on('POST', 'admin/auth/login', async (params, query, body) => {
     body = body || {};

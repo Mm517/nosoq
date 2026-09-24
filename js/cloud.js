@@ -57,6 +57,14 @@
     return out && (out.publicUrl || out.proxyUrl) || dataUrl;
   }
 
+  /* رفع صورة مستند من طلب تقديم (بطاقة / صورة شخصية / واجهة محل) إلى bucket خاص.
+     يُرجع مسار الملف (وليس رابطاً عاماً) ليُحفظ داخل طلب التقديم. */
+  async function uploadDocument(dataUrl, kind) {
+    const out = await request('/store/application-uploads', { dataUrl, kind });
+    if (!out || !out.path) throw new Error('تعذّر رفع الصورة.');
+    return out.path;
+  }
+
   async function syncProduct(p) {
     const photos = [];
     for (let i = 0; i < (p.photos || []).length; i++) {
@@ -196,6 +204,7 @@
     signup: (fields) => signup(fields),
     sellerApplication: (data) => sellerApplication(data),
     riderApplication: (data) => riderApplication(data),
+    uploadDocument: (dataUrl, kind) => uploadDocument(dataUrl, kind),
     applicationStatus: () => applicationStatus(),
     uploadImage: (dataUrl, filename) => safe(uploadImage(dataUrl, filename))
   };

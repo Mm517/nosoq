@@ -122,6 +122,32 @@
     return ok;
   }
 
+  /* ---------- تجهيز صور المستندات قبل الرفع ----------
+     نتأكد أنها صورة قابلة للقراءة ونصغّرها (حتى 1600px، JPEG) لتخفيف الحجم وضمان حد الـ 5 ميجابايت. */
+  function readImage(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('تعذّر قراءة الصورة «' + file.name + '». استخدم JPG أو PNG.')); };
+      img.src = url;
+    });
+  }
+  async function prepareImage(file) {
+    if (!/^image\//.test(file.type)) throw new Error('الملف «' + file.name + '» ليس صورة.');
+    const img = await readImage(file);
+    const scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    if (dataUrl.length * 0.75 > 5 * 1024 * 1024) throw new Error('حجم الصورة «' + file.name + '» كبير جداً.');
+    return dataUrl;
+  }
+
   /* ---------- إرسال نموذج التاجر / المندوب ----------
      الخطوتان: (1) إنشاء حساب دخول حقيقي عبر Supabase Auth،
      (2) إنشاء سجل المتجر/المندوب بحالة "قيد المراجعة" في قاعدة البيانات.
@@ -145,7 +171,22 @@
       formError(form, '');
 
       try {
-        await window.NasaqCloud.signup({ name, email, phone, password });
+        /* الصور: نجهّزها قبل إنشاء الحساب حتى يظهر أي خطأ في الصورة قبل التسجيل */
+        const prepared = {};
+        for (const input of $$('input[type="file"][data-doc]', form)) {
+          const file = input.files && input.files[0];
+          if (file) prepared[input.dataset.doc] = await prepareImage(file);
+        }
+        /* لو الحساب اتعمل قبل كده (محاولة سابقة فشلت بعد التسجيل) نكمل بنفس الجلسة بدل إنشاء حساب جديد */
+        let current = null;
+        try { current = window.sb ? (await window.sb.auth.getUser()).data.user : null; } catch (_) { current = null; }
+        if (!(current && current.email && current.email.toLowerCase() === email.trim().toLowerCase())) {
+          await window.NasaqCloud.signup({ name, email, phone, password });
+        }
+        const documents = {};
+        for (const key of Object.keys(prepared)) {
+          documents[key] = await window.NasaqCloud.uploadDocument(prepared[key], key);
+        }
         let application, entityId;
         if (kind === 'seller') {
           const out = await window.NasaqCloud.sellerApplication({
@@ -155,7 +196,8 @@
             storeName: ($('#s-store-name', form) || {}).value || '',
             license: ($('#s-license', form) || {}).value || '',
             address: ($('#s-address', form) || {}).value || '',
-            category: 'clothes'
+            category: 'clothes',
+            documents
           });
           application = out && out.application; entityId = out && out.store && out.store.id;
         } else {
@@ -166,7 +208,8 @@
             city: ($('#r-gov', form) || {}).value || '',
             area: ($('#r-area', form) || {}).value || '',
             coverage: ($('#r-range', form) || {}).value || '',
-            vehicle: vehicleEl ? vehicleEl.value : 'motorbike'
+            vehicle: vehicleEl ? vehicleEl.value : 'motorbike',
+            documents
           });
           application = out && out.application; entityId = out && out.rider && out.rider.id;
         }

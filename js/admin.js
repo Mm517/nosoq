@@ -121,7 +121,15 @@
     }
     if (app.status === 'rejected' && app.review_note) rows.push(['سبب الرفض', app.review_note]);
     let html = '<dl>' + rows.filter((r) => r[1] != null && r[1] !== '').map((r) => '<dt>' + esc(r[0]) + '</dt><dd>' + esc(r[1]) + '</dd>').join('') + '</dl>';
-    html += '<p><strong>المرفقات:</strong></p>' + photoThumbs([payload.idPhoto, payload.licensePhoto, store.logo_url].filter(Boolean));
+    /* صور الطلب: المسارات المحفوظة في bucket خاص تُحوَّل لروابط موقَّعة بعد فتح النافذة (hydrateApplicationDocs)،
+       وأي رابط مباشر قديم (http) يُعرض كما هو. */
+    const docKeys = ['idPhoto', 'personalPhoto', 'storefrontPhoto', 'licensePhoto'];
+    const docValues = docKeys.map((k) => payload[k]).filter(Boolean);
+    const privatePaths = docValues.filter((v) => !/^https?:/i.test(v));
+    const directUrls = docValues.filter((v) => /^https?:/i.test(v)).concat(store.logo_url ? [store.logo_url] : []);
+    html += '<p><strong>المرفقات:</strong></p>';
+    if (privatePaths.length) html += '<div id="app-docs" data-paths="' + esc(JSON.stringify(privatePaths)) + '"><span class="admin-empty" style="padding:0">جارٍ تحميل الصور…</span></div>';
+    if (directUrls.length || !privatePaths.length) html += photoThumbs(directUrls);
     if (app.status === 'pending') {
       html += '<div class="admin-modal__actions">' +
         '<button class="admin-button admin-button--primary" data-app-approve="' + esc(app.id) + '">قبول الطلب</button>' +
@@ -129,6 +137,17 @@
         '</div>';
     }
     return html;
+  }
+
+  async function hydrateApplicationDocs() {
+    const box = $('#app-docs');
+    if (!box) return;
+    try {
+      const out = await sendJson('/admin/application-documents', { paths: JSON.parse(box.dataset.paths || '[]') });
+      box.innerHTML = photoThumbs((out && out.urls) || []);
+    } catch (_) {
+      box.innerHTML = '<span class="admin-empty" style="padding:0">تعذّر تحميل الصور</span>';
+    }
   }
 
   async function reviewApplication(id, status) {
@@ -175,7 +194,7 @@
     if (viewBtn) {
       const apps = JSON.parse($('#applications-body').dataset.cache || '[]');
       const app = apps.find((a) => String(a.id) === viewBtn.dataset.appView);
-      if (app) openModal('طلب تقديم — ' + (app.name || ''), applicationDetailHtml(app));
+      if (app) { openModal('طلب تقديم — ' + (app.name || ''), applicationDetailHtml(app)); hydrateApplicationDocs(); }
       return;
     }
     const approveBtn = e.target.closest('[data-app-approve]');
