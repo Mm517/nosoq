@@ -306,6 +306,27 @@
   }
 
   /* ===================== 5) السائقون (Riders) ===================== */
+  /* خريطة السائقين المتصلين — بدون مفتاح Google Maps مطلوب (نفس تقنية العرض الخالية من مفتاح
+     المستخدمة في js/geo.js لصفحة العنوان)؛ لا يُنشئ نظام خرائط جديد، فقط يعرض نفس نوع الرابط. */
+  const riderMapEmbedUrl = (lat, lng) => 'https://maps.google.com/maps?q=' + lat + ',' + lng + '&z=15&output=embed';
+  const riderMapLinkUrl = (lat, lng) => 'https://www.google.com/maps?q=' + lat + ',' + lng;
+
+  function renderRidersMap(riders) {
+    const box = $('#riders-map'), empty = $('#riders-map-empty');
+    if (!box || !empty) return;
+    const online = riders.filter((r) => r.is_online && typeof r.latitude === 'number' && typeof r.longitude === 'number'
+      && isFinite(r.latitude) && isFinite(r.longitude));
+    empty.hidden = online.length > 0;
+    online.sort((a, b) => new Date(b.location_updated_at || 0) - new Date(a.location_updated_at || 0));
+    box.innerHTML = online.map((r) => '<div class="rider-map-card">' +
+      '<div class="rider-map-card__frame"><iframe title="موقع ' + esc(r.name || 'مندوب') + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="' + riderMapEmbedUrl(r.latitude, r.longitude) + '"></iframe></div>' +
+      '<div class="rider-map-card__info"><strong>' + esc(r.name || 'مندوب') + '</strong>' +
+      '<span class="admin-badge admin-badge--active">متصل</span>' +
+      '<small>آخر تحديث موقع: ' + formatDate(r.location_updated_at) + '</small>' +
+      '<a href="' + riderMapLinkUrl(r.latitude, r.longitude) + '" target="_blank" rel="noopener">فتح في خرائط جوجل</a></div>' +
+      '</div>').join('');
+  }
+
   function renderRidersFull(riders) {
     const body = $('#riders-full-body');
     $('#riders-full-empty').hidden = riders.length > 0;
@@ -323,6 +344,7 @@
   loaders.riders = async function () {
     const riders = await api('/admin/riders');
     renderRidersFull(riders || []);
+    renderRidersMap(riders || []);
   };
 
   document.addEventListener('click', (e) => {
