@@ -51,6 +51,21 @@
 .dash__me-t small { font-size: var(--fs-xs); color: var(--c-ink-3); }
 .dash__view { display: grid; gap: var(--sp-5); align-content: start; width: 100%; max-width: 1440px; padding: var(--sp-6); }
 .dash__scrim { display: none; }
+
+/* ---------- سكيلتون لوحة البائع: يظهر أثناء التحقق من حالة المتجر (seller-gate)
+   وتحميل بياناته من Supabase، بنفس شبكة .dash الحقيقية، ويُستبدل بالمحتوى الحقيقي دفعة واحدة ---------- */
+.skel-dash__side { display: flex; flex-direction: column; gap: var(--sp-6); padding-inline: var(--sp-5); }
+.skel-dash__logo { width: 60%; height: 26px; }
+.skel-dash__nav { display: grid; gap: var(--sp-3); margin-top: var(--sp-2); }
+.skel-dash__link { height: 18px; width: 80%; }
+.skel-dash__top { gap: var(--sp-4); }
+.skel-dash__search { flex: 1; max-width: 420px; height: 42px; border-radius: var(--r-pill); }
+.skel-dash__avatar { width: 36px; height: 36px; border-radius: 50%; margin-inline-start: auto; }
+.skel-dash__stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.skel-dash__stat { height: 84px; border-radius: 16px; }
+.skel-dash__panel { height: 360px; border-radius: 18px; }
+@media (max-width: 979px) { .skel-dash .skel-dash__side { display: none; } .skel-dash .dash { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .skel-dash__stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .skel-dash__search { display: none; } }
 .bell { position: relative; }
 .bell__panel { position: absolute; inset-inline-end: 0; inset-block-start: calc(100% + 0.4rem); z-index: 40; width: min(360px, 90vw); max-height: 70vh; overflow-y: auto; background: var(--c-bg); border: 1px solid var(--c-line); border-radius: var(--r-md); box-shadow: var(--shadow-pop); }
 .bell__head { display: flex; align-items: center; justify-content: space-between; padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--c-line); }
@@ -294,6 +309,11 @@
 .rider-online[data-online="1"] .dot { background: var(--c-success); }
 .rider-section { display: grid; gap: var(--sp-3); }
 .rider-section h2 { font-size: var(--fs-md); }
+
+/* سكيلتون لوحة المندوب: يظهر خلال فحص الحساب (rider-gate) وجلب لوحة التوصيلات */
+.skel-rider__title { height: 26px; width: 220px; }
+.skel-rider__toggle { height: 40px; width: 150px; border-radius: var(--r-pill); }
+.skel-rider__list { height: 140px; border-radius: 16px; }
 .rider-list { display: grid; gap: var(--sp-3); }
 .rider-card { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-4); background: var(--c-bg); border: 1px solid var(--c-line); border-radius: var(--r-md); }
 .rider-card__info { display: grid; gap: 0.2rem; min-width: 0; }
@@ -309,3 +329,18 @@
 .storehead h1 { font-size: var(--fs-xl); }
 .storehead__meta { display: flex; align-items: center; gap: 0.35rem; margin-top: 0.3rem; font-size: var(--fs-sm); color: var(--c-ink-3); }
 .storehead__desc { max-width: 60ch; margin-top: var(--sp-2); color: var(--c-ink-2); }
+
+/* سكيلتون صفحة المتجر العامة: يظهر بينما يقرأ store-page.js بيانات المتجر من Supabase */
+#store-root:empty {
+  display: block; padding-block: var(--sp-6) var(--sp-8);
+}
+#store-root:empty::before {
+  content: ""; display: block; height: 88px; margin-bottom: var(--sp-6); border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+  background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+}
+#store-root:empty::after {
+  content: ""; display: block; height: 420px; border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+  background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+}

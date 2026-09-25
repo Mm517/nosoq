@@ -9,6 +9,20 @@
   .desk-only { display: none !important; }
   .m-home { display: block; padding-bottom: var(--sp-4); }
   .m-home .container { padding-inline: var(--gutter); }
+
+  /* سكيلتون الرئيسية على الموبايل: يظهر بينما js/mobile-home.js يبني القسم،
+     شكل تقريبي للافتة + شريط الأقسام + صف بطاقات، ويختفي فور امتلاء #m-home */
+  .m-home:empty { padding-block: var(--sp-3) 0; }
+  .m-home:empty::before {
+    content: ""; display: block; height: 156px; margin-inline: var(--gutter); border-radius: var(--r-md);
+    background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+    background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+  }
+  .m-home:empty::after {
+    content: ""; display: block; height: 210px; margin: var(--sp-4) var(--gutter) 0; border-radius: var(--r-md);
+    background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+    background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+  }
   .m-sec { padding-block: var(--sp-4) 0; }
   .m-sec > * + * { margin-top: var(--sp-3); }
 

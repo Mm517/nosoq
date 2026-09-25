@@ -6,6 +6,31 @@
 .hero-rail { padding-block: var(--sp-4) var(--sp-3); }
 .tiles { display: grid; gap: var(--sp-4); padding-block: var(--sp-3) var(--sp-4); }
 .block { padding-block: var(--sp-5); }
+
+/* ---------- الرئيسية: سكيلتون الأقسام قبل أن يملأها js/home.js ----------
+   كل قسم فارغ (لسه ما اتبنى) يعرض شكلاً بنفس أبعاد المحتوى الحقيقي،
+   ويختفي تلقائياً بمجرد أن يضع home.js محتواه الحقيقي بداخله. */
+.hero-rail:empty {
+  display: block; min-height: 440px; border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+  background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+}
+.tile-row:empty {
+  display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 1fr);
+  min-height: 300px;
+}
+@media (min-width: 620px) { .tile-row:empty { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1080px) { .tile-row:empty { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.tile-row:empty::before, .tile-row:empty::after {
+  content: ""; display: block; min-height: 300px; border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+  background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+}
+.block:empty {
+  display: block; min-height: 340px; border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--c-surface) 25%, var(--c-surface-hi) 37%, var(--c-surface) 63%);
+  background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+}
 .tcard--wide { grid-column: 1 / -1; }
 @media (min-width: 1080px) { .tcard--wide { grid-column: span 2; } }
 .tcard--wide .coupon-list { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
@@ -258,6 +283,13 @@
 .checkout__side .summary { margin-top: 0; }
 .checkout__side-inner { display: grid; gap: var(--sp-4); padding: var(--sp-5); background: var(--c-surface); border-radius: var(--r-md); }
 .checkout__side-inner .summary { padding: 0; background: none; }
+
+/* سكيلتون ملخص الدفع: يظهر خلال اللحظة القصيرة قبل حساب checkout.js للمجموع */
+#checkout-summary:empty {
+  display: block; min-height: 320px; border-radius: var(--r-md);
+  background: linear-gradient(90deg, var(--c-surface-2) 25%, var(--c-surface-hi) 37%, var(--c-surface-2) 63%);
+  background-size: 400% 100%; animation: shimmer 1.5s ease infinite;
+}
 
 .confirm { display: grid; justify-items: center; gap: var(--sp-4); max-width: 620px; margin: 0 auto; padding-block: var(--sp-8); text-align: center; }
 .confirm__icon { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; background: var(--c-success-soft); color: var(--c-success); }

@@ -396,7 +396,8 @@
   }
 
   async function boot() {
-    root.innerHTML = '';
+    /* لا نمسح root هنا: الصفحة تبدأ بسكيلتون ثابت في seller.html، فيبقى ظاهراً
+       (مع Shimmer) طوال فحص حالة المتجر، ثم gateScreen()/render() يستبدله بالمحتوى الحقيقي دفعة واحدة. */
     const gate = await (window.NasaqSellerGateReady || Promise.resolve({ status: 'active' }));
     if (gate.status !== 'active') { gateScreen(gate); return; }
     /* يربط لوحة البائع بمتجره الحقيقي المعتمد في Supabase (بدل أي متجر محلي

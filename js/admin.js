@@ -85,6 +85,29 @@
       values.map((item) => '<option value="' + item + '"' + (item === value ? ' selected' : '') + '>' + (labels[item] || item) + '</option>').join('') + '</select>';
   }
 
+  /* ===================== سكيلتون عام: صفوف جدول أو بطاقات إحصائية ===================== */
+  /* يُستدعى قبل انتظار api() في كل loader، فيعرض صفوفاً/بطاقات بنفس عدد الأعمدة
+     الحقيقي مع Shimmer، ثم renderX() الحقيقية تستبدلها بمجرد وصول البيانات. */
+  function skeletonRows(bodySelector, cols, rows) {
+    const body = $(bodySelector);
+    if (!body) return;
+    const n = rows || 5;
+    let html = '';
+    for (let i = 0; i < n; i++) {
+      html += '<tr class="admin-skel-row" aria-hidden="true">' +
+        Array.from({ length: cols }).map(() => '<td><span class="skeleton skeleton--text" style="width:' + (50 + ((i * 37 + cols * 13) % 40)) + '%"></span></td>').join('') +
+        '</tr>';
+    }
+    body.innerHTML = html;
+  }
+  function skeletonStats(containerSelector, count) {
+    const el = $(containerSelector);
+    if (!el) return;
+    el.innerHTML = Array.from({ length: count || 5 }).map(() =>
+      '<div class="admin-stat" aria-hidden="true"><span class="skeleton skeleton--text admin-skel-stat__label"></span><span class="skeleton skeleton--title admin-skel-stat__value"></span></div>'
+    ).join('');
+  }
+
   /* ===================== نظرة عامة (stats) ===================== */
   function renderStats(data) {
     const stats = [
@@ -179,6 +202,7 @@
   }
 
   loaders.applications = async function () {
+    skeletonRows('#applications-body', 6);
     const type = $('#app-type-filter').value; const status = $('#app-status-filter').value;
     const qs = [];
     if (type) qs.push('type=' + encodeURIComponent(type));
@@ -223,6 +247,7 @@
   }
 
   loaders.users = async function () {
+    skeletonRows('#users-body', 8);
     const users = await api('/admin/users');
     renderUsers(users || []);
   };
@@ -282,6 +307,7 @@
   }
 
   loaders.sellers = async function () {
+    skeletonRows('#sellers-body', 8);
     const sellers = await api('/admin/sellers');
     renderSellers(sellers || []);
   };
@@ -306,27 +332,6 @@
   }
 
   /* ===================== 5) السائقون (Riders) ===================== */
-  /* خريطة السائقين المتصلين — بدون مفتاح Google Maps مطلوب (نفس تقنية العرض الخالية من مفتاح
-     المستخدمة في js/geo.js لصفحة العنوان)؛ لا يُنشئ نظام خرائط جديد، فقط يعرض نفس نوع الرابط. */
-  const riderMapEmbedUrl = (lat, lng) => 'https://maps.google.com/maps?q=' + lat + ',' + lng + '&z=15&output=embed';
-  const riderMapLinkUrl = (lat, lng) => 'https://www.google.com/maps?q=' + lat + ',' + lng;
-
-  function renderRidersMap(riders) {
-    const box = $('#riders-map'), empty = $('#riders-map-empty');
-    if (!box || !empty) return;
-    const online = riders.filter((r) => r.is_online && typeof r.latitude === 'number' && typeof r.longitude === 'number'
-      && isFinite(r.latitude) && isFinite(r.longitude));
-    empty.hidden = online.length > 0;
-    online.sort((a, b) => new Date(b.location_updated_at || 0) - new Date(a.location_updated_at || 0));
-    box.innerHTML = online.map((r) => '<div class="rider-map-card">' +
-      '<div class="rider-map-card__frame"><iframe title="موقع ' + esc(r.name || 'مندوب') + '" loading="lazy" referrerpolicy="no-referrer-when-downgrade" src="' + riderMapEmbedUrl(r.latitude, r.longitude) + '"></iframe></div>' +
-      '<div class="rider-map-card__info"><strong>' + esc(r.name || 'مندوب') + '</strong>' +
-      '<span class="admin-badge admin-badge--active">متصل</span>' +
-      '<small>آخر تحديث موقع: ' + formatDate(r.location_updated_at) + '</small>' +
-      '<a href="' + riderMapLinkUrl(r.latitude, r.longitude) + '" target="_blank" rel="noopener">فتح في خرائط جوجل</a></div>' +
-      '</div>').join('');
-  }
-
   function renderRidersFull(riders) {
     const body = $('#riders-full-body');
     $('#riders-full-empty').hidden = riders.length > 0;
@@ -342,9 +347,9 @@
   }
 
   loaders.riders = async function () {
+    skeletonRows('#riders-full-body', 7);
     const riders = await api('/admin/riders');
     renderRidersFull(riders || []);
-    renderRidersMap(riders || []);
   };
 
   document.addEventListener('click', (e) => {
@@ -377,6 +382,7 @@
   }
 
   loaders.products = async function () {
+    skeletonRows('#products-body', 7);
     const status = $('#product-status-filter').value;
     const products = await api('/admin/products' + (status ? '?status=' + encodeURIComponent(status) : ''));
     renderProducts(products || []);
@@ -430,6 +436,7 @@
   }
 
   loaders.orders = async function () {
+    skeletonRows('#orders-body', 9);
     const orders = await api('/admin/orders' + ($('#order-filter').value ? '?status=' + encodeURIComponent($('#order-filter').value) : ''));
     renderOrders(orders || []);
   };
@@ -459,6 +466,7 @@
 
   /* ===================== 8) اللوحة المالية ===================== */
   loaders.financial = async function () {
+    skeletonStats('#financial-grid', 7);
     const f = await api('/admin/financial-summary');
     const cards = [
       ['إجمالي المبيعات', f.total_sales], ['عمولات المنصة', f.platform_commission],
@@ -485,6 +493,7 @@
       '</tr>').join('');
   }
   loaders.transactions = async function () {
+    skeletonRows('#transactions-body', 9);
     const status = $('#transaction-status-filter').value;
     const list = await api('/admin/transactions' + (status ? '?status=' + encodeURIComponent(status) : ''));
     renderTransactions(list || []);
@@ -503,7 +512,7 @@
       '<td class="admin-priority admin-priority--' + esc(ticket.priority) + '">' + esc(ticket.priority) + '</td><td>' +
       statusSelect(ticket.status, ['open', 'in_progress', 'resolved', 'closed'], ticket.id, 'support') + '</td></tr>').join('');
   }
-  loaders.support = async function () { renderSupport((await api('/admin/support')) || []); };
+  loaders.support = async function () { skeletonRows('#support-body', 5); renderSupport((await api('/admin/support')) || []); };
 
   /* ===================== التوصيلات (Deliveries) — كما هو ===================== */
   let cachedRiders = [];
@@ -525,6 +534,7 @@
     }).join('');
   }
   loaders.deliveries = async function () {
+    skeletonRows('#deliveries-body', 5);
     loadRadius().catch((err) => setNotice(err.message, true));
     const [deliveries, riders] = await Promise.all([api('/admin/deliveries'), api('/admin/riders')]);
     cachedRiders = riders || [];
@@ -555,6 +565,7 @@
   /* ===================== تحميل أولي + تحديث ===================== */
   async function loadOverviewAndFirstTab() {
     setNotice('');
+    skeletonStats('#admin-stats', 5);
     const summary = await api('/admin/summary');
     renderStats(summary);
     Object.keys(loaded).forEach((k) => { loaded[k] = false; });

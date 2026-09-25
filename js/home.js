@@ -142,19 +142,41 @@
   if (t2) t2.innerHTML = row2.join('');
 
   /* ---------- 4) كاروسيلات المنتجات ---------- */
+  /* سكيلتون على شكل بطاقات (نفس نظام #new-grid) يظهر لحظياً في كل قسم قبل
+     أن يُستبدل بالكاروسيل الحقيقي — على الكمبيوتر فقط، بدون أي تأثير على الموبايل. */
+  const railSkeleton = (n) => {
+    let items = '';
+    for (let i = 0; i < n; i++) {
+      items += '<div class="car__item"><div class="card card--skeleton" aria-hidden="true">' +
+        '<div class="card__media skeleton"></div>' +
+        '<div class="skeleton skeleton--line"></div><div class="skeleton skeleton--line skeleton--short"></div>' +
+      '</div></div>';
+    }
+    return '<div class="car car--rail car--skeleton" aria-hidden="true"><div class="car__wrap"><div class="car__track">' + items + '</div></div></div>';
+  };
+
   const moreRoot = $('more-root');
   if (moreRoot) {
-    moreRoot.innerHTML = UI.carousel({ id: 'car-more', title: 'منتجات قد تهمّك', href: 'shop.html', items: all.slice().sort(byFeatured).sort(sponsoredFirst).map(UI.pcard) });
+    UI.load(moreRoot, {
+      count: 4, skeleton: railSkeleton(4),
+      render: () => UI.carousel({ id: 'car-more', title: 'منتجات قد تهمّك', href: 'shop.html', items: all.slice().sort(byFeatured).sort(sponsoredFirst).map(UI.pcard) })
+    }).then(() => UI.initCarousels(moreRoot));
   }
   const dealsRoot = $('deals-root');
   if (dealsRoot && discounted.length) {
-    dealsRoot.innerHTML = UI.carousel({ id: 'car-deals', title: 'عروض لفترة محدودة', href: 'shop.html?sale=1', more: 'عرض الكل', items: discounted.map(UI.pcard) });
+    UI.load(dealsRoot, {
+      count: 4, skeleton: railSkeleton(4),
+      render: () => UI.carousel({ id: 'car-deals', title: 'عروض لفترة محدودة', href: 'shop.html?sale=1', more: 'عرض الكل', items: discounted.map(UI.pcard) })
+    }).then(() => UI.initCarousels(dealsRoot));
   }
   const recentRoot = $('recent-root');
   const seen = UI.recent.list();
   if (recentRoot && seen.length) {
     recentRoot.hidden = false;
-    recentRoot.innerHTML = UI.carousel({ id: 'car-recent', title: 'شاهدتها مؤخراً', items: seen.map(UI.pcard) });
+    UI.load(recentRoot, {
+      count: Math.min(4, seen.length), skeleton: railSkeleton(Math.min(4, seen.length)),
+      render: () => UI.carousel({ id: 'car-recent', title: 'شاهدتها مؤخراً', items: seen.map(UI.pcard) })
+    }).then(() => UI.initCarousels(recentRoot));
   }
   UI.initCarousels();
 

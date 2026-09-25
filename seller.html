@@ -38,6 +38,34 @@
 </head>
 <body data-page="seller-dash">
   <noscript><p style="padding:1rem;text-align:center">تحتاج لوحة البائع إلى تفعيل JavaScript.</p></noscript>
-  <div id="dash-root"></div>
+  <div id="dash-root" aria-busy="true">
+    <div class="dash skel-dash" aria-hidden="true">
+      <aside class="dash__side skel-dash__side">
+        <div class="skeleton skel-dash__logo"></div>
+        <div class="skel-dash__nav">
+          <div class="skeleton skel-dash__link"></div>
+          <div class="skeleton skel-dash__link"></div>
+          <div class="skeleton skel-dash__link"></div>
+          <div class="skeleton skel-dash__link"></div>
+          <div class="skeleton skel-dash__link"></div>
+        </div>
+      </aside>
+      <div class="dash__main">
+        <div class="dash__top skel-dash__top">
+          <div class="skeleton skel-dash__search"></div>
+          <div class="skeleton skel-dash__avatar"></div>
+        </div>
+        <div class="dash__view">
+          <div class="admin-stats skel-dash__stats">
+            <div class="skeleton skel-dash__stat"></div>
+            <div class="skeleton skel-dash__stat"></div>
+            <div class="skeleton skel-dash__stat"></div>
+            <div class="skeleton skel-dash__stat"></div>
+          </div>
+          <div class="skeleton skel-dash__panel"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
