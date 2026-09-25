@@ -120,7 +120,7 @@
   row2.push(UI.tileCard({
     id: 'tc-budget', title: 'تسوّق حسب الميزانية', href: 'shop.html',
     tiles: budgets.map((m, i) => UI.tile({
-      href: 'shop.html?max=' + m, big: m, small: 'ر.س فأقل', tone: budgetTones[i], label: 'أقل من ' + m + ' ر.س', sub: count(all.filter((p) => p.price <= m).length)
+      href: 'shop.html?max=' + m, big: m, small: 'ج.م فأقل', tone: budgetTones[i], label: 'أقل من ' + m + ' ج.م', sub: count(all.filter((p) => p.price <= m).length)
     }))
   }));
 

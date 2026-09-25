@@ -79,6 +79,17 @@
           phone: $('#su-phone', signupForm).value.trim(),
           password: $('#su-pass', signupForm).value
         };
+        /* نطلب موقع الجهاز الطبيعي (GPS) مرة واحدة عند التسجيل — بدون خريطة جوجل،
+           فقط إحداثيات المتصفح. لو المستخدم رفض الإذن أو تعذّر تحديد الموقع
+           نكمل التسجيل عادي بدون ما نمنعه. */
+        if (window.Geo && window.Geo.locate) {
+          try {
+            const pos = await window.Geo.locate();
+            fields.latitude = pos.lat;
+            fields.longitude = pos.lng;
+            fields.location_accuracy = pos.accuracy;
+          } catch (_) { /* تجاهل: الموقع اختياري ولا يمنع إنشاء الحساب */ }
+        }
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },

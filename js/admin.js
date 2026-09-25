@@ -32,7 +32,7 @@
     body: JSON.stringify(body)
   });
 
-  const formatMoney = (value) => Number(value || 0).toLocaleString('ar-EG', { style: 'currency', currency: 'ILS', maximumFractionDigits: 2 });
+  const formatMoney = (value) => Number(value || 0).toLocaleString('ar-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 });
   const formatDate = (value) => value ? new Date(value).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const setNotice = (message, isError) => { const node = $('#admin-notice'); node.textContent = message || ''; node.hidden = !message; node.style.background = isError ? '#fde8e6' : ''; node.style.color = isError ? '#7a1f17' : ''; };
   const badge = (status) => '<span class="admin-badge admin-badge--' + esc(status) + '">' + esc(labels[status] || status || '—') + '</span>';

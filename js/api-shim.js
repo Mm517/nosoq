@@ -92,6 +92,14 @@
       phone: extra.phone || (user.user_metadata && user.user_metadata.phone) || null,
       role: role || 'customer'
     };
+    /* موقع GPS اختياري (يُرسَل عند التسجيل فقط) — لا نلمس الأعمدة لو مش موجود
+       عشان مانمسحش موقع محفوظ سابقاً في مكالمات تسجيل الدخول العادية. */
+    if (extra.latitude != null && extra.longitude != null) {
+      row.latitude = Number(extra.latitude);
+      row.longitude = Number(extra.longitude);
+      row.location_accuracy = extra.location_accuracy != null ? Number(extra.location_accuracy) : null;
+      row.location_updated_at = new Date().toISOString();
+    }
     const { error } = await sb.from('marketplace_users').upsert(row, { onConflict: 'external_id' });
     if (error) throw new Error(error.message);
     return row;
@@ -123,7 +131,7 @@
 
   /* ===================== AUTH ===================== */
   on('POST', 'auth/signup', async (params, query, body) => {
-    const { email, password, name, phone } = body || {};
+    const { email, password, name, phone, latitude, longitude, location_accuracy } = body || {};
     if (!email || !password || !name || !phone) return errRes('أكمل الاسم والبريد والهاتف وكلمة المرور.');
     const { data, error } = await sb.auth.signUp({
       email: String(email).trim().toLowerCase(),
@@ -141,7 +149,7 @@
       if (alreadyExists) return errRes('هذا البريد الإلكتروني مسجَّل بحساب من قبل. سجّل الدخول بدلاً من إنشاء حساب جديد.', 400);
       return errRes('تم إنشاء الحساب. الرجاء تأكيد بريدك الإلكتروني من الرسالة المُرسلة إليك قبل تسجيل الدخول.', 400);
     }
-    await syncMarketplaceUser(data.user, 'customer', { name, phone });
+    await syncMarketplaceUser(data.user, 'customer', { name, phone, latitude, longitude, location_accuracy });
     const sessionUser = { userId: data.user.id, email: data.user.email, role: 'customer', name: String(name).trim() };
     persistLocal(data.session.access_token, sessionUser);
     return okRes({ access_token: data.session.access_token, user: sessionUser }, 201);
