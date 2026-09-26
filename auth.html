@@ -93,6 +93,14 @@
               <label for="su-pass">كلمة المرور</label>
               <input class="input" id="su-pass" type="password" autocomplete="new-password" required>
             </div>
+            <div class="field">
+              <div class="field__row">
+                <label id="su-geo-label">موقعك</label>
+              </div>
+              <p class="onboarding__sub" style="margin-top:0">حدّد موقعك على الخريطة حتى يظهر متجرك ومندوب التوصيل الأقرب لك بدقة.</p>
+              <div data-geo-root aria-labelledby="su-geo-label"></div>
+              <p class="field__error" data-su-geo-error role="alert"></p>
+            </div>
             <label class="check">
               <input type="checkbox" required>
               <span>أوافق على شروط الاستخدام وسياسة الخصوصية</span>

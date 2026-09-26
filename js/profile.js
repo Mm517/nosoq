@@ -40,8 +40,13 @@
     const orderMarkup = orders === null
       ? '<div class="profile-orders__empty">تعذّر تحميل طلباتك الآن. <a href="javascript:location.reload()">أعد المحاولة</a></div>'
       : orderMarkupFrom(orders);
+    const hasLocation = account.latitude != null && account.longitude != null;
+    const locationSummary = hasLocation
+      ? esc(account.address || (Number(account.latitude).toFixed(5) + ', ' + Number(account.longitude).toFixed(5)))
+      : 'لم تحدّد موقعك بعد.';
     root.innerHTML = '<section class="profile-hero"><div class="profile-identity"><div class="profile-avatar" aria-hidden="true">' + esc(initials) + '</div><div><p class="profile-kicker">مرحباً بك في نَسَق</p><h1>' + esc(name) + '</h1><p class="profile-email">' + esc(account.email || '') + '</p></div></div><span class="profile-role">' + esc(roleNames[account.role] || roleNames.customer) + '</span></section>' +
       '<div class="profile-grid"><section class="profile-card"><h2>بيانات الحساب</h2><p class="profile-card__sub">عدّل بياناتك وستظهر في حسابك وكل طلباتك القادمة.</p><form class="profile-form" data-profile-form><div class="profile-fields"><div class="field"><label for="profile-name">الاسم</label><input class="input" id="profile-name" name="name" value="' + esc(name) + '" autocomplete="name" required></div><div class="field"><label for="profile-phone">رقم الهاتف</label><input class="input" id="profile-phone" name="phone" value="' + esc(account.phone || '') + '" autocomplete="tel" dir="ltr" required></div><div class="field"><label for="profile-email">البريد الإلكتروني</label><input class="input" id="profile-email" value="' + esc(account.email || '') + '" dir="ltr" readonly></div></div><p class="profile-form__message" data-profile-message role="status"></p><div class="profile-actions"><button class="btn btn--primary" type="submit">حفظ البيانات</button><a class="btn btn--ghost" href="shop.html?wishlist=1">المفضلة</a><a class="btn btn--ghost" href="cart.html">سلة التسوق</a><button class="btn btn--quiet" type="button" data-profile-logout>تسجيل الخروج</button></div></form></section>' +
+      '<section class="profile-card" data-location-card><h2>موقعك</h2><p class="profile-card__sub" data-location-summary>' + locationSummary + '</p><button class="btn btn--ghost" type="button" data-location-edit-toggle>' + (hasLocation ? 'تعديل الموقع' : 'تحديد الموقع') + '</button><form class="profile-form" data-location-form hidden><div data-geo-root></div><p class="profile-form__message" data-location-message role="status"></p><div class="profile-actions"><button class="btn btn--primary" type="submit">حفظ الموقع</button><button class="btn btn--quiet" type="button" data-location-cancel>إلغاء</button></div></form></section>' +
       '<section class="profile-card"><h2>مساحتك في نَسَق</h2><p class="profile-card__sub">الوصول السريع للأدوات المناسبة لدورك.</p><div class="profile-role-nav">' + roleLink(account) + (account.role === 'customer' ? '<a class="profile-role-link" href="become-rider.html"><span><strong>انضم كمندوب توصيل</strong><br><small>قدّم طلبك وابدأ رحلتك مع نَسَق</small></span><span aria-hidden="true">←</span></a>' : '') + '</div></section>' +
       '<section class="profile-card profile-orders"><h2>طلباتك</h2><p class="profile-card__sub">آخر الطلبات المرتبطة بحسابك، محدّثة مباشرة من قاعدة البيانات.</p>' + orderMarkup + '</section></div>';
     const form = root.querySelector('[data-profile-form]');
@@ -66,6 +71,58 @@
         button.disabled = false;
       }
     });
+    /* ---------- تعديل الموقع ---------- */
+    const locationCard = root.querySelector('[data-location-card]');
+    if (locationCard) {
+      const toggleBtn = locationCard.querySelector('[data-location-edit-toggle]');
+      const form = locationCard.querySelector('[data-location-form]');
+      const cancelBtn = locationCard.querySelector('[data-location-cancel]');
+      const geoRoot = locationCard.querySelector('[data-geo-root]');
+      let geoCtl = null;
+      const openForm = () => {
+        form.hidden = false;
+        toggleBtn.hidden = true;
+        /* نركّب أداة الخريطة أول ما النموذج يظهر فعلياً (مش وهو مخفي) عشان خريطة
+           جوجل التفاعلية تترسم بمقاس صحيح */
+        if (!geoCtl && window.Geo) {
+          geoCtl = window.Geo.mount(geoRoot, {
+            value: hasLocation ? { lat: account.latitude, lng: account.longitude, formatted: account.address || '', placeId: account.google_place_id || '' } : {}
+          });
+        }
+      };
+      const closeForm = () => { form.hidden = true; toggleBtn.hidden = false; };
+      toggleBtn.addEventListener('click', openForm);
+      cancelBtn.addEventListener('click', closeForm);
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const message = form.querySelector('[data-location-message]');
+        const geoValue = geoCtl ? geoCtl.getValue() : null;
+        if (!geoValue || geoValue.lat == null || geoValue.lng == null) {
+          message.textContent = 'من فضلك حدّد موقعك على الخريطة أولاً.';
+          return;
+        }
+        const button = form.querySelector('button[type="submit"]');
+        button.disabled = true;
+        message.textContent = 'جارٍ حفظ الموقع…';
+        try {
+          const response = await window.NasaqCloud.request('/store/profile', {
+            name: account.name,
+            phone: account.phone,
+            latitude: geoValue.lat,
+            longitude: geoValue.lng,
+            address: geoValue.formatted || null,
+            google_place_id: geoValue.placeId || null
+          }, 'PATCH');
+          const next = Object.assign({}, account, response.profile || {});
+          localStorage.setItem('nasaq_session_v1', JSON.stringify(next));
+          render(next, orders);
+        } catch (error) {
+          message.textContent = error.message || 'تعذّر حفظ الموقع.';
+          button.disabled = false;
+        }
+      });
+    }
+
     const logout = root.querySelector('[data-profile-logout]');
     if (logout) logout.addEventListener('click', () => {
       const done = () => { if (window.NasaqCloud) window.NasaqCloud.clearSession(); location.href = 'index.html'; };

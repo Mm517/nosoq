@@ -23,7 +23,8 @@
   const norm = (a) => ({
     lat: Math.round(Number(a.lat) * 1e6) / 1e6, lng: Math.round(Number(a.lng) * 1e6) / 1e6,
     formatted: s(a.formatted), country: s(a.country), countryCode: s(a.countryCode), region: s(a.region),
-    city: s(a.city), area: s(a.area), street: s(a.street), houseNumber: s(a.houseNumber), postal: s(a.postal)
+    city: s(a.city), area: s(a.area), street: s(a.street), houseNumber: s(a.houseNumber), postal: s(a.postal),
+    placeId: s(a.placeId)
   });
 
   /* ---------- أدوات بسيطة ---------- */
@@ -86,7 +87,8 @@
     return norm({
       lat, lng, formatted: res.formatted_address, country: g('country'), countryCode: comp.country ? comp.country.short_name : '',
       region: g('administrative_area_level_1'), city: g('locality', 'administrative_area_level_2', 'postal_town'),
-      area: g('sublocality_level_1', 'sublocality', 'neighborhood'), street: g('route'), houseNumber: g('street_number'), postal: g('postal_code')
+      area: g('sublocality_level_1', 'sublocality', 'neighborhood'), street: g('route'), houseNumber: g('street_number'), postal: g('postal_code'),
+      placeId: res.place_id
     });
   }
 
@@ -117,7 +119,7 @@
     opts = opts || {};
     const id = ++uidN;
     let point = opts.value && opts.value.lat != null ? { lat: opts.value.lat, lng: opts.value.lng } : null;
-    let base = Object.assign({ country: '', countryCode: '', formatted: '' }, opts.value || {});
+    let base = Object.assign({ country: '', countryCode: '', formatted: '', placeId: '' }, opts.value || {});
     let map = null, moveG = null, mode = CFG.googleMapsKey ? 'google' : 'embed', reqId = 0, timer = 0;
 
     el.innerHTML =
@@ -154,7 +156,7 @@
       return v;
     }
     function fill(a) {
-      base = Object.assign({}, base, { formatted: a.formatted, country: a.country, countryCode: a.countryCode });
+      base = Object.assign({}, base, { formatted: a.formatted, country: a.country, countryCode: a.countryCode, placeId: a.placeId || '' });
       ['city', 'area', 'street', 'region', 'postal'].forEach((k) => { field(k).value = a[k] || ''; });
       if (a.houseNumber && !field('note').value) field('note').value = a.houseNumber;
       emit();
@@ -193,6 +195,8 @@
         say('تم تحديد العنوان. راجع التفاصيل وعدّلها إن لزم.');
       } catch (e) {
         if (my !== reqId) return;
+        /* فشل جلب العنوان لموقع جديد: نمسح formatted/placeId القديمين حتى لا يُحفظا مرتبطين بإحداثيات مختلفة */
+        base = Object.assign({}, base, { formatted: '', placeId: '' });
         emit();
         say('تعذّر جلب تفاصيل العنوان تلقائياً. اكتب التفاصيل يدوياً.', true);
       }

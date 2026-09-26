@@ -16,6 +16,9 @@
     function activate(name) {
       tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === name)));
       $$('.auth-panel').forEach((p) => { p.hidden = p.id !== 'panel-' + name; });
+      /* نؤجّل تركيب خريطة تحديد الموقع لحد ما تبويب "إنشاء حساب" يظهر فعلياً،
+         لأن خريطة جوجل التفاعلية ما بتترسمش صح جوه عنصر مخفي (hidden) بمقاس صفر */
+      if (name === 'signup') mountSignupGeo();
     }
 
     tabs.forEach((t) => t.addEventListener('click', () => activate(t.dataset.tab)));
@@ -24,6 +27,15 @@
     /* الرابط auth.html?tab=signup يفتح تبويب إنشاء الحساب مباشرة (من قائمة الحساب في الهيدر) */
     const wanted = new URLSearchParams(location.search).get('tab');
     if (wanted && tabs.some((t) => t.dataset.tab === wanted)) activate(wanted);
+  }
+
+  /* ---------- موقع المستخدم عند التسجيل (داخل نموذج إنشاء الحساب) ---------- */
+  let signupGeo = null;
+  function mountSignupGeo() {
+    if (signupGeo) return;
+    const root = $('#panel-signup [data-geo-root]');
+    if (!root || !window.Geo) return;
+    signupGeo = window.Geo.mount(root, {});
   }
 
   function formError(form, message) {
@@ -70,6 +82,15 @@
     signupForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       formError(signupForm, '');
+      const geoError = $('[data-su-geo-error]', signupForm);
+      if (geoError) geoError.textContent = '';
+      /* موقع المستخدم إلزامي عند إنشاء الحساب: نأخذه من أداة الخريطة (Geo) المضمَّنة
+         في نموذج التسجيل — تحديد يدوي على الخريطة، بحث عن عنوان، أو زر "موقعي الحالي". */
+      const geoValue = signupGeo ? signupGeo.getValue() : null;
+      if (!geoValue || geoValue.lat == null || geoValue.lng == null) {
+        if (geoError) geoError.textContent = 'من فضلك حدّد موقعك على الخريطة (بالضغط عليها، بالبحث عن عنوان، أو بزر "استخدم موقعي الحالي") قبل إنشاء الحساب.';
+        return;
+      }
       const button = $('button[type="submit"]', signupForm);
       button.disabled = true;
       try {
@@ -77,19 +98,12 @@
           email: $('#su-email', signupForm).value.trim(),
           name: $('#su-name', signupForm).value.trim(),
           phone: $('#su-phone', signupForm).value.trim(),
-          password: $('#su-pass', signupForm).value
+          password: $('#su-pass', signupForm).value,
+          latitude: geoValue.lat,
+          longitude: geoValue.lng,
+          address: geoValue.formatted || null,
+          google_place_id: geoValue.placeId || null
         };
-        /* نطلب موقع الجهاز الطبيعي (GPS) مرة واحدة عند التسجيل — بدون خريطة جوجل،
-           فقط إحداثيات المتصفح. لو المستخدم رفض الإذن أو تعذّر تحديد الموقع
-           نكمل التسجيل عادي بدون ما نمنعه. */
-        if (window.Geo && window.Geo.locate) {
-          try {
-            const pos = await window.Geo.locate();
-            fields.latitude = pos.lat;
-            fields.longitude = pos.lng;
-            fields.location_accuracy = pos.accuracy;
-          } catch (_) { /* تجاهل: الموقع اختياري ولا يمنع إنشاء الحساب */ }
-        }
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },

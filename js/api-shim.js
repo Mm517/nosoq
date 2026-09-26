@@ -92,13 +92,15 @@
       phone: extra.phone || (user.user_metadata && user.user_metadata.phone) || null,
       role: role || 'customer'
     };
-    /* موقع GPS اختياري (يُرسَل عند التسجيل فقط) — لا نلمس الأعمدة لو مش موجود
-       عشان مانمسحش موقع محفوظ سابقاً في مكالمات تسجيل الدخول العادية. */
+    /* موقع المستخدم (يُرسَل عند التسجيل، أو عند تعديله لاحقاً من الإعدادات) — لا نلمس
+       الأعمدة لو مش موجود عشان مانمسحش موقع محفوظ سابقاً في مكالمات تسجيل الدخول العادية. */
     if (extra.latitude != null && extra.longitude != null) {
       row.latitude = Number(extra.latitude);
       row.longitude = Number(extra.longitude);
       row.location_accuracy = extra.location_accuracy != null ? Number(extra.location_accuracy) : null;
       row.location_updated_at = new Date().toISOString();
+      row.address = extra.address != null ? String(extra.address).trim() || null : null;
+      row.google_place_id = extra.google_place_id != null ? String(extra.google_place_id).trim() || null : null;
     }
     const { error } = await sb.from('marketplace_users').upsert(row, { onConflict: 'external_id' });
     if (error) throw new Error(error.message);
@@ -131,7 +133,7 @@
 
   /* ===================== AUTH ===================== */
   on('POST', 'auth/signup', async (params, query, body) => {
-    const { email, password, name, phone, latitude, longitude, location_accuracy } = body || {};
+    const { email, password, name, phone, latitude, longitude, location_accuracy, address, google_place_id } = body || {};
     if (!email || !password || !name || !phone) return errRes('أكمل الاسم والبريد والهاتف وكلمة المرور.');
     const { data, error } = await sb.auth.signUp({
       email: String(email).trim().toLowerCase(),
@@ -149,7 +151,7 @@
       if (alreadyExists) return errRes('هذا البريد الإلكتروني مسجَّل بحساب من قبل. سجّل الدخول بدلاً من إنشاء حساب جديد.', 400);
       return errRes('تم إنشاء الحساب. الرجاء تأكيد بريدك الإلكتروني من الرسالة المُرسلة إليك قبل تسجيل الدخول.', 400);
     }
-    await syncMarketplaceUser(data.user, 'customer', { name, phone, latitude, longitude, location_accuracy });
+    await syncMarketplaceUser(data.user, 'customer', { name, phone, latitude, longitude, location_accuracy, address, google_place_id });
     const sessionUser = { userId: data.user.id, email: data.user.email, role: 'customer', name: String(name).trim() };
     persistLocal(data.session.access_token, sessionUser);
     return okRes({ access_token: data.session.access_token, user: sessionUser }, 201);
@@ -193,7 +195,7 @@
   on('GET', 'store/profile', async () => {
     const session = await currentSession();
     if (!session) return errRes('سجّل الدخول أولاً.', 401);
-    const { data, error } = await sb.from('marketplace_users').select('external_id,email,name,phone,role,created_at').eq('external_id', session.userId).maybeSingle();
+    const { data, error } = await sb.from('marketplace_users').select('external_id,email,name,phone,role,created_at,latitude,longitude,address,google_place_id,location_accuracy,location_updated_at').eq('external_id', session.userId).maybeSingle();
     if (error) return errRes(error.message, 400);
     const profile = data || {
       external_id: session.userId,
@@ -213,16 +215,27 @@
     const phone = String(body.phone || '').trim();
     if (name.length < 2) return errRes('اكتب الاسم بالكامل.');
     if (phone.length < 3) return errRes('اكتب رقم هاتف صحيحاً.');
-    const { data, error } = await sb.from('marketplace_users').upsert({
+    const row = {
       external_id: session.userId,
       email: session.email || null,
       name,
       phone,
       role: session.role
-    }, { onConflict: 'external_id' }).select('external_id,email,name,phone,role,created_at').maybeSingle();
+    };
+    /* تعديل الموقع من الإعدادات اختياري: لا نلمس أعمدة الموقع لو الطلب مش شايل
+       إحداثيات جديدة (تعديل الاسم/الهاتف وحدهم ميمسحش الموقع المحفوظ). */
+    if (body.latitude != null && body.longitude != null) {
+      row.latitude = Number(body.latitude);
+      row.longitude = Number(body.longitude);
+      row.location_accuracy = body.location_accuracy != null ? Number(body.location_accuracy) : null;
+      row.location_updated_at = new Date().toISOString();
+      row.address = body.address != null ? String(body.address).trim() || null : null;
+      row.google_place_id = body.google_place_id != null ? String(body.google_place_id).trim() || null : null;
+    }
+    const { data, error } = await sb.from('marketplace_users').upsert(row, { onConflict: 'external_id' }).select('external_id,email,name,phone,role,created_at,latitude,longitude,address,google_place_id,location_accuracy,location_updated_at').maybeSingle();
     if (error) return errRes(error.message, 400);
     await sb.auth.updateUser({ data: { name, phone } });
-    return okRes({ profile: data || { external_id: session.userId, email: session.email, name, phone, role: session.role } });
+    return okRes({ profile: data || Object.assign({ created_at: null }, row) });
   });
 
   on('GET', 'store/orders/mine', async () => {
