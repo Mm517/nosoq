@@ -180,12 +180,33 @@
   function initApplicationForm(formId, kind) {
     const form = $('#' + formId);
     if (!form) return;
+
+    /* موقع المتجر على الخريطة (إلزامي لطلبات البائع فقط) — يحدَّد لحظة تقديم الطلب حتى
+       يظهر المتجر لاحقاً للمشترين القريبين منه (٥٠ كم فأقل)، لا حسب المحافظة المكتوبة. */
+    let sellerGeo = null;
+    if (kind === 'seller') {
+      const geoRoot = $('[data-geo-root]', form);
+      if (geoRoot && window.Geo) sellerGeo = window.Geo.mount(geoRoot, {});
+    }
+
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       if (!passwordsMatch(form)) { $('[data-pass-confirm]', form).focus(); return; }
       const terms = $('#f-terms', form);
       if (terms && !terms.checked) { terms.focus(); return; }
       if (!window.NasaqCloud) { formError(form, 'تعذّر الاتصال بالخادم.'); return; }
+
+      let sellerGeoValue = null;
+      if (kind === 'seller') {
+        sellerGeoValue = sellerGeo ? sellerGeo.getValue() : null;
+        const geoErr = $('#s-geo-error', form);
+        if (geoErr) geoErr.textContent = '';
+        if (!sellerGeoValue || sellerGeoValue.lat == null || sellerGeoValue.lng == null) {
+          if (geoErr) geoErr.textContent = 'حدّد موقع متجرك على الخريطة قبل إرسال الطلب.';
+          if ($('[data-geo-root]', form)) $('[data-geo-root]', form).scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
 
       const name = ($('[data-field-name]', form) || {}).value || '';
       const phone = ($('[data-field-phone]', form) || {}).value || '';
@@ -221,6 +242,8 @@
             storeName: ($('#s-store-name', form) || {}).value || '',
             license: ($('#s-license', form) || {}).value || '',
             address: ($('#s-address', form) || {}).value || '',
+            latitude: sellerGeoValue.lat,
+            longitude: sellerGeoValue.lng,
             category: 'clothes',
             documents
           });

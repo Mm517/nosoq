@@ -142,7 +142,9 @@
       email: s.email || null,
       description: s.description || null,
       logoUrl: logo,
-      address: s.address || {}
+      address: s.address || {},
+      latitude: (s.address && s.address.lat != null) ? s.address.lat : (s.latitude != null ? s.latitude : null),
+      longitude: (s.address && s.address.lng != null) ? s.address.lng : (s.longitude != null ? s.longitude : null)
     });
   }
 

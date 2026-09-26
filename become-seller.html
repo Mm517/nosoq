@@ -21,6 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/nasaq-config.js"></script>
   <script src="js/api-shim.js"></script>
+  <script src="js/buyer-location.js"></script>
   <script defer src="js/cloud.js"></script>
   <script defer src="js/demo-products.js"></script>
   <script defer src="js/products.js"></script>
@@ -103,6 +104,12 @@
               <div class="field span-2">
                 <label for="s-address">عنوان المحل بالتفصيل</label>
                 <textarea class="textarea" id="s-address" rows="2" placeholder="المحافظة، المركز أو الحي، اسم الشارع، علامة مميزة بجوار المحل" required></textarea>
+              </div>
+              <div class="field span-2">
+                <span class="label">موقع المتجر على الخريطة *</span>
+                <p class="field__hint" style="margin-top:0">هذا هو الموقع الذي سيرى المشترون على أساسه متجرك ضمن نطاق 50 كم منهم — حدّده بدقة.</p>
+                <div data-geo-root></div>
+                <p class="field__error" id="s-geo-error" aria-live="polite"></p>
               </div>
             </div>
           </fieldset>

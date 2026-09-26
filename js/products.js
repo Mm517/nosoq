@@ -449,8 +449,26 @@
     return [];
   }
 
+  /* نطاق ظهور المتاجر للمشتري: لا متجر يظهر (ولا أي منتج تابع له) لو أبعد من هذا الرقم
+     بالكيلومتر عن موقع المشتري الفعلي (إحداثيات، مش اسم محافظة/منطقة). القيمة نفسها
+     مُستخدمة كـ default داخل دالة public.nearby_products في قاعدة البيانات، وممرَّرة هنا
+     صراحة حتى تبقى واضحة ومربوطة في مكان واحد. */
+  const BUYER_RADIUS_KM = 50;
+
+  /* هل موقع المشتري (المسجَّل أو الزائر) معروف الآن؟ تُستخدم من shop.js/home.js لعرض
+     شريط "حدّد موقعك" بدل قائمة فارغة بلا تفسير. */
+  let locationKnown = false;
+  let buyerLoc = null;
+
   function buildCatalog() {
-    const rows = sbGet('products?select=*,stores(id,name,slug,status)&status=eq.active&order=added_at.desc&limit=500');
+    buyerLoc = (window.BuyerLocation && window.BuyerLocation.get()) || null;
+    locationKnown = !!buyerLoc;
+    if (!locationKnown) return []; /* بدون موقع معروف للمشتري لا تظهر أي متاجر/منتجات حقيقية (٥٠ كم فقط) */
+
+    /* الفلترة بالمسافة (٥٠ كم أو أقل، حسب الإحداثيات فقط) تتم بالكامل داخل قاعدة البيانات
+       عبر RPC واحدة: public.nearby_products — لا نجلب كل المنتجات هنا لنفلترها في المتصفح. */
+    const rows = sbGet('rpc/nearby_products?buyer_lat=' + encodeURIComponent(buyerLoc.lat) +
+      '&buyer_lng=' + encodeURIComponent(buyerLoc.lng) + '&radius_km=' + BUYER_RADIUS_KM + '&p_limit=500');
     const reviewRows = rows.length ? sbGet('reviews?select=product_id,rating&limit=5000') : [];
     const agg = {};
     reviewRows.forEach((r) => {
@@ -458,17 +476,16 @@
       a.sum += Number(r.rating || 0); a.count += 1;
     });
     return rows
-      .filter((row) => row.legacy_id != null && (!row.stores || row.stores.status === 'active'))
+      .filter((row) => row.legacy_id != null)
       .map((row) => {
-        const store = row.stores || null;
         const a = agg[row.id];
         const colors = Array.isArray(row.colors) && row.colors.length ? row.colors : [{ name: 'أساسي', hex: '#c5cad3' }];
         return {
           id: row.legacy_id,
           uuid: row.id,
-          storeId: store ? store.id : null,
-          sellerId: store ? store.id : null,
-          seller: store ? { id: store.id, name: store.name, slug: store.slug } : null,
+          storeId: row.store_id || null,
+          sellerId: row.store_id || null,
+          seller: row.store_id ? { id: row.store_id, name: row.store_name, slug: row.store_slug } : null,
           name: row.name || '',
           category: row.category || 'clothes',
           price: Number(row.price || 0),
@@ -485,7 +502,9 @@
           colors,
           description: row.description || '',
           details: Array.isArray(row.details) ? row.details : [],
-          photos: Array.isArray(row.photos) ? row.photos.filter(Boolean) : []
+          photos: Array.isArray(row.photos) ? row.photos.filter(Boolean) : [],
+          /* المسافة بالمتر بين المشتري وهذا المتجر — لعرضها في بطاقة المنتج/صفحة المتجر */
+          distanceM: row.distance_m == null ? null : Number(row.distance_m)
         };
       });
   }
@@ -600,6 +619,11 @@
 
   const Products = {
     categories: CATEGORIES,
+    /* موقع المشتري غير معروف؟ لا تُظهر واجهات المتجر "لا توجد نتائج" العادية، بل شريط
+       "حدّد موقعك" (راجع UI.locationBannerHTML وshop.js/home.js) */
+    locationKnown: () => locationKnown,
+    buyerLocation: () => buyerLoc,
+    radiusKm: BUYER_RADIUS_KM,
     all: () => PRODUCTS.slice(),
     byId: (id) => PRODUCTS.find((p) => p.id === Number(id)),
     categoryName: (id) => (CATEGORIES.find((c) => c.id === id) || {}).name || '',

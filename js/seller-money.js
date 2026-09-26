@@ -343,7 +343,19 @@
         if (e.target.dataset.pref) { const p = Object.assign({ orders: true, stock: true, ads: true }, M.seller.get().prefs); p[e.target.dataset.pref] = e.target.checked; M.seller.save({ prefs: p }); S.toast('تم حفظ التفضيلات'); }
         if (e.target.dataset.act === 'demo-toggle') { M.demo.set(e.target.checked); S.toast(e.target.checked ? 'تم تفعيل البيانات التجريبية' : 'تم إيقاف البيانات التجريبية'); }
       });
-      S.actions['st-loc'] = () => { const v = geo.getValue(); if (!(v.city || v.area)) { S.toast('حدّد الموقع أولاً', 'error'); return; } M.seller.save({ address: v }); S.toast('تم حفظ موقع المتجر'); };
+      S.actions['st-loc'] = () => {
+        const v = geo.getValue();
+        if (!(v.lat != null && v.lng != null)) { S.toast('حدّد موقعك على الخريطة بدقة (استخدم موقعي الحالي أو ابحث عن العنوان)', 'error'); return; }
+        const updated = M.seller.save({ address: v, latitude: v.lat, longitude: v.lng });
+        if (window.NasaqCloud && updated) {
+          window.NasaqCloud.syncStore(updated).then((res) => {
+            if (res) S.toast('تم حفظ موقع المتجر — سيظهر متجرك الآن للمشترين القريبين منه');
+            else S.toast('تعذّر حفظ الموقع في القاعدة، حاول مرة أخرى', 'error');
+          });
+        } else {
+          S.toast('تم حفظ الموقع محلياً فقط (لا يوجد اتصال بالخادم الآن)', 'error');
+        }
+      };
     }
     return { html, mount };
   };

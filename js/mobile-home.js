@@ -186,6 +186,7 @@
 
     root.innerHTML =
       heroHTML() +
+      (Products.locationKnown() ? '' : '<div class="container m-sec">' + UI.locationBannerHTML() + '</div>') +
       catsHTML() +
       (rec.length ? '<section class="m-sec container" aria-label="مقترحة لك">' + head('مقترحة لك') + rail(rec.map(mcard).join('')) + '</section>' : '') +
       (discounted.length ? '<section class="m-sec container" aria-label="عروض اليوم">' + head('عروض اليوم', 'shop.html?sale=1', '<span class="m-count">' + icon('clock') + 'ينتهي خلال ' + UI.countdownHTML() + '</span>') + rail(discounted.slice(0, 14).map(mcard).join('')) + '</section>' : '') +
@@ -195,6 +196,7 @@
 
     initRails();
     initHero();
+    UI.bindLocationBanner(root);
   }
 
   /* ---------- الأشرطة الأفقية: إظهار/إخفاء الأسهم حسب موضع التمرير ---------- */

@@ -84,6 +84,14 @@
       (has ? '<del class="price__old"><span class="sr-only">السعر قبل الخصم </span>' + money(p.oldPrice) + '</del>' : '') + '</p>';
   }
 
+  /* مسافة المتجر عن المشتري (لو معروفة) — تُعرض على بطاقة المنتج/صفحة المتجر */
+  function distanceHTML(p) {
+    if (p.distanceM == null || !window.Distance) return '';
+    const t = window.Distance.format(p.distanceM);
+    if (!t) return '';
+    return '<p class="card__distance"><span class="sr-only">يبعد عنك </span>' + icon('pin') + t + '</p>';
+  }
+
   function ratingHTML(p) {
     if (!p.reviews) return '<span class="rating rating--none">جديد · بلا تقييمات بعد</span>';
     return '<span class="rating"><span class="stars" style="--rate:' + p.rating + '" role="img" aria-label="التقييم ' + p.rating + ' من 5"></span>' +
@@ -167,7 +175,7 @@
       '</div>' +
       '<div class="card__body">' +
         '<h3 class="card__title"><a href="' + href + '">' + esc(p.name) + '</a></h3>' +
-        ratingHTML(p) + priceHTML(p) +
+        ratingHTML(p) + priceHTML(p) + distanceHTML(p) +
       '</div></article>';
   }
 
@@ -189,6 +197,7 @@
       (pct ? '<p class="pcard__list">السعر قبل الخصم: <del>' + money(p.oldPrice) + '</del></p>' : '') +
       (out ? '<p class="pcard__note is-out">نفدت الكمية</p>'
            : '<p class="pcard__note">يصلك ' + Products.delivery.standard() + '</p><p class="pcard__note pcard__note--muted">' + Products.shipNote(p) + '</p>') +
+      distanceHTML(p) +
     '</article>';
   }
 
@@ -330,6 +339,40 @@
     return '<div class="empty" role="status"><div class="empty__icon">' + icon(o.icon || 'bag') + '</div>' +
       '<h2 class="empty__title">' + esc(o.title) + '</h2><p class="empty__text">' + esc(o.text) + '</p>' +
       (acts ? '<div class="empty__actions">' + acts + '</div>' : '') + '</div>';
+  }
+
+  /* شريط "حدّد موقعك": يظهر بدل المتاجر/المنتجات لو موقع المشتري غير معروف —
+     المتجر يعرض فقط ما يبعد عن المشتري 50 كم أو أقل، وهذا يحتاج معرفة موقعه أولاً. */
+  function locationBannerHTML() {
+    const loggedIn = !!(window.NasaqCloud && window.NasaqCloud.getSession && window.NasaqCloud.getSession());
+    return '<div class="empty location-banner" role="status" data-location-banner>' +
+      '<div class="empty__icon">' + icon('pin') + '</div>' +
+      '<h2 class="empty__title">حدّد موقعك لنعرض لك المتاجر القريبة منك</h2>' +
+      '<p class="empty__text">نعرض فقط المتاجر والمنتجات التي تبعد عنك ' + (window.Products ? window.Products.radiusKm : 50) + ' كم أو أقل، حسب موقعك الفعلي.</p>' +
+      '<div class="empty__actions">' +
+        '<button type="button" class="btn btn--primary" data-locate-btn>' + icon('pin') + 'استخدم موقعي الحالي</button>' +
+        (loggedIn ? '<a class="btn btn--ghost" href="profile.html">تحديد الموقع من حسابي</a>' : '<a class="btn btn--ghost" href="auth.html?tab=signup">أنشئ حساباً واحفظ موقعك</a>') +
+      '</div><p class="field__error" data-locate-msg role="alert"></p></div>';
+  }
+
+  /* يُفعِّل زر «استخدم موقعي الحالي» داخل أي شريط location-banner معروض حالياً في الصفحة.
+     تُستدعى من shop.js/home.js/mobile-home.js بعد رسم الشريط. */
+  function bindLocationBanner(root) {
+    const scope = root || document;
+    const btn = scope.querySelector('[data-locate-btn]');
+    if (!btn || btn.dataset.bound) return;
+    btn.dataset.bound = '1';
+    btn.addEventListener('click', () => {
+      const msg = scope.querySelector('[data-locate-msg]');
+      btn.disabled = true;
+      if (msg) msg.textContent = 'جارٍ تحديد موقعك…';
+      window.BuyerLocation.locateGuest().then(() => {
+        location.reload();
+      }).catch((err) => {
+        btn.disabled = false;
+        if (msg) msg.textContent = err.message || 'تعذّر تحديد موقعك، حاول لاحقاً.';
+      });
+    });
   }
 
   /* ---------- بنود السلة ---------- */
@@ -857,6 +900,7 @@
 
   window.UI = {
     icon, card, cards, skeletonCards, load, emptyHTML, priceHTML, ratingHTML, badgesHTML, wishBtn,
+    distanceHTML, locationBannerHTML, bindLocationBanner,
     lineHTML, miniLineHTML, summaryHTML, shipProgressHTML,
     pcard, tile, tileCard, carousel, initCarousels, countdownHTML, loc, recent, sponsor, adSlide, adBanner, safeHref, safeImg,
     toast, announce, openCart, closeCart, openPanel, closePanel, updateCartCount, reduceMotion, $, $$

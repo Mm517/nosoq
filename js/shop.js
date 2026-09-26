@@ -146,6 +146,7 @@
   }
 
   function resultsHTML(list) {
+    if (!Products.locationKnown()) return '<div class="grid__empty" style="grid-column:1/-1">' + UI.locationBannerHTML() + '</div>';
     if (list.length) return UI.cards(list);
     const wishEmpty = state.wishlist && Wishlist.count() === 0 && !state.q && !state.cat;
     return '<div class="grid__empty" style="grid-column:1/-1">' + (wishEmpty
@@ -181,6 +182,7 @@
     renderMeta(list);
     renderAd();
     grid.innerHTML = resultsHTML(list);
+    UI.bindLocationBanner(grid);
   }
 
   /* ---------- الأحداث ---------- */
@@ -235,5 +237,5 @@
   syncControls();
   const first = filtered();
   renderMeta(first);
-  UI.load(grid, { count: 6, render: () => resultsHTML(filtered()) });
+  UI.load(grid, { count: 6, render: () => resultsHTML(filtered()) }).then(() => UI.bindLocationBanner(grid));
 })();

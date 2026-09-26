@@ -198,7 +198,7 @@
         /* فشل جلب العنوان لموقع جديد: نمسح formatted/placeId القديمين حتى لا يُحفظا مرتبطين بإحداثيات مختلفة */
         base = Object.assign({}, base, { formatted: '', placeId: '' });
         emit();
-        say('تم تحديد إحداثيات موقعك بنجاح. تعذّر جلب نص العنوان تلقائياً فقط — اكتب التفاصيل يدوياً أو اتركها فارغة، موقعك سيُحفظ.', true);
+        say('تعذّر جلب تفاصيل العنوان تلقائياً. اكتب التفاصيل يدوياً.', true);
       }
     }
 
@@ -218,37 +218,26 @@
       locBtn.disabled = false;
     });
 
-    /* البحث عن عنوان — اقتراحات تلقائية أثناء الكتابة (debounce)، مع إبقاء زر "بحث" ومفتاح Enter كبديل */
+    /* البحث عن عنوان */
     /* ليس <form> عمداً: الأداة تُوضع داخل نماذج أخرى (إنشاء المتجر) والمتصفح يحذف النماذج المتداخلة */
-    let searchTimer = 0, searchReqId = 0;
     q('[data-geo-go]').addEventListener('click', () => runSearch());
-    q('[data-geo-q]').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(searchTimer); runSearch(); } });
-    q('[data-geo-q]').addEventListener('input', () => {
-      clearTimeout(searchTimer);
+    q('[data-geo-q]').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } });
+    async function runSearch() {
       const text = q('[data-geo-q]').value.trim();
-      if (text.length < 3) { sugg.hidden = true; return; }
-      searchTimer = setTimeout(() => runSearch({ silent: true }), 400);
-    });
-    async function runSearch(opts) {
-      opts = opts || {};
-      const text = q('[data-geo-q]').value.trim();
-      if (text.length < 3) { if (!opts.silent) say('اكتب 3 أحرف على الأقل للبحث.', true); return; }
-      const my = ++searchReqId;
-      if (!opts.silent) say('جارٍ البحث…');
-      sugg.hidden = true;
+      if (text.length < 3) { say('اكتب 3 أحرف على الأقل للبحث.', true); return; }
+      say('جارٍ البحث…'); sugg.hidden = true;
       try {
         let list;
         if (mode === 'google' && map && map.__geocoder) {
           const r = await map.__geocoder.geocode({ address: text, language: lang() });
           list = (r.results || []).slice(0, 5).map((x) => fromGoogle(x, x.geometry.location.lat(), x.geometry.location.lng()));
         } else list = await nomSearch(text);
-        if (my !== searchReqId) return;
         if (!list.length) { say('لم نجد هذا العنوان. جرّب كتابته بشكل مختلف.', true); return; }
         say('اختر العنوان الصحيح من النتائج:');
         sugg.innerHTML = list.map((a, i) => '<li><button type="button" data-geo-pick="' + i + '">' + esc(a.formatted || (a.city + ' ' + a.area)) + '</button></li>').join('');
         sugg.hidden = false;
         sugg.__list = list;
-      } catch (err) { if (my === searchReqId) say('تعذّر البحث الآن، حاول لاحقاً.', true); }
+      } catch (err) { say('تعذّر البحث الآن، حاول لاحقاً.', true); }
     }
     sugg.addEventListener('click', (e) => {
       const b = e.target.closest('[data-geo-pick]'); if (!b) return;

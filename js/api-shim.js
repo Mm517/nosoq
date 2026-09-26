@@ -36,6 +36,7 @@
   }
   function okRes(body, status) { return jsonResponse(body, status || 200); }
   function errRes(message, status) { return jsonResponse({ error: message }, status || 400); }
+  function numOrNull(v) { const n = Number(v); return v != null && v !== '' && isFinite(n) ? n : null; }
 
   function translateAuthError(error) {
     const msg = (error && error.message) || '';
@@ -296,6 +297,12 @@
   on('POST', 'store/stores/upsert', async (params, query, body) => {
     body = body || {};
     const session = await currentSession();
+    /* موقع المتجر: يُقرأ من latitude/longitude المرسلة مباشرة، أو من داخل address.lat/lng
+       (شكل القيمة التي تُرجعها أداة اختيار الموقع Geo.mount). المتجر بلا موقع لن يظهر لأي
+       مشترٍ إطلاقًا (لا يمكن حساب مسافته)، لذلك هذا الحقل إلزامي. */
+    const lat = numOrNull(body.latitude != null ? body.latitude : (body.address && body.address.lat));
+    const lng = numOrNull(body.longitude != null ? body.longitude : (body.address && body.address.lng));
+    if (lat == null || lng == null) return errRes('حدّد موقع متجرك على الخريطة قبل الحفظ.', 400);
     const row = {
       owner_external_id: body.ownerExternalId || (session && session.userId),
       name: body.name || '',
@@ -305,7 +312,9 @@
       email: body.email || null,
       description: body.description || null,
       logo_url: body.logoUrl || null,
-      address: body.address || {}
+      address: body.address || {},
+      latitude: lat,
+      longitude: lng
     };
     if (!row.owner_external_id) return errRes('سجّل الدخول أولاً.', 401);
     const { data, error } = await sb.from('stores').upsert(row, { onConflict: 'slug' }).select().maybeSingle();
@@ -380,6 +389,9 @@
     if (!session) return errRes('أنشئ حسابك أولاً قبل تقديم طلب المتجر.', 401);
     body = body || {};
     if (!body.storeName || !body.phone || !body.address) return errRes('أكمل اسم المتجر ورقم الهاتف والعنوان.');
+    const storeLat = numOrNull(body.latitude);
+    const storeLng = numOrNull(body.longitude);
+    if (storeLat == null || storeLng == null) return errRes('حدّد موقع متجرك على الخريطة قبل إرسال الطلب.');
     await sb.from('marketplace_users').upsert({ external_id: session.userId, role: 'seller' }, { onConflict: 'external_id' });
     const slugBase = String(body.storeName).trim().toLowerCase().replace(/[^a-z0-9أ-ي\s-]/gi, '').replace(/\s+/g, '-').slice(0, 40) || 'store';
     const storeRow = {
@@ -391,7 +403,9 @@
       email: session.email,
       description: body.description || null,
       logo_url: body.logoUrl || null,
-      address: typeof body.address === 'string' ? { raw: body.address } : (body.address || {})
+      address: typeof body.address === 'string' ? { raw: body.address } : (body.address || {}),
+      latitude: storeLat,
+      longitude: storeLng
     };
     const { data: store, error: storeErr } = await sb.from('stores').upsert(storeRow, { onConflict: 'owner_external_id' }).select().maybeSingle();
     if (storeErr || !store) return errRes((storeErr && storeErr.message) || 'تعذّر إنشاء المتجر.', 400);

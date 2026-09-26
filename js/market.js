@@ -63,7 +63,11 @@
       const s = {
         id: store.id, cloudId: store.id, name: store.name, slug: store.slug, category: store.category,
         phone: store.phone || '', email: store.email || '', description: store.description || '',
-        logo: store.logo_url || '', address: { city: a.city || '', area: a.area || '' }, ownerId: store.owner_external_id,
+        logo: store.logo_url || '',
+        address: Object.assign({ city: a.city || '', area: a.area || '' }, (store.latitude != null && store.longitude != null) ? { lat: store.latitude, lng: store.longitude } : {}),
+        latitude: store.latitude != null ? store.latitude : null,
+        longitude: store.longitude != null ? store.longitude : null,
+        ownerId: store.owner_external_id,
         createdAt: store.created_at || isoNow(), returnDays: CFG.returnDays, demo: false, prepDays: 2
       };
       ls.set(K.seller, s);

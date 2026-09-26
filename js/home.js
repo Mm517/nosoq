@@ -65,6 +65,16 @@
     railRoot.innerHTML = UI.carousel({ id: 'hero-rail', rail: true, title: 'لافتات وعروض المتجر', items: heroSlides() });
   }
 
+  /* موقع المشتري غير معروف: نعرض شريطاً واضحاً بدل ما نعرض متاجر خارج نطاق 50 كم أو
+     نخفي المنتجات القريبة الحقيقية بصمت. يظهر أعلى الصفحة، فوق كل الأقسام. */
+  if (!Products.locationKnown() && railRoot) {
+    const bannerRoot = document.createElement('div');
+    bannerRoot.className = 'container';
+    bannerRoot.innerHTML = UI.locationBannerHTML();
+    railRoot.insertAdjacentElement('afterend', bannerRoot);
+    UI.bindLocationBanner(bannerRoot);
+  }
+
   /* ---------- 2) بطاقات البلاطات: الصف الأول ---------- */
   const row1 = [];
 

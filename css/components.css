@@ -295,6 +295,8 @@
 .card__title a:hover { text-decoration: underline; text-underline-offset: 3px; }
 .card.is-out .card__img { opacity: 0.55; filter: grayscale(0.6); }
 .card.is-out .card__title, .card.is-out .price { color: var(--c-ink-3); }
+.card__distance { display: flex; align-items: center; gap: 0.25rem; font-size: var(--fs-xs); color: var(--c-ink-3); }
+.card__distance .icon { width: 14px; height: 14px; flex: none; }
 
 /* ---------- Skeleton ---------- */
 .skeleton {
@@ -487,6 +489,8 @@
 .empty__title { font-size: var(--fs-lg); }
 .empty__text { max-width: 42ch; color: var(--c-ink-2); }
 .empty__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.location-banner { background: var(--c-surface); border: 1px solid var(--c-line); border-radius: var(--r-md); }
+.location-banner .empty__icon { background: var(--c-accent-soft); color: var(--c-accent); }
 .drawer .empty { padding-block: var(--sp-7); }
 
 /* ---------- مسار التنقل ---------- */
