@@ -31,8 +31,8 @@
     return;
   }
 
-  const state = { color: 0, size: null, qty: 1, img: 0 };
-  const N = Products.photoCount(p);        // عدد صور المعرض
+  const state = { color: 0, size: null, qty: 1, img: 0, showVideo: false };
+  let N = Products.photoCount(p, state.color);        // عدد صور المعرض (يتغيّر مع اللون المختار)
   const SLOTS = 6;                         // عدد المصغّرات الظاهرة (آخرها يحمل +N لو فيه صور زيادة)
   UI.recent.add(p.id);
   if (window.Market) window.Market.track.view(p);
@@ -107,9 +107,15 @@
     let h = '';
     for (let i = 0; i < shown; i++) {
       const more = N > SLOTS && i === SLOTS - 1;
-      h += '<li><button type="button" class="thumb" data-thumb="' + i + '" aria-label="' + (more ? 'عرض كل الصور، ' + N + ' صور' : 'عرض الصورة ' + (i + 1) + ' من ' + N) + '" aria-current="' + (i === 0) + '">' +
+      h += '<li><button type="button" class="thumb" data-thumb="' + i + '" aria-label="' + (more ? 'عرض كل الصور، ' + N + ' صور' : 'عرض الصورة ' + (i + 1) + ' من ' + N) + '" aria-current="' + (!state.showVideo && i === 0) + '">' +
         '<img' + Products.imgAttrs(p, i, state.color, 'xs') + ' alt="" width="72" height="90" loading="lazy">' +
         (more ? '<span class="thumb__more" aria-hidden="true">+' + (N - SLOTS + 1) + '</span>' : '') + '</button></li>';
+    }
+    /* فيديو المنتج: يظهر كمصغّرة إضافية بجانب صور المعرض؛ الضغط عليها يشغّل الفيديو في نفس المسرح الرئيسي */
+    if (p.video) {
+      h += '<li><button type="button" class="thumb thumb--video" data-thumb-video aria-label="تشغيل فيديو المنتج" aria-current="' + state.showVideo + '">' +
+        '<img' + Products.imgAttrs(p, 0, state.color, 'xs') + ' alt="" width="72" height="90" loading="lazy">' +
+        '<span class="thumb__play" aria-hidden="true">' + UI.icon('play') + '</span></button></li>';
     }
     return h;
   }
@@ -154,6 +160,7 @@
           '<div class="gallery__stage" data-stage>' +
             '<div class="gallery__main" data-zoom>' +
               '<img id="main-img"' + Products.imgAttrs(p, 0, state.color, 'lg') + ' alt="' + esc(p.name) + '، الصورة 1" width="900" height="1125" fetchpriority="high">' +
+              (p.video ? '<video id="main-video" class="gallery__video" src="' + esc(p.video) + '" playsinline preload="metadata" controls hidden></video>' : '') +
               '<div class="card__badges">' + UI.badgesHTML(p) + '</div>' +
               '<span class="zoom-lens" aria-hidden="true"></span>' +
               '<button type="button" class="gallery__nav gallery__nav--prev" data-gal="-1" aria-label="الصورة السابقة">' + UI.icon('chev-r') + '</button>' +
@@ -293,11 +300,31 @@
     main.alt = p.name + '، الصورة ' + (state.img + 1);
     const shown = Math.min(N, SLOTS);
     $$('.thumb', $('.gallery__thumbs')).forEach((t, k) => {
+      if (t.hasAttribute('data-thumb-video')) { t.setAttribute('aria-current', 'false'); return; }
       const cur = k === state.img || (N > SLOTS && k === SLOTS - 1 && state.img >= SLOTS - 1);
       t.setAttribute('aria-current', String(cur));
       Products.setImg(t.firstElementChild, p, k, state.color, 'xs');
     });
     if (lb) lbRender();
+  }
+  /* أظهر صورة عادية في المسرح الرئيسي (تُلغي وضع الفيديو إن كان مفعّلاً) */
+  function showMainImage(i) {
+    const stage = $('[data-stage]'), vid = $('#main-video');
+    state.showVideo = false;
+    if (stage) stage.classList.remove('is-video');
+    if (vid) { vid.pause(); vid.hidden = true; }
+    $('#main-img').hidden = false;
+    setImage(i);
+  }
+  /* أظهر فيديو المنتج في نفس مسرح المعرض، بجوار مصغّرات الصور مباشرة */
+  function showMainVideo() {
+    const stage = $('[data-stage]'), vid = $('#main-video');
+    if (!vid) return;
+    state.showVideo = true;
+    if (stage) stage.classList.add('is-video');
+    $('#main-img').hidden = true;
+    vid.hidden = false;
+    $$('.thumb', $('.gallery__thumbs')).forEach((t) => t.setAttribute('aria-current', String(t.hasAttribute('data-thumb-video'))));
   }
 
   /* عارض الصور بالحجم الكامل */
@@ -369,24 +396,29 @@
   function bind() {
     const stage = $('[data-stage]'), main = $('.gallery__main'), lens = $('.zoom-lens'), pane = $('[data-pane]');
 
-    $$('.thumb', $('.gallery__thumbs')).forEach((t) => t.addEventListener('click', () => {
-      const i = Number(t.dataset.thumb);
-      if (N > SLOTS && i === SLOTS - 1) openLightbox(i); else setImage(i);
-    }));
-    $$('[data-gal]').forEach((b) => b.addEventListener('click', () => setImage(state.img + Number(b.dataset.gal))));
+    function bindThumbs() {
+      $$('.thumb', $('.gallery__thumbs')).forEach((t) => t.addEventListener('click', () => {
+        if (t.hasAttribute('data-thumb-video')) { showMainVideo(); return; }
+        const i = Number(t.dataset.thumb);
+        if (N > SLOTS && i === SLOTS - 1) openLightbox(i); else showMainImage(i);
+      }));
+    }
+    bindThumbs();
+    $$('[data-gal]').forEach((b) => b.addEventListener('click', () => { if (!state.showVideo) setImage(state.img + Number(b.dataset.gal)); }));
     $('.gallery').addEventListener('keydown', (e) => {
+      if (state.showVideo) return;
       if (e.key === 'ArrowLeft') setImage(state.img + 1);
       if (e.key === 'ArrowRight') setImage(state.img - 1);
     });
     $('[data-lightbox-open]').addEventListener('click', () => openLightbox(state.img));
-    main.addEventListener('click', (e) => { if (!e.target.closest('.gallery__nav')) openLightbox(state.img); });
+    main.addEventListener('click', (e) => { if (!state.showVideo && !e.target.closest('.gallery__nav')) openLightbox(state.img); });
 
     /* تكبير جانبي: مستطيل فوق الصورة + لوحة مكبّرة بجوارها (على الأجهزة التي تدعم المرور فقط) */
     const ZOOM = 2.5;
     const canZoom = () => window.matchMedia('(hover: hover) and (min-width: 900px)').matches;
     const stopZoom = () => { stage.classList.remove('is-zoomed'); main.classList.remove('is-zoomed'); };
     main.addEventListener('mousemove', (e) => {
-      if (!canZoom() || e.target.closest('.gallery__nav')) { stopZoom(); return; }
+      if (state.showVideo || !canZoom() || e.target.closest('.gallery__nav')) { stopZoom(); return; }
       const r = main.getBoundingClientRect();
       const lw = r.width / ZOOM, lh = r.height / ZOOM;
       const x = Math.min(Math.max(e.clientX - r.left - lw / 2, 0), r.width - lw);
@@ -403,7 +435,12 @@
     bindRadioGroup($('[data-group="color"]'), (el) => {
       state.color = Number(el.dataset.index);
       $('[data-color-name]').textContent = p.colors[state.color].name;
-      setImage(state.img);
+      /* لكل لون صوره الخاصة: أعِد بناء عدد الصور والمصغّرات بالكامل، ثم اعرض أول صورة له */
+      N = Products.photoCount(p, state.color);
+      state.showVideo = false;
+      $('.gallery__thumbs').innerHTML = thumbsHTML();
+      bindThumbs();
+      showMainImage(0);
     });
 
     const sizeGroup = $('[data-group="size"]');

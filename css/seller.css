@@ -236,6 +236,24 @@
 .uploader__acts { position: absolute; inset-block-end: 4px; inset-inline-end: 4px; display: flex; gap: 4px; }
 .uploader__acts button { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--c-glass); color: var(--c-ink); }
 .uploader__acts .icon { width: 0.9rem; height: 0.9rem; }
+
+/* بطاقات ألوان المنتج (Variants): اسم + كمية مستقلة + معرض صور خاص بكل لون */
+.colorcards { display: grid; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.colorcard { border: 1px solid var(--c-line); border-radius: var(--r-md); padding: var(--sp-3); background: var(--c-surface); }
+.colorcard__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.colorcard__sw { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--c-line-strong); flex: none; }
+.colorcard__head strong { flex: 1 1 auto; }
+.colorcard__stock { display: inline-flex; align-items: center; gap: 0.4rem; font-size: var(--fs-sm); color: var(--c-ink-3); }
+.colorcard__stock .input { width: 84px; min-height: 36px; }
+.uploader--sm { grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: var(--sp-2); margin-top: var(--sp-2); }
+.uploader--sm .uploader__item { aspect-ratio: 1 / 1; }
+.uploader__add { display: grid; }
+.uploader__add label { display: grid; justify-items: center; align-content: center; gap: 2px; height: 100%; aspect-ratio: 1 / 1; border: 2px dashed var(--c-line-strong); border-radius: var(--r-sm); cursor: pointer; color: var(--c-ink-3); font-size: 0.7rem; text-align: center; transition: border-color var(--dur-1), color var(--dur-1); }
+.uploader__add label:hover { border-color: var(--c-accent); color: var(--c-accent-deep); }
+.uploader__add .icon { width: 1.1rem; height: 1.1rem; }
+
+/* فيديو المنتج في نموذج البائع: معاينة + حذف، أو مربع رفع */
+.video-up__pv video { width: 100%; max-height: 280px; border-radius: var(--r-md); background: var(--c-ink); display: block; margin-bottom: var(--sp-2); }
 .qlist { display: grid; gap: 0.4rem; margin-top: var(--sp-3); font-size: var(--fs-sm); }
 .qlist li { display: flex; align-items: flex-start; gap: 0.5rem; }
 .qlist .icon { flex: none; width: 1rem; height: 1rem; margin-top: 0.2rem; }

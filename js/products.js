@@ -479,7 +479,12 @@
       .filter((row) => row.legacy_id != null)
       .map((row) => {
         const a = agg[row.id];
-        const colors = Array.isArray(row.colors) && row.colors.length ? row.colors : [{ name: 'أساسي', hex: '#c5cad3' }];
+        /* ألوان حقيقية (product_colors مع صورها الخاصة وكميتها المستقلة) عبر color_variants
+           من دالة nearby_products؛ رجوع للعمود القديم colors (بلا صور) لو لم تُضَف ألوان بعد. */
+        const realColors = Array.isArray(row.color_variants) && row.color_variants.length
+          ? row.color_variants.map((c) => ({ id: c.id, name: c.name, hex: c.hex || '#2b2e35', stock: Number(c.stock || 0), images: Array.isArray(c.images) ? c.images.filter(Boolean) : [] }))
+          : null;
+        const colors = realColors || (Array.isArray(row.colors) && row.colors.length ? row.colors : [{ name: 'أساسي', hex: '#c5cad3' }]);
         return {
           id: row.legacy_id,
           uuid: row.id,
@@ -503,6 +508,7 @@
           description: row.description || '',
           details: Array.isArray(row.details) ? row.details : [],
           photos: Array.isArray(row.photos) ? row.photos.filter(Boolean) : [],
+          video: row.video_url || null,
           /* المسافة بالمتر بين المشتري وهذا المتجر — لعرضها في بطاقة المنتج/صفحة المتجر */
           distanceM: row.distance_m == null ? null : Number(row.distance_m)
         };
@@ -540,7 +546,7 @@
         colors: MULTI_COLOR.has(cat) ? [{ name: main[0], hex: main[1] }, { name: alt[0], hex: alt[1] }] : [{ name: 'أساسي', hex: main[1] }],
         description: f[1] + '. جودة موثوقة وسعر مناسب، مع إرجاع مجاني خلال ' + STORE.returnDays + ' يوماً.',
         details: ['جودة موثوقة من بائع معتمد', 'إرجاع مجاني خلال ' + STORE.returnDays + ' يوماً', 'الدفع عند الاستلام متاح'],
-        photos: []
+        photos: [], video: null
       });
     });
     return out;
@@ -548,14 +554,26 @@
 
   const PRODUCTS = buildCatalog().concat(window.NASAQ_SHOW_DEMO === false ? [] : buildDemo());
 
-  /* ---------- الصور: من صور المنتج الحقيقية، أو رسمة SVG بديلة حسب التصنيف ---------- */
+  /* ---------- الصور: صور اللون المختار أولاً (إن وُجدت)، وإلا صور المنتج العامة، وإلا رسمة SVG بديلة ---------- */
+  /* صور اللون الحالي: فقط لو كان لهذا اللون صور خاصة به (رفعها البائع)؛ غير ذلك null */
+  function colorImages(p, colorIdx) {
+    const c = p.colors && p.colors[colorIdx || 0];
+    return (c && Array.isArray(c.images) && c.images.length) ? c.images : null;
+  }
+  function activePhotos(p, colorIdx) {
+    return colorImages(p, colorIdx) || (p.photos && p.photos.length ? p.photos : null);
+  }
+  function photoCount(p, colorIdx) {
+    const ph = activePhotos(p, colorIdx);
+    return ph ? ph.length : 1;
+  }
   function photoURL(p, i, colorIdx) {
-    if (p.photos && p.photos.length) return p.photos[i % p.photos.length];
+    const ph = activePhotos(p, colorIdx);
+    if (ph) return ph[i % ph.length];
     return artFor(p.id, i, colorIdx);
   }
-  function photoCount(p) { return (p.photos && p.photos.length) ? p.photos.length : 1; }
   function gallery(p, colorIdx) {
-    return Array.from({ length: photoCount(p) }, (_, i) => photoURL(p, i, colorIdx));
+    return Array.from({ length: photoCount(p, colorIdx) }, (_, i) => photoURL(p, i, colorIdx));
   }
   function artFor(id, i, colorIdx) {
     const p = PRODUCTS.find((x) => x.id === Number(id));

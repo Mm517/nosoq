@@ -168,6 +168,22 @@
 .gallery__nav--prev { inset-inline-start: 0.75rem; }
 .gallery__nav--next { inset-inline-end: 0.75rem; }
 
+/* فيديو المنتج: مصغّرة بجانب صور المعرض (بشارة تشغيل)، ويظهر الفيديو داخل نفس مسرح
+   المعرض الرئيسي عند اختياره، فوق زر التكبير والأسهم بلا تعارض */
+.thumb--video { background: var(--c-ink); }
+.thumb--video img { opacity: 0.55; }
+.thumb__play {
+  position: absolute; inset: 0; display: grid; place-items: center; color: var(--c-white);
+  background: color-mix(in srgb, var(--c-ink) 30%, transparent);
+}
+.thumb__play .icon { width: 1.4rem; height: 1.4rem; filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.45)); }
+.gallery__video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: var(--c-ink); }
+.gallery__video[hidden] { display: none; }
+.gallery__stage.is-video .gallery__nav,
+.gallery__stage.is-video .zoom-lens,
+.gallery__stage.is-video .gallery__full { display: none; }
+.gallery__stage.is-video .gallery__main { cursor: default; }
+
 .pdp__info { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-4); align-content: start; }
 @media (min-width: 900px) { .pdp__info { position: sticky; top: calc(var(--header-h) + 1.5rem); } }
 .pdp__cat { font-size: var(--fs-sm); color: var(--c-ink-3); }

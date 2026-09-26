@@ -109,12 +109,21 @@
   let cloudProducts = null;
   let cloudProductsLoading = false;
   function mapCloudProduct(row) {
+    /* ألوان حقيقية (product_colors مع صورها) لو موجودة، وإلا رجوع للعمود القديم colors
+       (جسون بسيط بلا صور/كمية مستقلة) للتوافق مع أي منتج قديم لم يُضَف له ألوان بعد. */
+    const realColors = Array.isArray(row.product_colors) && row.product_colors.length
+      ? row.product_colors.slice().sort((a, b) => a.sort_order - b.sort_order).map((c) => ({
+          id: c.id, name: c.name, hex: c.hex || '#2f45d4', stock: Number(c.stock || 0),
+          images: (c.product_images || []).slice().sort((a, b) => a.sort_order - b.sort_order).map((i) => i.public_url)
+        }))
+      : (Array.isArray(row.colors) ? row.colors : []);
     return {
       id: row.legacy_id, uuid: row.id, name: row.name, category: row.category, price: Number(row.price || 0),
       oldPrice: row.old_price == null ? null : Number(row.old_price), stock: Number(row.stock || 0),
       status: row.status, sku: row.sku || '', description: row.description || '',
       details: Array.isArray(row.details) ? row.details : [], sizes: Array.isArray(row.sizes) ? row.sizes : [],
-      colors: Array.isArray(row.colors) ? row.colors : [], photos: Array.isArray(row.photos) ? row.photos : [],
+      colors: realColors, photos: Array.isArray(row.photos) ? row.photos : [],
+      video: row.video_url || null, videoUrl: row.video_url || null, videoPath: row.video_path || null,
       addedAt: row.added_at, sellerId: row.store_id
     };
   }
@@ -157,8 +166,22 @@
        المحلي ويُعيد رسم الصفحة. يُستخدم فقط عند وجود متجر حقيقي معتمد (s.cloudId). */
     async saveCloud(p) {
       const s = me();
-      const row = await cloud().syncProduct(Object.assign({}, p, { storeId: s.cloudId, sellerId: s.ownerId }));
-      cloudProducts = null; /* أعد التحميل من المصدر ليعكس السعر/الحالة الحقيقية */
+      /* الفيديو: يُرفع أولاً لو كان ملفاً جديداً (data:video/...)، ورابطه الحقيقي هو ما
+         يُخزَّن في عمود products.video_url — لا نرسل base64 ضخماً مباشرة لعمود نصي. */
+      let videoUrl = p.videoUrl || null, videoPath = p.videoPath || null;
+      if (p.video && /^data:video\//.test(p.video)) {
+        const up = await cloud().uploadVideo(p.video, 'product-' + (p.id || 'new'));
+        videoUrl = up.publicUrl || null; videoPath = up.path || null;
+      } else if (p.video) {
+        videoUrl = p.video;
+      }
+      const row = await cloud().syncProduct(Object.assign({}, p, { storeId: s.cloudId, sellerId: s.ownerId, videoUrl, videoPath }));
+      /* ألوان المنتج (Variants): تُستبدل كاملة بعد نجاح حفظ المنتج نفسه (نحتاج uuid
+         المنتج الحقيقي row.id). كل صورة لون تُرسَل كـ base64 ويرفعها الخادم بنفسه. */
+      if (row && row.id && Array.isArray(p.colors)) {
+        try { await cloud().syncProductColors(row.id, p.colors); } catch (_) { /* المنتج محفوظ بالفعل حتى لو فشلت مزامنة الألوان */ }
+      }
+      cloudProducts = null; /* أعد التحميل من المصدر ليعكس السعر/الحالة الحقيقية وألوانه */
       window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
       return row;
     },

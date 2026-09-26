@@ -70,8 +70,9 @@
   function form(p) {
     const edit = !!p;
     const seller = M.seller.get();
-    const d = p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', category: seller.category || 'clothes', price: '', oldPrice: '', stock: 10, sizes: [], colors: [], description: '', details: [], photos: [], status: 'active' };
-    d.photos = d.photos || []; d.colors = d.colors || []; d.sizes = d.sizes || []; d.details = d.details || [];
+    const d = p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', category: seller.category || 'clothes', price: '', oldPrice: '', stock: 10, sizes: [], colors: [], description: '', details: [], photos: [], video: '', status: 'active' };
+    d.photos = d.photos || []; d.colors = d.colors || []; d.sizes = d.sizes || []; d.details = d.details || []; d.video = d.video || d.videoUrl || '';
+    d.colors.forEach((c) => { c.images = c.images || []; c.stock = Number(c.stock || 0); });
 
     const html =
       pageHead(edit ? 'تعديل المنتج' : 'إضافة منتج جديد', '<a href="#/products">→ العودة إلى المنتجات</a>') +
@@ -89,13 +90,16 @@
           '</div>' +
           '<div class="calc" id="calc" aria-live="polite"></div>' +
           '<div class="field" id="sizes-box"></div>' +
-          '<div class="field"><span class="label" id="col-l">الألوان المتاحة</span><div class="colors" id="colors-box" aria-labelledby="col-l"></div>' +
-            '<div class="color-add"><input class="input" id="c-name" placeholder="اسم اللون (مثل: أسود)" maxlength="20"><input type="color" id="c-hex" value="#2f45d4" aria-label="درجة اللون"><button type="button" class="btn btn--ghost btn--sm" data-act="color-add">' + ic('plus') + 'إضافة لون</button></div></div>' +
-          fld('p-desc', 'وصف المنتج', '<textarea class="textarea" id="p-desc" rows="4" maxlength="600">' + esc(d.description) + '</textarea>', '60 حرفاً على الأقل لرفع جودة القائمة') +
+          '<div class="field"><span class="label" id="col-l">الألوان (Variants): كل لون بصوره وكميته الخاصة</span>' +
+            '<div class="colorcards" id="colors-box" aria-labelledby="col-l"></div>' +
+            '<div class="color-add"><input class="input" id="c-name" placeholder="اسم اللون (مثل: أسود)" maxlength="20"><input type="color" id="c-hex" value="#2f45d4" aria-label="درجة اللون"><input class="input input--sm" id="c-stock" type="number" min="0" inputmode="numeric" dir="ltr" placeholder="الكمية" style="max-width:110px"><button type="button" class="btn btn--ghost btn--sm" data-act="color-add">' + ic('plus') + 'إضافة لون</button></div>' +
+            '<p class="hint">أضف لوناً ثم ارفع له صورة أو أكثر؛ عند اختيار المشتري هذا اللون في صفحة المنتج تتغيّر الصور تلقائياً لصوره فقط.</p></div>' +
+          fld('p-desc', 'وصف المنتج (احترافي)', '<textarea class="textarea" id="p-desc" rows="4" maxlength="600">' + esc(d.description) + '</textarea>', '60 حرفاً على الأقل لرفع جودة القائمة') +
           fld('p-details', 'المواصفات (سطر لكل مواصفة)', '<textarea class="textarea" id="p-details" rows="4" placeholder="خامة قطنية 100%&#10;غسيل بالماء البارد&#10;صناعة مصرية">' + esc(d.details.join('\n')) + '</textarea>') +
-          '<div class="field"><span class="label" id="img-l">صور المنتج (حتى 8، الأولى هي الغلاف)</span>' +
+          '<div class="field"><span class="label" id="img-l">صور المنتج العامة (حتى 8، الأولى هي الغلاف الرئيسي)</span>' +
             '<div class="dropzone" id="dropzone" tabindex="-1">' + ic('upload') + '<p>اسحب الصور هنا أو</p><label class="btn btn--ghost btn--sm">اختر من جهازك<input type="file" id="p-files" accept="image/png,image/jpeg,image/webp" multiple hidden></label><small>PNG أو JPG أو WebP، تُضغط تلقائياً</small></div>' +
             '<ul class="uploader" id="uploader" aria-labelledby="img-l"></ul></div>' +
+          '<div class="field"><span class="label" id="vid-l">فيديو المنتج (اختياري)</span><div class="video-up" id="video-up"></div></div>' +
           '<p class="field__error" id="prod-error" role="alert"></p>' +
           '<div class="dform__foot"><button class="btn btn--primary" type="submit">' + (edit ? 'حفظ التعديلات' : 'نشر المنتج') + '</button><a class="btn btn--ghost" href="#/products">إلغاء</a></div>' +
         '</form>' +
@@ -125,7 +129,48 @@
           : '<p class="hint">هذا التصنيف لا يحتاج مقاسات.</p>';
       }
       function renderColors() {
-        g('colors-box').innerHTML = d.colors.length ? d.colors.map((c, i) => '<span class="colortag"><i style="background:' + esc(c.hex) + '"></i>' + esc(c.name) + '<button type="button" data-act="color-del" data-i="' + i + '" aria-label="حذف اللون ' + esc(c.name) + '">' + ic('close') + '</button></span>').join('') : '<p class="hint">لم تضف ألواناً (سيُعرض «أساسي»).</p>';
+        g('colors-box').innerHTML = d.colors.length ? d.colors.map((c, i) =>
+          '<div class="colorcard">' +
+            '<div class="colorcard__head"><i class="colorcard__sw" style="background:' + esc(c.hex || '#2b2e35') + '"></i>' +
+              '<strong>' + esc(c.name) + '</strong>' +
+              '<label class="colorcard__stock">الكمية<input type="number" min="0" class="input input--sm" dir="ltr" data-color-stock="' + i + '" value="' + Math.max(0, Number(c.stock || 0)) + '"></label>' +
+              '<button type="button" class="icon-btn icon-btn--bad" data-act="color-del" data-i="' + i + '" aria-label="حذف اللون ' + esc(c.name) + '">' + ic('trash') + '</button></div>' +
+            '<ul class="uploader uploader--sm">' +
+              (c.images || []).map((u, j) => '<li class="uploader__item"><img src="' + esc(u) + '" alt="صورة لون ' + esc(c.name) + ' ' + (j + 1) + '">' +
+                '<div class="uploader__acts"><button type="button" class="icon-btn icon-btn--bad" data-act="color-img-del" data-i="' + i + '" data-j="' + j + '" aria-label="حذف صورة اللون ' + esc(c.name) + '">' + ic('trash') + '</button></div></li>').join('') +
+              '<li class="uploader__add"><label>' + ic('upload') + '<span>أضف صوراً</span><input type="file" accept="image/png,image/jpeg,image/webp" multiple hidden data-color-file="' + i + '"></label></li>' +
+            '</ul>' +
+          '</div>').join('') : '<p class="hint">لم تضف ألواناً بعد (سيُعرض المنتج بلون «أساسي» بلا صور خاصة).</p>';
+      }
+      async function addColorFiles(i, files) {
+        const c = d.colors[i]; if (!c) return;
+        c.images = c.images || [];
+        const room = 6 - c.images.length;
+        if (room <= 0) { S.toast('الحد الأقصى 6 صور لكل لون', 'error'); return; }
+        for (const f of Array.from(files).slice(0, room)) {
+          try { c.images.push(await M.image(f, { max: 900, q: 0.78 })); renderColors(); } catch (e) { S.toast(e.message, 'error'); }
+        }
+      }
+      function readFileAsDataURL(file) {
+        return new Promise((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onerror = () => reject(new Error('تعذّرت قراءة الملف'));
+          fr.onload = () => resolve(fr.result);
+          fr.readAsDataURL(file);
+        });
+      }
+      function renderVideo() {
+        g('video-up').innerHTML = d.video
+          ? '<div class="video-up__pv"><video src="' + esc(d.video) + '" controls playsinline preload="metadata"></video>' +
+            '<button type="button" class="btn btn--ghost btn--sm" data-act="video-del">' + ic('trash') + 'حذف الفيديو</button></div>'
+          : '<div class="dropzone" tabindex="-1">' + ic('upload') + '<p>ارفع فيديو قصيراً يعرض المنتج</p>' +
+            '<label class="btn btn--ghost btn--sm">اختر ملف فيديو<input type="file" id="p-video-file" accept="video/mp4,video/webm,video/quicktime" hidden></label><small>MP4 أو WebM أو MOV، حتى 50 ميجابايت</small></div>';
+      }
+      async function handleVideoFile(file) {
+        if (!file) return;
+        if (!/^video\/(mp4|webm|quicktime)$/.test(file.type)) { S.toast('صيغة الفيديو غير مدعومة، استخدم MP4 أو WebM أو MOV', 'error'); return; }
+        if (file.size > 50 * 1024 * 1024) { S.toast('حجم الفيديو أكبر من 50 ميجابايت', 'error'); return; }
+        try { d.video = await readFileAsDataURL(file); renderVideo(); renderQ(); } catch (e) { S.toast(e.message, 'error'); }
       }
       function renderPhotos() {
         g('uploader').innerHTML = d.photos.map((u, i) => '<li class="uploader__item"><img src="' + esc(u) + '" alt="صورة المنتج ' + (i + 1) + '">' + (i === 0 ? '<span class="uploader__cover">الغلاف</span>' : '') +
@@ -139,9 +184,21 @@
           try { d.photos.push(await M.image(f, { max: 900, q: 0.78 })); renderPhotos(); } catch (e) { S.toast(e.message, 'error'); }
         }
       }
-      root.addEventListener('input', (e) => { if (e.target.closest('#prod-form') && !e.target.matches('#c-name,#c-hex,#p-files')) refresh(); });
+      root.addEventListener('input', (e) => {
+        if (e.target.matches('[data-color-stock]')) {
+          const ci = Number(e.target.dataset.colorStock);
+          if (d.colors[ci]) d.colors[ci].stock = Math.max(0, Math.floor(numOf(e.target.value)));
+          renderQ(); return;
+        }
+        if (e.target.closest('#prod-form') && !e.target.matches('#c-name,#c-hex,#c-stock,#p-files,[data-color-file],#p-video-file')) refresh();
+      });
       g('p-cat').addEventListener('change', () => { renderSizes(); refresh(); });
       g('p-files').addEventListener('change', (e) => { addFiles(e.target.files); e.target.value = ''; });
+      root.addEventListener('change', (e) => {
+        const t = e.target;
+        if (t.matches('[data-color-file]')) { addColorFiles(Number(t.dataset.colorFile), t.files); t.value = ''; }
+        else if (t.matches('#p-video-file')) { handleVideoFile(t.files[0]); t.value = ''; }
+      });
       const dz = g('dropzone');
       ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('is-over'); }));
       ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('is-over'); }));
@@ -154,8 +211,11 @@
           const name = g('c-name').value.trim();
           if (!name) { g('c-name').focus(); return; }
           if (d.colors.length >= 8) { S.toast('الحد الأقصى 8 ألوان', 'error'); return; }
-          d.colors.push({ name, hex: g('c-hex').value }); g('c-name').value = ''; renderColors(); renderQ();
+          d.colors.push({ name, hex: g('c-hex').value, stock: Math.max(0, Math.floor(numOf(g('c-stock').value))), images: [] });
+          g('c-name').value = ''; g('c-stock').value = ''; renderColors(); renderQ();
         } else if (a === 'color-del') { d.colors.splice(i, 1); renderColors(); renderQ(); }
+        else if (a === 'color-img-del') { const j = Number(b.dataset.j); if (d.colors[i] && d.colors[i].images) d.colors[i].images.splice(j, 1); renderColors(); }
+        else if (a === 'video-del') { d.video = ''; renderVideo(); renderQ(); }
         else if (a === 'photo-del') { d.photos.splice(i, 1); renderPhotos(); }
         else if (a === 'photo-cover') { d.photos.unshift(d.photos.splice(i, 1)[0]); renderPhotos(); }
       });
@@ -190,7 +250,7 @@
         S.toast(edit ? 'تم حفظ التعديلات' : 'تم نشر منتجك، سيظهر في المتجر عند تحديث الصفحة');
         location.hash = '#/products';
       });
-      renderSizes(); renderColors(); renderPhotos(); renderCalc(); renderQ();
+      renderSizes(); renderColors(); renderPhotos(); renderVideo(); renderCalc(); renderQ();
     }
     return { html, mount, title: edit ? 'تعديل المنتج' : 'إضافة منتج' };
   }

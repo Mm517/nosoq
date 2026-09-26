@@ -281,7 +281,9 @@
       details: Array.isArray(body.details) ? body.details : [],
       sizes: Array.isArray(body.sizes) ? body.sizes : [],
       colors: Array.isArray(body.colors) ? body.colors : [],
-      photos: Array.isArray(body.photos) ? body.photos : []
+      photos: Array.isArray(body.photos) ? body.photos : [],
+      video_url: body.videoUrl || null,
+      video_path: body.videoPath || null
     };
     let query_ = sb.from('products');
     let res;
@@ -292,6 +294,93 @@
     }
     if (res.error) return errRes(res.error.message, 400);
     return okRes(res.data || row);
+  });
+
+  /* رفع فيديو المنتج (bucket عام: product-videos) — MP4/WebM/MOV/OGG حتى 50 ميجابايت */
+  on('POST', 'store/uploads/video', async (params, query, body) => {
+    body = body || {};
+    const { dataUrl, filename } = body;
+    if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:video/')) return errRes('ملف الفيديو غير صالح.');
+    const match = /^data:(video\/[a-zA-Z0-9.+-]+);base64,/.exec(dataUrl);
+    const ALLOWED = ['video/mp4', 'video/webm', 'video/quicktime', 'video/ogg'];
+    if (!match || !ALLOWED.includes(match[1])) return errRes('صيغة الفيديو غير مدعومة (MP4 أو WebM أو MOV).');
+    const contentType = match[1];
+    const blob = await dataUrlToBlob(dataUrl);
+    if (blob.size > 50 * 1024 * 1024) return errRes('حجم الفيديو أكبر من 50MB.', 413);
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const ext = { 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov', 'video/ogg': 'ogv' }[contentType] || 'mp4';
+    const safeName = String(filename || 'video').replace(/[^a-zA-Z0-9._-]/g, '-');
+    const path = session.userId + '/' + crypto.randomUUID() + '-' + safeName + '.' + ext;
+    const { error } = await sb.storage.from('product-videos').upload(path, blob, { contentType, upsert: true });
+    if (error) return errRes('تعذّر رفع الفيديو: ' + error.message, 400);
+    const { data } = sb.storage.from('product-videos').getPublicUrl(path);
+    return okRes({ publicUrl: data.publicUrl, path }, 201);
+  });
+
+  /* مزامنة ألوان المنتج (Variants): كل لون باسم + كود لون + كمية مستقلة + صورة أو أكثر.
+     تستبدل القائمة كاملة في كل مرة (حذف ثم إعادة إدراج) — أبسط وأضمن اتساقاً من محاولة
+     مطابقة كل لون على حدة، وحجم القوائم هنا صغير (8 ألوان كحد أقصى). */
+  on('POST', 'store/products/:id/colors', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const productId = params.id;
+    if (!isUuid(productId)) return errRes('معرّف المنتج غير صحيح.');
+    const { data: prod } = await sb.from('products').select('id,seller_external_id').eq('id', productId).maybeSingle();
+    if (!prod) return errRes('المنتج غير موجود.', 404);
+    if (prod.seller_external_id !== session.userId && session.role !== 'admin') return errRes('لا تملك صلاحية تعديل هذا المنتج.', 403);
+    const colors = Array.isArray(body && body.colors) ? body.colors.slice(0, 8) : [];
+
+    const { error: delErr } = await sb.from('product_colors').delete().eq('product_id', productId);
+    if (delErr) return errRes(delErr.message, 400);
+
+    const saved = [];
+    for (let i = 0; i < colors.length; i++) {
+      const c = colors[i] || {};
+      const name = String(c.name || '').trim().slice(0, 30);
+      if (!name) continue;
+      const { data: colorRow, error: colorErr } = await sb.from('product_colors')
+        .insert({ product_id: productId, name, hex: c.hex || null, stock: Math.max(0, Number(c.stock || 0)), sort_order: i })
+        .select().maybeSingle();
+      if (colorErr || !colorRow) return errRes((colorErr && colorErr.message) || 'تعذّر حفظ اللون «' + name + '».', 400);
+      const imgs = Array.isArray(c.images) ? c.images.slice(0, 6) : [];
+      const savedImgs = [];
+      for (let j = 0; j < imgs.length; j++) {
+        let url = imgs[j];
+        if (typeof url === 'string' && /^data:image\//.test(url)) {
+          const match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,/.exec(url);
+          if (!match) continue;
+          const blob = await dataUrlToBlob(url);
+          if (blob.size > 8 * 1024 * 1024) return errRes('حجم إحدى صور لون «' + name + '» أكبر من 8MB.', 413);
+          const ext = match[1].split('/')[1] || 'jpg';
+          const path = 'colors/' + productId + '/' + colorRow.id + '/' + crypto.randomUUID() + '.' + ext;
+          const { error: upErr } = await sb.storage.from('product-images').upload(path, blob, { contentType: match[1], upsert: true });
+          if (upErr) return errRes('تعذّر رفع صورة لون «' + name + '»: ' + upErr.message, 400);
+          url = sb.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+        }
+        if (typeof url !== 'string' || !url) continue;
+        const { data: imgRow } = await sb.from('product_images')
+          .insert({ product_id: productId, color_id: colorRow.id, public_url: url, sort_order: j })
+          .select().maybeSingle();
+        if (imgRow) savedImgs.push(imgRow.public_url);
+      }
+      saved.push({ id: colorRow.id, name: colorRow.name, hex: colorRow.hex, stock: colorRow.stock, images: savedImgs });
+    }
+    return okRes({ colors: saved }, 201);
+  });
+
+  on('GET', 'store/products/:id/colors', async (params) => {
+    const productId = params.id;
+    if (!isUuid(productId)) return errRes('معرّف المنتج غير صحيح.');
+    const { data, error } = await sb.from('product_colors')
+      .select('id,name,hex,stock,sort_order,product_images(public_url,sort_order)')
+      .eq('product_id', productId).order('sort_order', { ascending: true });
+    if (error) return errRes(error.message, 400);
+    const colors = (data || []).map((c) => ({
+      id: c.id, name: c.name, hex: c.hex, stock: c.stock,
+      images: (c.product_images || []).slice().sort((a, b) => a.sort_order - b.sort_order).map((i) => i.public_url)
+    }));
+    return okRes({ colors });
   });
 
   on('POST', 'store/stores/upsert', async (params, query, body) => {
@@ -846,7 +935,9 @@
     if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
     const store = await myStore(session.userId);
     if (!store) return okRes([]);
-    let q = sb.from('products').select('*').eq('store_id', store.id).order('added_at', { ascending: false }).limit(500);
+    let q = sb.from('products')
+      .select('*,product_colors(id,name,hex,stock,sort_order,product_images(public_url,sort_order))')
+      .eq('store_id', store.id).order('added_at', { ascending: false }).limit(500);
     if (query.status) q = q.eq('status', query.status);
     const { data, error } = await q;
     if (error) return errRes(error.message, 400);

@@ -57,6 +57,20 @@
     return out && (out.publicUrl || out.proxyUrl) || dataUrl;
   }
 
+  /* رفع فيديو المنتج (bucket عام: product-videos)؛ يُرجع الرابط كما هو لو لم يكن data: أصلاً */
+  async function uploadVideo(dataUrl, filename) {
+    if (!/^data:video\//.test(dataUrl || '')) return { publicUrl: dataUrl, path: null };
+    const out = await request('/store/uploads/video', { dataUrl, filename: filename || 'product-video' });
+    return out || { publicUrl: null, path: null };
+  }
+
+  /* مزامنة ألوان المنتج (Variants): يستبدل القائمة كاملة في قاعدة البيانات، ويرفع أي
+     صورة جديدة (data:) قبل الحفظ. يُستدعى بعد نجاح حفظ المنتج نفسه (نحتاج uuid المنتج). */
+  async function syncProductColors(productUuid, colors) {
+    const out = await request('/store/products/' + productUuid + '/colors', { colors: colors || [] });
+    return (out && out.colors) || [];
+  }
+
   /* رفع صورة مستند من طلب تقديم (بطاقة / صورة شخصية / واجهة محل) إلى bucket خاص.
      يُرجع مسار الملف (وليس رابطاً عاماً) ليُحفظ داخل طلب التقديم. */
   async function uploadDocument(dataUrl, kind) {
@@ -85,8 +99,12 @@
       description: p.description || null,
       details: Array.isArray(p.details) ? p.details : [],
       sizes: Array.isArray(p.sizes) ? p.sizes : [],
-      colors: Array.isArray(p.colors) ? p.colors : [],
-      photos
+      /* العمود القديم colors (jsonb) للتوافق فقط: بلا صور (تُرفع وتُخزَّن بشكل حقيقي عبر
+         syncProductColors بعد نجاح هذا الحفظ) لتفادي إرسال صور base64 ضخمة مرتين. */
+      colors: Array.isArray(p.colors) ? p.colors.map((c) => ({ name: c.name, hex: c.hex, stock: Number(c.stock || 0) })) : [],
+      photos,
+      videoUrl: p.videoUrl || null,
+      videoPath: p.videoPath || null
     });
   }
 
