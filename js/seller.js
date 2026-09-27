@@ -215,19 +215,6 @@
     return '<ul class="alerts">' + out.map((a) => '<li>' + ic(a[0]) + '<span>' + a[1] + '</span><a href="' + a[2] + '">' + a[3] + '</a></li>').join('') + '</ul>';
   }
 
-  function topProductCard(n) {
-    const rows = M.stats.byProduct(n).filter((r) => r.sold || r.views);
-    const t = rows[0];
-    if (!t) return card('أفضل منتج أداءً', empty({ icon: 'box', title: 'لا توجد بيانات بعد', text: 'ستظهر هنا أفضل منتجاتك بمجرد وصول أول زيارات وطلبات.' }));
-    const p = M.products.get(t.id) || window.Products.byId(t.id) || { id: t.id, name: t.name, price: 0, stock: 0, category: '' };
-    const convRate = t.views ? (t.sold / t.views) * 100 : 0;
-    return card('أفضل منتج أداءً',
-      '<div class="topp">' + pimg(p, 'topp__img') +
-        '<div class="topp__b"><h3>' + esc(p.name) + '</h3>' +
-          '<dl><div><dt>التصنيف</dt><dd>' + esc(window.Products.categoryName(p.category) || '—') + '</dd></div><div><dt>السعر</dt><dd>' + money(p.price) + '</dd></div><div><dt>المخزون</dt><dd>' + fmt(p.stock) + '</dd></div></dl></div></div>' +
-      '<div class="meter"><div><span>المشاهدات</span><strong>' + fmt(t.views) + '</strong></div><div><span>المبيعات</span><strong>' + fmt(t.sold) + '</strong></div><div><span>التحويل</span><strong>' + convRate.toFixed(1) + '%</strong></div><div><span>الإيراد</span><strong>' + money(t.revenue) + '</strong></div></div>');
-  }
-
   function qualityTable() {
     let list = M.products.list().map((p) => ({ p, demo: false }));
     if (!list.length && M.demo.on()) {
@@ -244,38 +231,178 @@
       }).join('') + '</tbody></table></div>');
   }
 
+  /* ---------- بيانات لوحة التحكم — كلها حقيقية من Supabase (بلا أي بيانات وهمية) ----------
+     المصدر: M.orders.list() و M.products.list()، وكلاهما يُقرأ مباشرة من قاعدة البيانات
+     (store_orders / products عبر RPC في cloud.js)، وليس من أي مولّد أو تخزين محلي وهمي. */
+  const ORDER_GROUPS = { new: ['new'], progress: ['accepted', 'preparing', 'ready', 'out_for_delivery', 'processing', 'shipped'], completed: ['delivered', 'completed'], cancelled: ['cancelled', 'returned'] };
+  function groupOf(status) { for (const g in ORDER_GROUPS) if (ORDER_GROUPS[g].indexOf(status) > -1) return g; return 'progress'; }
+  const LOW_STOCK_MAX = 3;
+  const DAY_MS = 86400000;
+  const F_MONTH = new Intl.DateTimeFormat('ar-EG-u-nu-latn', { month: 'short' });
+  const DASH_FILTERS = [['today', 'اليوم'], ['7d', '7 أيام'], ['30d', '30 يوماً'], ['month', 'هذا الشهر'], ['custom', 'فترة مخصصة']];
+  const DASH_KEY = 'nq_dash_filter_v1', GRAN_KEY = 'nq_dash_gran_v1';
+  const toDay = (d) => { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; };
+  const inputDate = (d) => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+  const pct = (a, b) => (b > 0 ? Math.round(((a - b) / b) * 100) : (a > 0 ? 100 : 0));
+
+  function dashFilter() {
+    let f; try { f = JSON.parse(sessionStorage.getItem(DASH_KEY)); } catch (_) { f = null; }
+    if (!f || !DASH_FILTERS.some((x) => x[0] === f.key)) f = { key: '30d' };
+    return f;
+  }
+  function dashRange() {
+    const f = dashFilter(), today = toDay(new Date()), tomorrow = M.util.addDays(today, 1);
+    if (f.key === 'today') return { from: today, to: tomorrow };
+    if (f.key === '7d') return { from: M.util.addDays(today, -6), to: tomorrow };
+    if (f.key === 'month') return { from: new Date(today.getFullYear(), today.getMonth(), 1), to: tomorrow };
+    if (f.key === 'custom' && f.from && f.to) {
+      const from = toDay(new Date(f.from)), to = M.util.addDays(toDay(new Date(f.to)), 1);
+      if (to > from) return { from, to };
+    }
+    return { from: M.util.addDays(today, -29), to: tomorrow };
+  }
+  function prevRangeOf(r) { const days = Math.round((r.to - r.from) / DAY_MS); return { from: M.util.addDays(r.from, -days), to: r.from }; }
+  function dashGran() { const g = sessionStorage.getItem(GRAN_KEY); return ['day', 'week', 'month'].indexOf(g) > -1 ? g : 'day'; }
+
+  /* نقاط السلسلة الزمنية: يومية (14 يوماً)، أسبوعية (10 أسابيع متدحرجة)، شهرية (8 أشهر تقويمية) */
+  function dayBuckets(nDays) {
+    const today = toDay(new Date()), out = [];
+    for (let i = nDays - 1; i >= 0; i--) { const d = M.util.addDays(today, -i); out.push({ label: shortKey(M.util.dkey(d)), from: d, to: M.util.addDays(d, 1) }); }
+    return out;
+  }
+  function weekBuckets(nWeeks) {
+    const tomorrow = M.util.addDays(toDay(new Date()), 1), out = [];
+    for (let i = nWeeks - 1; i >= 0; i--) { const to = M.util.addDays(tomorrow, -7 * i), from = M.util.addDays(to, -7); out.push({ label: shortKey(M.util.dkey(from)), from, to }); }
+    return out;
+  }
+  function monthBuckets(nMonths) {
+    const now = new Date(), out = [];
+    for (let i = nMonths - 1; i >= 0; i--) { const from = new Date(now.getFullYear(), now.getMonth() - i, 1), to = new Date(now.getFullYear(), now.getMonth() - i + 1, 1); out.push({ label: F_MONTH.format(from), from, to }); }
+    return out;
+  }
+  function dashBuckets(gran) { return gran === 'week' ? weekBuckets(10) : gran === 'month' ? monthBuckets(8) : dayBuckets(14); }
+
+  /* الربح الحقيقي = صافي قيمة المنتجات بعد خصم عمولة المنصة (نفس نسبة العمولة CFG.commission
+     المستخدمة في كل مكان آخر بالتطبيق: صفحة الإعداد والمحفظة)، وليس رقماً وهمياً. */
+  function orderProfit(o) { return M.util.round2(o.gross * (1 - CFG.commission)); }
+
+  function aggregateByProduct(list) {
+    const rows = {};
+    list.forEach((o) => {
+      if (groupOf(o.status) === 'cancelled') return;
+      (o.lines || []).forEach((l) => {
+        const r = rows[l.productId] || (rows[l.productId] = { id: l.productId, name: l.name, qty: 0, revenue: 0 });
+        r.qty += Number(l.qty || 0); r.revenue += Number(l.price || 0) * Number(l.qty || 0);
+      });
+    });
+    return Object.keys(rows).map((k) => rows[k]).sort((a, b) => b.qty - a.qty || b.revenue - a.revenue);
+  }
+
+  function computeForRange(r, allOrders) {
+    const rows = allOrders.filter((o) => { const t = new Date(o.createdAt); return t >= r.from && t < r.to; });
+    let sales = 0, profit = 0;
+    const counts = { new: 0, progress: 0, completed: 0, cancelled: 0 };
+    rows.forEach((o) => { const g = groupOf(o.status); counts[g]++; if (g !== 'cancelled') { sales += o.gross; profit += orderProfit(o); } });
+    return { orders: rows, total: rows.length, sales: M.util.round2(sales), profit: M.util.round2(profit), counts, topProducts: aggregateByProduct(rows) };
+  }
+
+  function dashboardData() {
+    const rg = dashRange(), allOrders = M.orders.list();
+    const cur = computeForRange(rg, allOrders), prev = computeForRange(prevRangeOf(rg), allOrders);
+    const prods = M.products.list().filter((p) => p.status !== 'archived');
+    const low = prods.filter((p) => p.stock <= LOW_STOCK_MAX);
+    return { range: rg, cur, prev, productCount: prods.length, lowStock: low.length, lowList: low };
+  }
+
+  Seller.actions['dash-filter'] = (b) => {
+    const key = b.dataset.key, f = { key };
+    if (key === 'custom') {
+      const old = dashFilter(), today = new Date();
+      f.from = old.from || M.util.addDays(today, -29).toISOString();
+      f.to = old.to || today.toISOString();
+    }
+    sessionStorage.setItem(DASH_KEY, JSON.stringify(f));
+    render();
+  };
+  Seller.actions['dash-apply-custom'] = () => {
+    const fromEl = $('#dash-from'), toEl = $('#dash-to');
+    if (!fromEl || !toEl || !fromEl.value || !toEl.value) return;
+    if (new Date(toEl.value) < new Date(fromEl.value)) { U.toast('تاريخ النهاية قبل تاريخ البداية', { type: 'error' }); return; }
+    sessionStorage.setItem(DASH_KEY, JSON.stringify({ key: 'custom', from: fromEl.value, to: toEl.value }));
+    render();
+  };
+  Seller.actions['dash-gran'] = (b) => { sessionStorage.setItem(GRAN_KEY, b.dataset.key); render(); };
+  Seller.actions['dash-export'] = () => {
+    const d = dashboardData();
+    const rows = [['رقم الطلب', 'التاريخ', 'الحالة', 'إجمالي المبيعات', 'الأرباح']];
+    d.cur.orders.forEach((o) => rows.push([o.id, dateTimeAr(o.createdAt), M.STATUS[o.status] || o.status, o.gross, groupOf(o.status) === 'cancelled' ? 0 : orderProfit(o)]));
+    csv(rows, 'nasaq-dashboard-' + M.util.dkey() + '.csv');
+  };
+
   Seller.views.dashboard = () => {
-    const n = range(), sm = M.stats.summary(n), ser = M.stats.series(n), c = sm.cur;
+    const f = dashFilter(), gran = dashGran(), d = dashboardData(), cur = d.cur, prev = d.prev;
     const kpi = (icon, label, value, g, extra) => '<div class="dcard kpi"><div class="kpi__l">' + ic(icon) + label + '</div><div class="kpi__v">' + value + '</div><div class="kpi__f">' + (g == null ? '' : growth(g)) + (extra ? '<span>' + extra + '</span>' : '') + '</div></div>';
-    const labels = ser.map((d) => shortKey(d.date));
-    const w = M.stats.series(7);
-    const status = M.orders.counts();
-    const cities = M.stats.cities(n).slice(0, 5);
-    const maxCity = cities.length ? cities[0].n : 1;
-    const net = M.orders.list().filter((o) => o.status !== 'cancelled' && new Date(o.createdAt) >= M.util.addDays(new Date(), -(n - 1))).reduce((a, o) => a + o.net, 0);
+
+    const bks = dashBuckets(gran), allOrders = M.orders.list();
+    const ser = bks.map((b) => {
+      const rows = allOrders.filter((o) => { const t = new Date(o.createdAt); return t >= b.from && t < b.to; });
+      let s = 0, p = 0; rows.forEach((o) => { if (groupOf(o.status) !== 'cancelled') { s += o.gross; p += orderProfit(o); } });
+      return { label: b.label, sales: M.util.round2(s), profit: M.util.round2(p), orders: rows.length };
+    });
+    const labels = ser.map((x) => x.label);
+    const granLabel = gran === 'week' ? 'أسبوعياً' : gran === 'month' ? 'شهرياً' : 'يومياً';
+
+    const top = cur.topProducts.slice(0, 6);
+    const maxQty = top.length ? top[0].qty : 1;
+    const shortName = (nm) => (nm && nm.length > 16 ? nm.slice(0, 15) + '…' : (nm || 'منتج محذوف'));
+
+    const filtersHTML = '<div class="dcard dash-filters">' +
+        '<div class="chips" role="group" aria-label="فترة الإحصائيات">' +
+          DASH_FILTERS.map((x) => '<button type="button" class="chip" aria-pressed="' + (f.key === x[0]) + '" data-act="dash-filter" data-key="' + x[0] + '">' + x[1] + '</button>').join('') +
+        '</div>' +
+        (f.key === 'custom' ? '<div class="dash-filters__custom">' +
+          '<label>من <input type="date" class="input" id="dash-from" value="' + esc(f.from ? inputDate(f.from) : inputDate(M.util.addDays(new Date(), -29))) + '"></label>' +
+          '<label>إلى <input type="date" class="input" id="dash-to" value="' + esc(f.to ? inputDate(f.to) : inputDate(new Date())) + '"></label>' +
+          '<button type="button" class="btn btn--primary btn--sm" data-act="dash-apply-custom">تطبيق</button>' +
+        '</div>' : '') +
+      '</div>';
+
+    const statusGroups = [['جديد', cur.counts.new, 0], ['قيد التنفيذ', cur.counts.progress, 1], ['مكتمل', cur.counts.completed, 2], ['ملغي', cur.counts.cancelled, 3]];
+    const topKpi = top[0] ? esc(shortName(top[0].name)) : '—';
 
     const html =
-      pageHead('لوحة التحكم', 'نظرة سريعة على أداء متجرك', rangeSelect()) +
+      pageHead('لوحة التحكم', 'كل الأرقام هنا حقيقية من قاعدة بيانات متجرك وتتحدّث تلقائياً حسب الفترة المختارة',
+        cur.total ? '<button type="button" class="btn btn--ghost btn--sm" data-act="dash-export">' + ic('download') + 'تصدير CSV</button>' : '') +
+      filtersHTML +
       alertsHTML() +
       '<div class="kpis">' +
-        kpi('eye', 'مشاهدات المتجر', fmt(c.v), sm.growth.v) +
-        kpi('list', 'الطلبات', fmt(c.o), sm.growth.o) +
-        kpi('cash', 'إجمالي المبيعات', money(c.r), sm.growth.r, 'صافي ' + money(net)) +
-        kpi('chart', 'معدل التحويل', sm.conv + '%', null, 'متوسط الطلب ' + money(sm.aov)) +
+        kpi('cash', 'إجمالي المبيعات', money(cur.sales), pct(cur.sales, prev.sales)) +
+        kpi('gift', 'إجمالي الأرباح', money(cur.profit), pct(cur.profit, prev.profit), 'بعد عمولة المنصة ' + Math.round(CFG.commission * 100) + '%') +
+        kpi('list', 'عدد الطلبات', fmt(cur.total), pct(cur.total, prev.total)) +
+        kpi('bell', 'طلبات جديدة', fmt(cur.counts.new)) +
+        kpi('clock', 'قيد التنفيذ', fmt(cur.counts.progress)) +
+        kpi('check', 'طلبات مكتملة', fmt(cur.counts.completed)) +
+        kpi('close', 'طلبات ملغاة', fmt(cur.counts.cancelled)) +
+        kpi('box', 'عدد المنتجات', fmt(d.productCount)) +
+        kpi('alert', 'مخزون منخفض', fmt(d.lowStock), null, d.lowStock ? '<a href="#/products?f=low">مراجعة المخزون</a>' : 'لا يوجد') +
+        kpi('tag', 'الأكثر مبيعاً', topKpi, null, top[0] ? fmt(top[0].qty) + ' قطعة مباعة' : 'لا توجد مبيعات بعد') +
       '</div>' +
-      '<div class="dgrid dgrid--main">' +
-        '<div class="dcol">' +
-          card('المشاهدات والطلبات', '<figure class="dfig">' + C.line({ labels, series: [{ name: 'المشاهدات', values: ser.map((d) => d.v) }, { name: 'الطلبات ×10', values: ser.map((d) => d.o * 10), area: false }], label: 'المشاهدات والطلبات خلال آخر ' + n + ' يوماً' }) +
-            C.legend([{ label: 'المشاهدات', s: 0 }, { label: 'الطلبات (مضروبة ×10 للمقارنة)', s: 1 }]) + '</figure>') +
-          topProductCard(n) +
-        '</div>' +
-        '<div class="dcol">' +
-          card('أداء الأسبوع', '<figure class="dfig">' + C.bars({ labels: w.map((d) => dowKey(d.date)), series: [{ name: 'إضافات للسلة', values: w.map((d) => d.c) }, { name: 'الطلبات', values: w.map((d) => d.o) }], label: 'أداء آخر 7 أيام' }) +
-            C.legend([{ label: 'إضافات للسلة', s: 0 }, { label: 'الطلبات', s: 1 }]) + '</figure>') +
-          card('حالة الطلبات', '<div class="donut">' + C.donut({ items: [{ label: 'جديد', value: status.new, s: 0 }, { label: 'قيد التجهيز', value: status.processing, s: 1 }, { label: 'تم الشحن', value: status.shipped, s: 4 }, { label: 'مكتمل', value: status.completed, s: 2 }, { label: 'ملغي', value: status.cancelled, s: 3 }], center: { value: status.all, label: 'طلب' }, label: 'توزيع الطلبات حسب الحالة' }) +
-            C.legend([{ label: 'جديد', value: status.new, s: 0 }, { label: 'قيد التجهيز', value: status.processing, s: 1 }, { label: 'تم الشحن', value: status.shipped, s: 4 }, { label: 'مكتمل', value: status.completed, s: 2 }, { label: 'ملغي', value: status.cancelled, s: 3 }]) + '</div>') +
-          card('أكثر المدن طلباً', cities.length ? '<ul class="hbars">' + cities.map((x) => '<li><span>' + esc(x.city) + '</span><div><i style="width:' + Math.round((x.n / maxCity) * 100) + '%"></i></div><strong>' + x.n + '</strong></li>').join('') + '</ul>' : empty({ icon: 'pin', title: 'لا توجد طلبات بعد' })) +
-        '</div>' +
+      '<div class="dcard">' +
+        '<div class="dcard__head"><h2>اتجاه المبيعات والأرباح وعدد الطلبات</h2>' +
+          '<div class="chips" role="group" aria-label="التجميع الزمني">' +
+            [['day', 'يومي'], ['week', 'أسبوعي'], ['month', 'شهري']].map((g) => '<button type="button" class="chip" aria-pressed="' + (gran === g[0]) + '" data-act="dash-gran" data-key="' + g[0] + '">' + g[1] + '</button>').join('') +
+          '</div></div>' +
+        '<figure class="dfig">' + C.line({ labels, series: [{ name: 'المبيعات', values: ser.map((x) => x.sales) }, { name: 'الأرباح', values: ser.map((x) => x.profit), area: false }], fmt: money, label: 'اتجاه المبيعات والأرباح ' + granLabel }) +
+          C.legend([{ label: 'المبيعات', s: 0 }, { label: 'الأرباح', s: 1 }]) + '</figure>' +
+        '<figure class="dfig">' + C.bars({ labels, series: [{ name: 'عدد الطلبات', values: ser.map((x) => x.orders) }], label: 'عدد الطلبات ' + granLabel }) + '</figure>' +
+      '</div>' +
+      '<div class="dgrid dgrid--half">' +
+        card('توزيع حالات الطلبات', cur.total ? '<div class="donut">' + C.donut({ items: statusGroups.map((s) => ({ label: s[0], value: s[1], s: s[2] })), center: { value: cur.total, label: 'طلب' }, label: 'توزيع حالات الطلبات' }) +
+          C.legend(statusGroups.map((s) => ({ label: s[0], value: s[1], s: s[2] }))) + '</div>' : empty({ icon: 'list', title: 'لا توجد طلبات في هذه الفترة' })) +
+        card('أكثر المنتجات مبيعاً', top.length ?
+          '<figure class="dfig">' + C.bars({ labels: top.map((p) => shortName(p.name)), series: [{ name: 'الكمية المباعة', values: top.map((p) => p.qty) }], label: 'أكثر المنتجات مبيعاً' }) + '</figure>' +
+          '<ul class="hbars">' + top.map((p) => '<li><span>' + esc(shortName(p.name)) + '</span><div><i style="width:' + Math.round((p.qty / maxQty) * 100) + '%"></i></div><strong>' + fmt(p.qty) + '</strong></li>').join('') + '</ul>'
+          : empty({ icon: 'box', title: 'لا توجد مبيعات في هذه الفترة' })) +
       '</div>' +
       qualityTable();
     return { html };

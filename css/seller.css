@@ -117,6 +117,13 @@
 .btn--bad { color: var(--c-danger); border-color: var(--c-danger); }
 .icon-btn--bad:hover { color: var(--c-danger); }
 
+/* ---------- فلاتر لوحة التحكم (فترة الإحصائيات) ---------- */
+.dash-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); }
+.dash-filters__custom { display: flex; flex-wrap: wrap; align-items: end; gap: var(--sp-3); }
+.dash-filters__custom label { display: grid; gap: 0.3rem; font-size: var(--fs-sm); color: var(--c-ink-2); }
+.dash-filters__custom input[type="date"] { min-height: 40px; padding: 0 0.7rem; }
+.dcard__head { flex-wrap: wrap; row-gap: var(--sp-2); }
+
 /* ---------- المؤشرات ---------- */
 .kpis { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
 .kpis--7 { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
