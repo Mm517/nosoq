@@ -263,10 +263,49 @@
 
   /* =====================================================================
      الطلبات
+     — كل بائع يرى طلبات متجره فقط (مضمون من الخادم: seller_list_orders /
+     seller_get_order يتحقّقان من ملكية المتجر قبل إرجاع أي صف، فلا يستطيع
+     بائع رؤية أو تعديل طلبات بائع آخر حتى لو حاول تركيب رقم متجر مختلف).
      ===================================================================== */
   const NEXT_LABEL = { new: 'قبول الطلب', accepted: 'بدء التجهيز', preparing: 'الطلب جاهز للتوصيل' };
-  const PAY = { cod: 'عند الاستلام', card: 'بطاقة' };
+  const PAY = { cod: 'عند الاستلام', card: 'بطاقة بنكية' };
+  const PAY_STATUS = { pending: 'بانتظار التحصيل', paid: 'مدفوع', refunded: 'مُسترجَع', failed: 'فشل التحصيل' };
+  const PAY_STATUS_CLS = { pending: 'new', paid: 'completed', refunded: 'cancelled', failed: 'cancelled' };
+  const payPill = (st) => '<span class="pill pill--' + (PAY_STATUS_CLS[st] || 'new') + '">' + esc(PAY_STATUS[st] || st || '—') + '</span>';
   const PER = 15;
+
+  /* صورة صنف داخل الطلب: تأتي جاهزة من الخادم (رابط حقيقي لصورة المنتج/اللون
+     وقت الطلب)، فلا حاجة للبحث في كتالوج محلي كما في pimg() الخاصة بالمنتجات. */
+  function itemImg(url) {
+    return url ? '<img class="pthumb" src="' + esc(url) + '" alt="" width="48" height="60" loading="lazy">' : '<span class="pthumb pthumb--ph">' + ic('box') + '</span>';
+  }
+  function itemsThumbs(items) {
+    const shown = (items || []).slice(0, 3);
+    return '<div class="pcell-stack">' + shown.map((l) => itemImg(l.image)).join('') + (items.length > 3 ? '<span class="pcell-more">+' + (items.length - 3) + '</span>' : '') + '</div>';
+  }
+
+  /* مراحل الـ Order Timeline الخمس المطلوبة، وكل مرحلة تُقرأ من order_status_history
+     الحقيقي (وقت فعلي مسجَّل في قاعدة البيانات لحظة حدوثها، مش تخمين من الحالة الحالية).
+     "جاري التجهيز" تُعتبر محقَّقة سواء دخل الطلب preparing أو قفز مباشرة إلى ready
+     (البائع مسموح له بالانتقالين حسب _allowed_next_statuses). */
+  const TIMELINE_STAGES = [
+    { label: 'تم إنشاء الطلب', match: ['new'] },
+    { label: 'تم قبول الطلب', match: ['accepted'] },
+    { label: 'جاري التجهيز', match: ['preparing', 'ready'] },
+    { label: 'تم الشحن', match: ['out_for_delivery'] },
+    { label: 'تم التسليم', match: ['delivered'] }
+  ];
+  function buildTimeline(history) {
+    const at = {};
+    (history || []).forEach((h) => { if (!at[h.status]) at[h.status] = h.at; });
+    let doneUpTo = -1;
+    const stages = TIMELINE_STAGES.map((s, i) => {
+      const when = s.match.map((k) => at[k]).find(Boolean) || null;
+      if (when && i === doneUpTo + 1) doneUpTo = i;
+      return { label: s.label, at: when };
+    });
+    return { stages, doneUpTo };
+  }
 
   function ordersList(q) {
     const tab = q.get('tab') || 'all', text = (q.get('q') || '').trim().toLowerCase(), page = Math.max(1, Number(q.get('page')) || 1);
@@ -276,51 +315,87 @@
     const tabs = [['all', 'الكل'], ['new', 'جديدة'], ['accepted', 'مقبولة'], ['preparing', 'قيد التجهيز'], ['ready', 'جاهزة'], ['out_for_delivery', 'مع المندوب'], ['delivered', 'مسلَّمة'], ['cancelled', 'ملغاة']];
     const link = (t, pg) => '#/orders?tab=' + t + (text ? '&q=' + encodeURIComponent(text) : '') + (pg > 1 ? '&page=' + pg : '');
     const html =
-      pageHead('الطلبات', 'الطلبات الواردة والمكتملة على منتجاتك', '<button type="button" class="btn btn--ghost btn--sm" data-act="ord-export" data-tab="' + tab + '">' + ic('download') + 'تصدير CSV</button>') +
+      pageHead('الطلبات', 'طلبات متجرك فقط — الواردة والمكتملة على منتجاتك', '<button type="button" class="btn btn--ghost btn--sm" data-act="ord-export" data-tab="' + tab + '">' + ic('download') + 'تصدير CSV</button>') +
       '<nav class="dtabs" aria-label="حالات الطلبات">' + tabs.map((t) => '<a href="' + link(t[0], 1) + '"' + (tab === t[0] ? ' aria-current="page"' : '') + '>' + t[1] + ' <span>' + counts[t[0]] + '</span></a>').join('') + '</nav>' +
       card('', rows.length
-        ? '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>رقم الطلب</th><th>التاريخ</th><th>العميل</th><th>المنتجات</th><th>المبلغ</th><th>الدفع</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
-          rows.map((o) => '<tr><td><a href="#/orders/' + esc(o.id) + '" dir="ltr">' + esc(o.id) + '</a>' + (o.demo ? ' <em class="tag-demo">تجريبي</em>' : '') + '</td><td>' + dateAr(o.createdAt) + '</td>' +
-            '<td>' + esc(o.customer.name || '—') + '<small>' + esc(o.customer.city || '') + '</small></td><td>' + o.lines.reduce((n, l) => n + l.qty, 0) + ' قطعة</td><td>' + money(o.gross) + '</td><td>' + (PAY[o.payment] || '—') + '</td><td>' + pill(o.status) + '</td>' +
-            '<td class="acts">' + (M.NEXT[o.status] ? '<button type="button" class="btn btn--primary btn--sm" data-act="ord-next" data-id="' + esc(o.id) + '">' + NEXT_LABEL[o.status] + '</button>' : '<a class="btn btn--ghost btn--sm" href="#/orders/' + esc(o.id) + '">عرض</a>') + '</td></tr>').join('') + '</tbody></table></div>' +
+        ? '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>رقم الطلب</th><th>التاريخ</th><th>المشتري</th><th>المنتجات</th><th>الشحن</th><th>الخصم</th><th>الإجمالي</th><th>الدفع</th><th>حالة الدفع</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>' +
+          rows.map((o) => '<tr><td><a href="#/orders/' + esc(o.id) + '" dir="ltr">' + esc(o.id) + '</a></td><td>' + dateAr(o.createdAt) + '</td>' +
+            '<td>' + esc(o.customer.name || '—') + '<small>' + esc(o.customer.city || '') + '</small></td>' +
+            '<td><div class="pcell">' + itemsThumbs(o.items) + '<small>' + o.itemsQty + ' قطعة</small></div></td>' +
+            '<td>' + money(o.shipping) + '</td><td>' + (o.discount ? '−' + money(o.discount) : '—') + '</td><td>' + money(o.total) + '</td>' +
+            '<td>' + (PAY[o.payment] || '—') + '</td><td>' + payPill(o.paymentStatus) + '</td><td>' + pill(o.status) + '</td>' +
+            '<td class="acts">' + (M.NEXT[o.status] ? '<button type="button" class="btn btn--primary btn--sm" data-act="ord-next" data-id="' + esc(o.id) + '">' + NEXT_LABEL[o.status] + '</button>' : '') + '<a class="btn btn--ghost btn--sm" href="#/orders/' + esc(o.id) + '">التفاصيل</a></td></tr>').join('') + '</tbody></table></div>' +
           (pages > 1 ? '<nav class="pager" aria-label="الصفحات">' + (cur > 1 ? '<a class="btn btn--ghost btn--sm" href="' + link(tab, cur - 1) + '">السابق</a>' : '') + '<span>صفحة ' + cur + ' من ' + pages + '</span>' + (cur < pages ? '<a class="btn btn--ghost btn--sm" href="' + link(tab, cur + 1) + '">التالي</a>' : '') + '</nav>' : '')
         : empty({ icon: 'list', title: 'لا توجد طلبات هنا', text: 'عندما يشتري عميل أحد منتجاتك سيظهر الطلب هنا فوراً وتصلك إشعارات.' }));
     return { html };
   }
 
+  /* تفاصيل طلب واحد كاملة. نعرض فوراً الملخص المتوفر من قائمة الطلبات (سريع)،
+     ثم نجيب التفاصيل الكاملة (Order Timeline الحقيقي + الحالات التالية
+     المسموح بها) من الخادم عبر seller_get_order، ونعيد رسم الصفحة عند وصولها. */
+  const detailCache = {}, detailLoading = {};
+  function loadDetail(id) {
+    if (detailCache[id] || detailLoading[id]) return;
+    detailLoading[id] = true;
+    M.orders.fetchDetail(id).then((full) => {
+      detailLoading[id] = false;
+      if (full) { detailCache[id] = full; window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready')); }
+    }).catch(() => { detailLoading[id] = false; });
+  }
   function orderDetail(id) {
-    const o = M.orders.get(id);
-    if (!o) return { html: pageHead('الطلب غير موجود') + empty({ icon: 'list', title: 'لم نعثر على هذا الطلب', action: { href: '#/orders', label: 'العودة للطلبات' } }) };
-    const steps = ['new', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered'], idx = steps.indexOf(o.status);
+    const summary = M.orders.get(id);
+    if (!summary) return { html: pageHead('الطلب غير موجود') + empty({ icon: 'list', title: 'لم نعثر على هذا الطلب، أو أنه لا يخص متجرك', action: { href: '#/orders', label: 'العودة للطلبات' } }) };
+    loadDetail(id);
+    const o = detailCache[id] || summary;
     const c = o.customer || {};
     const addr = [c.address, c.city].filter(Boolean).join('، ');
+    const allowedNext = o.allowedNext || (M.NEXT[o.status] ? [M.NEXT[o.status]] : []);
+    const isTerminal = o.status === 'cancelled' || o.status === 'returned';
+    const { stages, doneUpTo } = buildTimeline(o.history);
     const html =
       pageHead('طلب ' + o.id, dateTimeAr(o.createdAt) + ' · ' + (PAY[o.payment] || ''), '<a class="btn btn--ghost btn--sm" href="#/orders">→ كل الطلبات</a>') +
       '<div class="dgrid dgrid--main"><div class="dcol">' +
-        card('حالة الطلب', o.status === 'cancelled' ? '<p class="txt-bad">' + ic('close') + ' هذا الطلب ملغي.</p>'
-          : '<ol class="steps">' + steps.map((s, i) => '<li class="' + (i < idx ? 'is-done' : i === idx ? 'is-cur' : '') + '"><span>' + (i < idx ? ic('check') : i + 1) + '</span>' + M.STATUS[s] + '</li>').join('') + '</ol>' +
-            '<div class="dform__foot">' + (M.NEXT[o.status] ? '<button type="button" class="btn btn--primary" data-act="ord-next" data-id="' + esc(o.id) + '" data-back="1">' + NEXT_LABEL[o.status] + '</button>' : '') +
-            (o.status === 'new' || o.status === 'accepted' || o.status === 'preparing' ? '<button type="button" class="btn btn--ghost" data-act="ord-cancel" data-id="' + esc(o.id) + '">إلغاء الطلب</button>' : '') + '</div>') +
-        card('المنتجات', '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>المنتج</th><th>السعر</th><th>الكمية</th><th>الإجمالي</th></tr></thead><tbody>' +
-          o.lines.map((l) => '<tr><td><div class="pcell">' + pimg(prodFor(l.productId)) + '<span>' + esc(l.name) + '<small>' + [l.size ? 'المقاس ' + l.size : '', l.color].filter(Boolean).map(esc).join(' · ') + '</small></span></div></td><td>' + money(l.price) + '</td><td>' + l.qty + '</td><td>' + money(l.price * l.qty) + '</td></tr>').join('') + '</tbody></table></div>' +
-          '<dl class="totals"><div><dt>إجمالي المنتجات</dt><dd>' + money(o.gross) + '</dd></div><div><dt>عمولة المنصة (' + Math.round(CFG.commission * 100) + '%)</dt><dd>−' + money(o.commission) + '</dd></div><div class="totals__net"><dt>صافي ربحك</dt><dd>' + money(o.net) + '</dd></div></dl>') +
+        card('حالة الطلب', (isTerminal ? '<p class="txt-bad">' + ic('close') + ' ' + (o.status === 'cancelled' ? 'هذا الطلب ملغي.' : 'هذا الطلب مرتجع.') + '</p>' : '') +
+          '<ol class="steps">' + stages.map((s, i) => '<li class="' + (i <= doneUpTo ? 'is-done' : i === doneUpTo + 1 && !isTerminal ? 'is-cur' : '') + '"><span>' + (i <= doneUpTo ? ic('check') : i + 1) + '</span>' + esc(s.label) + (s.at ? '<time>' + dateTimeAr(s.at) + '</time>' : '') + '</li>').join('') + '</ol>' +
+          (!o.history ? '<p class="dnote">' + ic('alert') + ' جارٍ تحميل السجل الزمني…</p>' : '') +
+          (!isTerminal ? '<div class="dform__foot">' +
+            allowedNext.filter((s) => s !== 'cancelled').map((s) => '<button type="button" class="btn btn--primary" data-act="ord-set" data-id="' + esc(o.id) + '" data-status="' + s + '">' + (NEXT_LABEL[o.status] || M.STATUS[s]) + '</button>').join('') +
+            (allowedNext.includes('cancelled') ? '<button type="button" class="btn btn--ghost" data-act="ord-cancel" data-id="' + esc(o.id) + '">إلغاء الطلب</button>' : '') + '</div>' : '')) +
+        card('المنتجات', '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>المنتج</th><th>اللون</th><th>السعر وقت الطلب</th><th>الكمية</th><th>الإجمالي</th></tr></thead><tbody>' +
+          (o.items || []).map((l) => '<tr><td><div class="pcell">' + itemImg(l.image) + '<span>' + esc(l.name) + (l.size ? '<small>المقاس ' + esc(l.size) + '</small>' : '') + '</span></div></td><td>' + esc(l.color || '—') + '</td><td>' + money(l.unit_price) + '</td><td>' + l.quantity + '</td><td>' + money(l.line_total) + '</td></tr>').join('') + '</tbody></table></div>' +
+          '<dl class="totals"><div><dt>إجمالي المنتجات</dt><dd>' + money(o.subtotal) + '</dd></div>' +
+          '<div><dt>الشحن</dt><dd>' + money(o.shipping) + '</dd></div>' +
+          '<div><dt>الخصم</dt><dd>' + (o.discount ? '−' + money(o.discount) : money(0)) + '</dd></div>' +
+          '<div class="totals__net"><dt>الإجمالي</dt><dd>' + money(o.total) + '</dd></div></dl>') +
       '</div><div class="dcol">' +
-        card('بيانات العميل', '<dl class="kv"><div><dt>الاسم</dt><dd>' + esc(c.name || '—') + '</dd></div>' +
+        card('بيانات المشتري والدفع', '<dl class="kv"><div><dt>الاسم</dt><dd>' + esc(c.name || '—') + '</dd></div>' +
           '<div><dt>الجوال</dt><dd dir="ltr">' + (c.phone ? '<a href="tel:' + esc(c.phone) + '">' + esc(c.phone) + '</a>' : '—') + '</dd></div>' +
-          '<div><dt>العنوان</dt><dd>' + esc(addr || '—') + '</dd></div></dl>' +
-          (addr && !o.demo ? '<a class="btn btn--ghost btn--sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) + '">' + ic('pin') + 'افتح العنوان في خرائط جوجل</a>' : '')) +
+          (c.email ? '<div><dt>البريد</dt><dd>' + esc(c.email) + '</dd></div>' : '') +
+          '<div><dt>عنوان التوصيل</dt><dd>' + esc(addr || '—') + '</dd></div>' +
+          '<div><dt>طريقة الدفع</dt><dd>' + (PAY[o.payment] || '—') + '</dd></div>' +
+          '<div><dt>حالة الدفع</dt><dd>' + payPill(o.paymentStatus) + '</dd></div></dl>' +
+          (addr ? '<a class="btn btn--ghost btn--sm" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) + '">' + ic('pin') + 'افتح العنوان في خرائط جوجل</a>' : '')) +
       '</div></div>';
     return { html, title: 'طلب ' + o.id };
   }
 
   S.views.orders = (args, q) => (args[0] ? orderDetail(decodeURIComponent(args[0])) : ordersList(q));
 
-  const setStatus = (id, st, msg) => { M.orders.setStatus(id, st); S.toast(msg); S.rerender(); };
+  const setStatus = (id, st, msg) => {
+    delete detailCache[id];
+    M.orders.setStatus(id, st);
+    S.toast(msg);
+    S.rerender();
+    /* حدّث الكاش من الخادم لضمان أن يعكس السجل الزمني والصلاحيات التالية
+       الحقيقيتين بعد التغيير (بدل الاعتماد على التحديث التفاؤلي فقط) */
+    loadDetail(id);
+  };
   S.actions['ord-next'] = (b) => { const o = M.orders.get(b.dataset.id); if (!o || !M.NEXT[o.status]) return; setStatus(o.id, M.NEXT[o.status], 'تم تحديث الحالة إلى «' + M.STATUS[M.NEXT[o.status]] + '»'); };
+  S.actions['ord-set'] = (b) => { const st = b.dataset.status; setStatus(b.dataset.id, st, 'تم تحديث الحالة إلى «' + M.STATUS[st] + '»'); };
   S.actions['ord-cancel'] = (b) => { if (!armed(b, 'تأكيد الإلغاء')) return; setStatus(b.dataset.id, 'cancelled', 'تم إلغاء الطلب'); };
   S.actions['ord-export'] = (b) => {
     const tab = b.dataset.tab;
-    csv([['رقم الطلب', 'التاريخ', 'العميل', 'المدينة', 'الجوال', 'القطع', 'إجمالي المنتجات', 'العمولة', 'الصافي', 'الدفع', 'الحالة']].concat(
-      M.orders.list().filter((o) => tab === 'all' || o.status === tab).map((o) => [o.id, o.createdAt.slice(0, 10), o.customer.name, o.customer.city, o.customer.phone, o.lines.reduce((n, l) => n + l.qty, 0), o.gross, o.commission, o.net, PAY[o.payment] || '', M.STATUS[o.status]])), 'orders.csv');
+    csv([['رقم الطلب', 'التاريخ', 'المشتري', 'المدينة', 'الجوال', 'القطع', 'إجمالي المنتجات', 'الشحن', 'الخصم', 'الإجمالي', 'طريقة الدفع', 'حالة الدفع', 'الحالة']].concat(
+      M.orders.list().filter((o) => tab === 'all' || o.status === tab).map((o) => [o.id, o.createdAt.slice(0, 10), o.customer.name, o.customer.city, o.customer.phone, o.itemsQty, o.subtotal, o.shipping, o.discount, o.total, PAY[o.payment] || '', PAY_STATUS[o.paymentStatus] || '', M.STATUS[o.status]])), 'orders.csv');
   };
 })();

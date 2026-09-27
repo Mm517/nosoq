@@ -130,7 +130,7 @@
   function bellHTML() {
     const list = M.notifs.list().slice(0, 8);
     return '<div class="bell__head"><strong>الإشعارات</strong>' + (list.length ? '<button type="button" class="link-btn" data-act="bell-read">تمييز الكل كمقروء</button>' : '') + '</div>' +
-      (list.length ? '<ul>' + list.map((n) => '<li class="' + (n.read ? '' : 'is-unread') + '"><a href="' + esc(n.href || '#/dashboard') + '" data-act="bell-go"><strong>' + esc(n.title) + '</strong><span>' + esc(n.text || '') + '</span><small>' + dateTimeAr(n.date) + '</small></a></li>').join('') + '</ul>'
+      (list.length ? '<ul>' + list.map((n) => '<li class="' + (n.read ? '' : 'is-unread') + '"><a href="' + esc(n.href || '#/dashboard') + '" data-act="bell-go" data-id="' + esc(n.id) + '"><strong>' + esc(n.title) + '</strong><span>' + esc(n.text || '') + '</span><small>' + dateTimeAr(n.date) + '</small></a></li>').join('') + '</ul>'
         : '<p class="bell__empty">لا توجد إشعارات بعد.</p>');
   }
 
@@ -356,7 +356,7 @@
         return;
       }
       if (act === 'bell-read') { M.notifs.readAll(); $('[data-bell-panel]').innerHTML = bellHTML(); refreshChrome(); return; }
-      if (act === 'bell-go') { $('[data-bell-panel]').hidden = true; M.notifs.readAll(); refreshChrome(); return; }
+      if (act === 'bell-go') { $('[data-bell-panel]').hidden = true; M.notifs.markRead(a.dataset.id); refreshChrome(); return; }
       if (Seller.actions[act]) { e.preventDefault(); Seller.actions[act](a, e); return; }
     }
     if (!t.closest('.bell')) { const p = $('[data-bell-panel]'); if (p && !p.hidden) { p.hidden = true; $('.bell__btn').setAttribute('aria-expanded', 'false'); } }

@@ -71,7 +71,7 @@
         createdAt: store.created_at || isoNow(), returnDays: CFG.returnDays, demo: false, prepDays: 2
       };
       ls.set(K.seller, s);
-      cloudOrders = null; cloudProducts = null;
+      cloudOrders = null; cloudProducts = null; cloudNotifs = null;
       return s;
     },
     reset() { Object.keys(K).forEach((k) => { if (K[k] !== K.theme) ls.del(K[k]); }); ls.del('nasaq_orders_v1'); }
@@ -82,16 +82,25 @@
   /* ---------- جسر الطلبات الحقيقية (store_orders من Supabase) ---------- */
   let cloudOrders = null;
   let cloudOrdersLoading = false;
+  /* الصف القادم من seller_list_orders/seller_get_order (RPC) جاهز بالفعل بكل
+     الحقول المطلوبة (اسم المشتري، صور المنتجات، اللون، السعر وقت الطلب،
+     الخصم، الشحن، الإجمالي، طريقة وحالة الدفع...) — لا حاجة لأي JOIN يدوي
+     على الواجهة، فقط نلبس الشكل القديم (lines/gross/net) للتوافق مع أماكن
+     أخرى في الكود (الإحصائيات)، ونضيف الحقول الجديدة الغنية بجانبها. */
   function mapCloudOrder(row) {
-    const o = row.orders || {};
-    const items = row.order_items || [];
-    const gross = round2(items.reduce((t, l) => t + Number(l.unit_price || 0) * Number(l.quantity || 1), 0));
+    const items = row.items || [];
+    const gross = round2(Number(row.subtotal || 0));
     return {
-      id: o.order_number || row.id, _cloudId: row.id, createdAt: row.created_at || o.created_at || isoNow(),
-      status: row.status, demo: false,
-      lines: items.map((l) => ({ productId: l.legacy_product_id, name: l.product_name, qty: l.quantity, price: Number(l.unit_price || 0), size: l.size, color: l.color })),
-      customer: Object.assign({ name: '', city: '', phone: '', address: '' }, o.customer || {}),
-      payment: o.payment || 'cod', gross, commission: 0, net: gross
+      id: row.order_number || row.store_order_id, _cloudId: row.store_order_id, orderId: row.order_id,
+      createdAt: row.created_at || isoNow(), status: row.status, demo: false,
+      lines: items.map((l) => ({ productId: l.product_id, name: l.name, qty: l.quantity, price: Number(l.unit_price || 0), size: l.size, color: l.color, image: l.image })),
+      items, customer: Object.assign({ name: '', city: '', phone: '', address: '', email: '' }, row.buyer || {}),
+      payment: row.payment_method || 'cod', paymentStatus: row.payment_status || 'pending',
+      shippingMethod: row.shipping_method || 'standard',
+      subtotal: gross, shipping: Number(row.shipping || 0), discount: Number(row.discount || 0),
+      total: row.total != null ? Number(row.total) : round2(gross + Number(row.shipping || 0) - Number(row.discount || 0)),
+      itemsCount: row.items_count || items.length, itemsQty: row.items_qty || items.reduce((t, l) => t + Number(l.quantity || 0), 0),
+      gross, commission: 0, net: gross
     };
   }
   function loadCloudOrders() {
@@ -327,6 +336,18 @@
       return orders.raw().map(sellerView).filter(Boolean).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     },
     get: (id) => orders.list().find((o) => o.id === id),
+    /* صفحة تفاصيل الطلب الكاملة: تجيب أحدث نسخة من الخادم (لا تعتمد على الكاش
+       المحلي) شاملةً Order Timeline الحقيقي (history) والحالات التالية
+       المسموح للبائع الانتقال إليها (allowedNext) — مصدرها seller_get_order. */
+    async fetchDetail(id) {
+      const o = orders.list().find((x) => x.id === id);
+      if (!o || !o._cloudId || !cloud()) return o || null;
+      const row = await cloud().request('/seller/orders/' + o._cloudId, null, 'GET');
+      const mapped = mapCloudOrder(row);
+      mapped.history = (row.history || []).map((h) => ({ status: h.status, label: h.label, at: h.at }));
+      mapped.allowedNext = row.allowed_next || [];
+      return mapped;
+    },
     setStatus(id, status) {
       const o = orders.list().find((x) => x.id === id);
       if (o && o._cloudId && cloud()) {
@@ -518,12 +539,54 @@
     setStatus(id, status) { const l = tickets.list(), t = l.find((x) => x.id === id); if (!t) return false; t.status = status; return ls.set(K.tickets, l); }
   };
 
-  /* ---------- الإشعارات ---------- */
+  /* ---------- الإشعارات ----------
+     لأي بائع حقيقي (s.cloudId): تُقرأ من جدول notifications الحقيقي في
+     Supabase — نفس الجدول الذي يكتب فيه الـ trigger إشعاراً عند كل تغيّر
+     حالة طلب. لغير الحقيقي (لسه بيجرّب المنصة قبل اعتماد متجره): تبقى محلية. */
+  let cloudNotifs = null;
+  let cloudNotifsLoading = false;
+  function loadCloudNotifs() {
+    if (cloudNotifsLoading || !cloud()) return;
+    cloudNotifsLoading = true;
+    cloud().request('/notifications/mine', null, 'GET').then((res) => {
+      cloudNotifs = ((res && res.items) || []).map((n) => ({
+        id: n.id, type: n.kind, title: n.title, text: n.body || '',
+        href: n.href || '#/orders', date: n.created_at, read: !!n.read_at
+      }));
+      cloudNotifsLoading = false;
+      window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+    }).catch(() => { cloudNotifs = []; cloudNotifsLoading = false; });
+  }
   const notifs = {
-    list: () => ls.get(K.notifs, []),
-    unread: () => notifs.list().filter((n) => !n.read).length,
-    add(n) { const l = notifs.list(); l.unshift(Object.assign({ id: uid('N'), date: isoNow(), read: false }, n)); ls.set(K.notifs, l.slice(0, 50)); },
-    readAll() { const l = notifs.list(); l.forEach((n) => { n.read = true; }); ls.set(K.notifs, l); }
+    list() {
+      const s = me();
+      if (s && s.cloudId) { if (cloudNotifs === null) loadCloudNotifs(); return (cloudNotifs || []).slice(); }
+      return ls.get(K.notifs, []);
+    },
+    unread() { return notifs.list().filter((n) => !n.read).length; },
+    add(n) {
+      const s = me();
+      if (s && s.cloudId) return; /* الإشعارات الحقيقية تُكتب من الخادم فقط عند حدث فعلي (تغيّر حالة، طلب جديد...) */
+      const l = ls.get(K.notifs, []); l.unshift(Object.assign({ id: uid('N'), date: isoNow(), read: false }, n)); ls.set(K.notifs, l.slice(0, 50));
+    },
+    markRead(id) {
+      const s = me();
+      if (s && s.cloudId && cloud()) {
+        cloud().request('/notifications/' + id + '/read', {}, 'PATCH').catch(() => {});
+        if (cloudNotifs) { const n = cloudNotifs.find((x) => x.id === id); if (n) n.read = true; }
+        return;
+      }
+      const l = ls.get(K.notifs, []); const n = l.find((x) => x.id === id); if (n) { n.read = true; ls.set(K.notifs, l); }
+    },
+    readAll() {
+      const s = me();
+      if (s && s.cloudId && cloud()) {
+        cloud().request('/notifications/read-all', {}, 'POST').catch(() => {});
+        if (cloudNotifs) cloudNotifs.forEach((n) => { n.read = true; });
+        return;
+      }
+      const l = ls.get(K.notifs, []); l.forEach((n) => { n.read = true; }); ls.set(K.notifs, l);
+    }
   };
 
   /* ---------- رفع الصور: تصغير وضغط قبل الحفظ (حدّ التخزين المحلي ~5MB) ---------- */

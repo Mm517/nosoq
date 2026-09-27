@@ -944,16 +944,31 @@
     return okRes(data || []);
   });
 
+  /* طلبات متجر البائع فقط — عبر RPC واحد (seller_list_orders) يرجّع كل الحقول
+     المطلوبة جاهزة (اسم المشتري، المنتجات وصورها، اللون، الكمية، السعر وقت
+     الطلب، الخصم، الشحن، الإجمالي، طريقة وحالة الدفع، العنوان...). الـ RPC نفسه
+     (SECURITY DEFINER) يتحقق إن هذا المتجر مملوك للبائع الحالي، فلا يقدر أي
+     بائع يرى طلبات بائع آخر حتى لو غيّر رقم المتجر في الطلب. */
   on('GET', 'seller/orders', async (params, query) => {
     const session = await requireSeller();
     if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
     const store = await myStore(session.userId);
     if (!store) return okRes([]);
-    let q = sb.from('store_orders').select('*,orders(order_number,customer,payment,created_at),order_items(*)').eq('store_id', store.id).order('created_at', { ascending: false }).limit(500);
-    if (query.status) q = q.eq('status', query.status);
-    const { data, error } = await q;
+    const { data, error } = await sb.rpc('seller_list_orders', { p_store: store.id, p_status: query.status || null });
     if (error) return errRes(error.message, 400);
     return okRes(data || []);
+  });
+
+  /* صفحة تفاصيل طلب كاملة — طلب واحد بكل بياناته + Order Timeline حقيقي من
+     order_status_history + الحالات التالية المسموح للبائع الانتقال إليها. */
+  on('GET', 'seller/orders/:id', async (params) => {
+    const session = await requireSeller();
+    if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
+    const store = await myStore(session.userId);
+    if (!store) return errRes('لا يوجد متجر بعد.', 404);
+    const { data, error } = await sb.rpc('seller_get_order', { p_store: store.id, p_store_order: params.id });
+    if (error) return errRes(error.message, 404);
+    return okRes(data);
   });
 
   on('PATCH', 'seller/orders/:id/status', async (params, query, body) => {
@@ -961,11 +976,41 @@
     if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
     const store = await myStore(session.userId);
     if (!store) return errRes('لا يوجد متجر بعد.', 404);
-    const allowed = ['new', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled', 'returned'];
-    if (!allowed.includes(body && body.status)) return errRes('حالة الطلب غير صحيحة.');
+    const allowed = ['accepted', 'preparing', 'ready', 'cancelled'];
+    if (!allowed.includes(body && body.status)) return errRes('لا يملك البائع صلاحية تعيين هذه الحالة.');
     const { data, error } = await sb.rpc('seller_set_order_status', { p_store: store.id, p_id: params.id, p_status: body.status });
     if (error) return errRes(error.message, 400);
     return okRes(data);
+  });
+
+  /* ===================== الإشعارات (مشترك بائع/مشترٍ) ===================== */
+  on('GET', 'notifications/mine', async (params, query) => {
+    const session = await currentSession();
+    if (!session) return errRes('يجب تسجيل الدخول.', 401);
+    let q = sb.from('notifications').select('*').eq('user_external_id', session.userId)
+      .order('created_at', { ascending: false }).limit(Number(query.limit) || 30);
+    const { data, error } = await q;
+    if (error) return errRes(error.message, 400);
+    const unread = (data || []).filter((n) => !n.read_at).length;
+    return okRes({ items: data || [], unread });
+  });
+
+  on('PATCH', 'notifications/:id/read', async (params) => {
+    const session = await currentSession();
+    if (!session) return errRes('يجب تسجيل الدخول.', 401);
+    const { error } = await sb.from('notifications').update({ read_at: new Date().toISOString() })
+      .eq('id', params.id).eq('user_external_id', session.userId);
+    if (error) return errRes(error.message, 400);
+    return okRes({ ok: true });
+  });
+
+  on('POST', 'notifications/read-all', async () => {
+    const session = await currentSession();
+    if (!session) return errRes('يجب تسجيل الدخول.', 401);
+    const { error } = await sb.from('notifications').update({ read_at: new Date().toISOString() })
+      .eq('user_external_id', session.userId).is('read_at', null);
+    if (error) return errRes(error.message, 400);
+    return okRes({ ok: true });
   });
 
   /* ===================== RIDER ===================== */

@@ -186,6 +186,10 @@
 .pcell { display: flex; align-items: center; gap: var(--sp-3); min-width: 12rem; }
 .pthumb { width: 44px; height: 55px; flex: none; border-radius: var(--r-img); object-fit: cover; background: var(--c-surface-2); }
 .pthumb--ph { display: grid; place-items: center; color: var(--c-ink-3); }
+/* عرض مصغّرات صور منتجات الطلب مجتمعة (قائمة الطلبات) */
+.pcell-stack { display: flex; align-items: center; gap: 0.3rem; }
+.pcell-stack .pthumb, .pcell-stack .pthumb--ph { width: 30px; height: 38px; }
+.pcell-more { display: grid; place-items: center; width: 30px; height: 38px; border-radius: var(--r-img); background: var(--c-surface-2); color: var(--c-ink-3); font-size: var(--fs-xs); font-weight: 600; }
 .dtabs { display: flex; gap: var(--sp-1); overflow-x: auto; border-bottom: 1px solid var(--c-line); }
 .dtabs a { display: flex; align-items: center; gap: 0.4rem; padding: 0.7rem 1rem; border-bottom: 2px solid transparent; white-space: nowrap; color: var(--c-ink-2); }
 .dtabs a span { padding: 0 0.45rem; border-radius: var(--r-pill); background: var(--c-surface-2); font-size: var(--fs-xs); }
@@ -272,6 +276,7 @@
 .steps li.is-done span { background: var(--c-success); color: var(--c-white); }
 .steps li.is-cur { color: var(--c-ink); font-weight: 600; }
 .steps li.is-cur span { background: var(--c-accent); color: var(--c-accent-ink); }
+.steps li time { display: block; font-size: var(--fs-xs); font-weight: 400; color: var(--c-ink-3); margin-inline-start: 0.35rem; }
 .totals { display: grid; gap: 0.4rem; margin-top: var(--sp-4); padding-top: var(--sp-3); border-top: 1px solid var(--c-line); font-size: var(--fs-sm); }
 .totals div { display: flex; justify-content: space-between; }
 .totals__net { font-weight: 600; font-size: var(--fs-base); color: var(--c-success); }
