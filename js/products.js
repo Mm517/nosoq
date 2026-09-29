@@ -469,6 +469,13 @@
        عبر RPC واحدة: public.nearby_products — لا نجلب كل المنتجات هنا لنفلترها في المتصفح. */
     const rows = sbGet('rpc/nearby_products?buyer_lat=' + encodeURIComponent(buyerLoc.lat) +
       '&buyer_lng=' + encodeURIComponent(buyerLoc.lng) + '&radius_km=' + BUYER_RADIUS_KM + '&p_limit=500');
+    /* لو دالة nearby_products مش بترجّع video_url نكمّله بطلب واحد خفيف (id + رابط الفيديو فقط)،
+       فيظهر فيديو الخدمة/المنتج للعملاء القريبين بدون الحاجة لتعديل الدالة في الداتابيس. */
+    if (rows.length && !('video_url' in rows[0])) {
+      const vids = {};
+      sbGet('products?select=id,video_url&video_url=not.is.null&limit=2000').forEach((v) => { vids[v.id] = v.video_url; });
+      rows.forEach((r) => { if (vids[r.id]) r.video_url = vids[r.id]; });
+    }
     const reviewRows = rows.length ? sbGet('reviews?select=product_id,rating&limit=5000') : [];
     const agg = {};
     reviewRows.forEach((r) => {

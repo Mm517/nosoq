@@ -53,7 +53,7 @@
         <button class="admin-tab" data-tab="orders" type="button">الطلبات</button>
         <button class="admin-tab" data-tab="financial" type="button">اللوحة المالية</button>
         <button class="admin-tab" data-tab="transactions" type="button">المعاملات</button>
-        <button class="admin-tab" data-tab="support" type="button">الدعم</button>
+        <button class="admin-tab" data-tab="support" type="button">الدعم<span class="admin-tabbadge" id="support-badge" hidden>0</span></button>
         <button class="admin-tab" data-tab="deliveries" type="button">التوصيلات</button>
       </nav>
 
@@ -193,7 +193,7 @@
         <div class="admin-toolbar"><div><h1>الدعم</h1><p>كل تذاكر العملاء والبائعين في مكان واحد.</p></div><span class="admin-count" id="support-count">0 مفتوحة</span></div>
         <article class="admin-card admin-card--wide">
           <div class="admin-table-wrap"><table class="admin-table">
-            <thead><tr><th>التذكرة</th><th>الموضوع</th><th>المرسل</th><th>الأولوية</th><th>الحالة</th></tr></thead>
+            <thead><tr><th>التذكرة</th><th>الموضوع</th><th>المرسل</th><th>الأولوية</th><th>الحالة</th><th></th></tr></thead>
             <tbody id="support-body"></tbody>
           </table></div>
           <p class="admin-empty" id="support-empty" hidden>لا توجد تذاكر دعم بعد.</p>
@@ -238,6 +238,27 @@
   <!-- Lightbox لتكبير الصور -->
   <div class="admin-lightbox" id="admin-lightbox" hidden>
     <img id="admin-lightbox-img" src="" alt="صورة مكبّرة">
+  </div>
+
+  <div class="sm-modal" id="support-modal" hidden role="dialog" aria-modal="true" aria-labelledby="sm-title">
+    <div class="sm-modal__scrim" data-sm-close></div>
+    <div class="sm-box">
+      <header class="sm-head">
+        <div><h2 id="sm-title">تذكرة</h2><p id="sm-meta"></p></div>
+        <button type="button" class="sm-x" data-sm-close aria-label="إغلاق">×</button>
+      </header>
+      <ol class="sm-thread" id="sm-thread"></ol>
+      <form class="sm-form" id="sm-form">
+        <label class="sr-only" for="sm-text">ردّك</label>
+        <textarea id="sm-text" rows="3" maxlength="2000" placeholder="اكتب ردك على المستخدم…" required></textarea>
+        <div class="sm-form__foot">
+          <select id="sm-status" aria-label="حالة التذكرة بعد الرد">
+            <option value="in_progress">قيد المتابعة</option><option value="resolved">تم الحل</option><option value="closed">مغلقة</option><option value="open">مفتوحة</option>
+          </select>
+          <button type="submit" class="admin-button admin-button--primary" id="sm-send">إرسال الرد</button>
+        </div>
+      </form>
+    </div>
   </div>
 </body>
 </html>

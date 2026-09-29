@@ -148,8 +148,22 @@
       return null;
     }
     const guest = readDevice();
-    if (guest) { hydrateDelivery(guest); return Object.assign({ source: 'guest' }, guest); }
+    if (guest) { hydrateDelivery(guest); pushVisitor(guest); return Object.assign({ source: 'guest' }, guest); }
     return null;
+  }
+
+  /* رفع موقع الجهاز لجدول visitor_locations (الزائر بلا حساب، أو أي جهاز) — مرة لكل موقع في الجلسة */
+  function pushVisitor(loc) {
+    try {
+      const key = 'nasaq_vloc_sent_v1', sig = loc.lat.toFixed(5) + ',' + loc.lng.toFixed(5);
+      if (sessionStorage.getItem(key) === sig) return;
+      const send = () => {
+        if (!window.NasaqCloud || !window.NasaqCloud.saveVisitorLocation) return;
+        sessionStorage.setItem(key, sig);
+        window.NasaqCloud.saveVisitorLocation({ lat: loc.lat, lng: loc.lng, address: loc.address || '', accuracy: loc.accuracy });
+      };
+      if (window.NasaqCloud) send(); else setTimeout(send, 1200);
+    } catch (_) { /* تجاهل */ }
   }
 
   /* حفظ موقع جديد: محلياً فوراً + على السيرفر لو مسجّل دخول. يرجع Promise. */
@@ -165,6 +179,7 @@
     const session = getSession();
     writeJSON(CACHE_KEY, Object.assign({ userId: session && session.userId ? session.userId : null }, loc));
     document.dispatchEvent(new CustomEvent('location:change'));
+    if (!v.localOnly) pushVisitor(loc); /* الموقع يُحفظ في الداتابيس للزائر أيضاً */
     if (v.localOnly || !(session && session.userId)) return Promise.resolve(loc);
     if (!window.NasaqCloud) return Promise.reject(new Error('تعذّر الاتصال بالخادم لحفظ الموقع.'));
     return window.NasaqCloud.request('/store/location', {

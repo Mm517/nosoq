@@ -335,6 +335,37 @@
     csv(rows, 'nasaq-dashboard-' + M.util.dkey() + '.csv');
   };
 
+  /* بطاقة الترحيب: حالة المتجر، ظهوره للعملاء حسب الموقع، اكتمال الوسائط، واختصارات سريعة */
+  function storeHeroHTML(d) {
+    const s = M.seller.get() || {}, list = M.products.list();
+    const hasLoc = s.latitude != null && s.longitude != null;
+    const radius = (window.Products && window.Products.radiusKm) || 50;
+    const withVideo = list.filter((p) => p.video).length;
+    const noPhoto = list.filter((p) => !(p.photos && p.photos.length)).length;
+    const place = [s.address && s.address.area, s.address && s.address.city].filter(Boolean).join('، ');
+    const chip = (ok, okT, badT, href) => '<a class="hero-chip hero-chip--' + (ok ? 'ok' : 'warn') + '" href="' + href + '">' + ic(ok ? 'check' : 'alert') + '<span>' + (ok ? okT : badT) + '</span></a>';
+    return '<section class="dhero" aria-label="ملخص المتجر">' +
+      '<div class="dhero__main">' +
+        '<p class="dhero__eyebrow">' + ic('store') + 'متجرك على نَسَق</p>' +
+        '<h2>' + esc(s.name || 'متجري') + '</h2>' +
+        '<p class="dhero__sub">' + (hasLoc
+          ? 'يظهر متجرك للعملاء الذين يبعدون <strong>' + radius + ' كم</strong> أو أقل عن موقعك' + (place ? ' — ' + esc(place) : '') + '.'
+          : 'لم تحدّد موقع متجرك بعد، ولن يظهر لأي عميل حتى تضيفه.') + '</p>' +
+        '<div class="dhero__chips">' +
+          chip(hasLoc, 'الموقع محفوظ في قاعدة البيانات', 'حدّد موقع المتجر', '#/settings') +
+          chip(list.length > 0, fmt(list.length) + ' منتج منشور', 'أضف أول منتج', '#/products/new') +
+          chip(noPhoto === 0 && list.length > 0, 'كل المنتجات بصور', noPhoto ? fmt(noPhoto) + ' منتج بلا صور' : 'أضف صور المنتجات', '#/products') +
+          '<a class="hero-chip hero-chip--info" href="#/products">' + ic('play') + '<span>' + fmt(withVideo) + ' منتج بفيديو</span></a>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dhero__actions">' +
+        '<a class="btn btn--primary" href="#/products/new">' + ic('plus') + 'إضافة منتج</a>' +
+        '<a class="btn btn--ghost" href="#/orders">' + ic('list') + 'الطلبات</a>' +
+        '<a class="btn btn--ghost" href="#/support">' + ic('chat') + 'الدعم</a>' +
+      '</div>' +
+    '</section>';
+  }
+
   Seller.views.dashboard = () => {
     const f = dashFilter(), gran = dashGran(), d = dashboardData(), cur = d.cur, prev = d.prev;
     const kpi = (icon, label, value, g, extra) => '<div class="dcard kpi"><div class="kpi__l">' + ic(icon) + label + '</div><div class="kpi__v">' + value + '</div><div class="kpi__f">' + (g == null ? '' : growth(g)) + (extra ? '<span>' + extra + '</span>' : '') + '</div></div>';
@@ -369,6 +400,7 @@
     const html =
       pageHead('لوحة التحكم', 'كل الأرقام هنا حقيقية من قاعدة بيانات متجرك وتتحدّث تلقائياً حسب الفترة المختارة',
         cur.total ? '<button type="button" class="btn btn--ghost btn--sm" data-act="dash-export">' + ic('download') + 'تصدير CSV</button>' : '') +
+      storeHeroHTML(d) +
       filtersHTML +
       alertsHTML() +
       '<div class="kpis">' +

@@ -501,18 +501,81 @@
   $('#transaction-status-filter').addEventListener('change', () => { loaded.transactions = false; loaders.transactions().catch((e) => setNotice(e.message, true)); });
 
   /* ===================== الدعم (Support) — كما هو ===================== */
+  const ORIGIN = { seller: 'بائع', customer: 'عميل', rider: 'مندوب', guest: 'زائر' };
   function renderSupport(tickets) {
     const body = $('#support-body');
-    const open = tickets.filter((ticket) => ['open', 'in_progress'].includes(ticket.status)).length;
-    $('#support-count').textContent = open + ' مفتوحة';
+    const openList = tickets.filter((ticket) => ['open', 'in_progress'].includes(ticket.status));
+    const unread = tickets.filter((ticket) => ticket.admin_unread && ['open', 'in_progress'].includes(ticket.status)).length;
+    $('#support-count').textContent = openList.length + ' مفتوحة';
+    setSupportBadge(unread);
     $('#support-empty').hidden = tickets.length > 0;
-    body.innerHTML = tickets.map((ticket) => '<tr><td><strong dir="ltr">' + esc(ticket.ticket_number) + '</strong><small>' + formatDate(ticket.created_at) + '</small></td>' +
-      '<td><strong>' + esc(ticket.subject) + '</strong><small>' + esc(ticket.message).slice(0, 90) + '</small></td>' +
-      '<td>' + esc(ticket.name || 'زائر') + '<small dir="ltr">' + esc(ticket.email || '') + '</small></td>' +
+    body.innerHTML = tickets.map((ticket) => '<tr class="' + (ticket.admin_unread ? 'is-unread' : '') + '">' +
+      '<td><strong dir="ltr">' + esc(ticket.ticket_number) + '</strong><small>' + formatDate(ticket.last_message_at || ticket.created_at) + '</small></td>' +
+      '<td><strong>' + (ticket.admin_unread ? '<i class="admin-dot" aria-label="جديد"></i>' : '') + esc(ticket.subject) + '</strong><small>' + esc(ticket.message).slice(0, 90) + '</small></td>' +
+      '<td>' + esc(ticket.name || 'زائر') + ' <span class="admin-origin">' + esc(ORIGIN[ticket.origin] || 'عميل') + '</span><small dir="ltr">' + esc(ticket.email || '') + '</small></td>' +
       '<td class="admin-priority admin-priority--' + esc(ticket.priority) + '">' + esc(ticket.priority) + '</td><td>' +
-      statusSelect(ticket.status, ['open', 'in_progress', 'resolved', 'closed'], ticket.id, 'support') + '</td></tr>').join('');
+      statusSelect(ticket.status, ['open', 'in_progress', 'resolved', 'closed'], ticket.id, 'support') + '</td>' +
+      '<td><button type="button" class="admin-button" data-open-ticket="' + esc(ticket.ticket_number) + '">فتح والرد</button></td></tr>').join('');
   }
-  loaders.support = async function () { skeletonRows('#support-body', 5); renderSupport((await api('/admin/support')) || []); };
+  function setSupportBadge(n) {
+    const b = $('#support-badge'); if (!b) return;
+    b.hidden = !n; b.textContent = n;
+  }
+  loaders.support = async function () { skeletonRows('#support-body', 6); renderSupport((await api('/admin/support')) || []); };
+
+  /* ---- نافذة محادثة التذكرة: قراءة كل الرسائل + الرد (يصل للمستخدم كإشعار) ---- */
+  const smModal = $('#support-modal');
+  let smTicket = null;
+  function smRender(data) {
+    const t = data.ticket;
+    $('#sm-title').textContent = t.subject || t.ticket_number;
+    $('#sm-meta').textContent = t.ticket_number + ' · ' + (t.name || 'زائر') + ' · ' + (ORIGIN[t.origin] || 'عميل') + (t.email ? ' · ' + t.email : '') + (t.category ? ' · ' + t.category : '');
+    const msgs = data.messages && data.messages.length ? data.messages : [{ role: 'user', body: t.message, created_at: t.created_at }];
+    $('#sm-thread').innerHTML = msgs.map((m) => '<li class="sm-msg sm-msg--' + (m.role === 'admin' ? 'admin' : 'user') + '"><b>' + (m.role === 'admin' ? 'الإدارة' : esc(t.name || 'المستخدم')) + '</b><p>' +
+      esc(m.body).replace(/\n/g, '<br>') + '</p><small>' + formatDate(m.created_at) + '</small></li>').join('');
+    $('#sm-status').value = ['open', 'in_progress', 'resolved', 'closed'].includes(t.status) ? (t.status === 'open' ? 'in_progress' : t.status) : 'in_progress';
+    const th = $('#sm-thread'); th.scrollTop = th.scrollHeight;
+  }
+  async function smOpen(ticketNumber) {
+    smTicket = ticketNumber;
+    smModal.hidden = false;
+    $('#sm-thread').innerHTML = '<li class="sm-msg"><span class="skeleton skeleton--text" style="width:60%"></span></li>';
+    $('#sm-text').value = '';
+    try {
+      smRender(await api('/admin/support/' + encodeURIComponent(ticketNumber)));
+      loaded.support = false; loaders.support().catch(() => {}); /* يحدّث علامة "جديد" */
+      $('#sm-text').focus();
+    } catch (err) { smModal.hidden = true; setNotice(err.message, true); }
+  }
+  function smClose() { smModal.hidden = true; smTicket = null; }
+  document.addEventListener('click', (e) => {
+    const open = e.target.closest('[data-open-ticket]');
+    if (open) { smOpen(open.dataset.openTicket); return; }
+    if (e.target.closest('[data-sm-close]')) smClose();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !smModal.hidden) smClose(); });
+  $('#sm-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = $('#sm-text').value.trim(); if (!text || !smTicket) return;
+    const btn = $('#sm-send'); btn.disabled = true;
+    try {
+      await sendJson('/admin/support/' + encodeURIComponent(smTicket) + '/reply', { body: text, status: $('#sm-status').value });
+      setNotice('تم إرسال الرد وإشعار صاحب التذكرة.');
+      $('#sm-text').value = '';
+      smRender(await api('/admin/support/' + encodeURIComponent(smTicket)));
+      loaded.support = false; loaders.support().catch(() => {});
+    } catch (err) { setNotice(err.message, true); } finally { btn.disabled = false; }
+  });
+
+  /* علامة التذاكر الجديدة على تبويب الدعم — تتحدّث كل دقيقة بدون فتح التبويب */
+  async function pollSupportBadge() {
+    try {
+      const list = (await api('/admin/support')) || [];
+      setSupportBadge(list.filter((t) => t.admin_unread && ['open', 'in_progress'].includes(t.status)).length);
+    } catch (_) { /* غير مسجّل كإدمن بعد */ }
+  }
+  setTimeout(pollSupportBadge, 2500);
+  setInterval(() => { if (!document.hidden) pollSupportBadge(); }, 60000);
 
   /* ===================== التوصيلات (Deliveries) — كما هو ===================== */
   let cachedRiders = [];

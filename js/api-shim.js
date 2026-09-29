@@ -604,22 +604,80 @@
     return okRes(data || row, 201);
   });
 
+  /* الدعم: المسجّل دخوله يمرّ على دالة support_create_ticket (تنشئ التذكرة + أول رسالة +
+     إشعار للإدمن)، والزائر بلا حساب يُدرَج مباشرةً في support_tickets كما كان. */
   on('POST', 'store/support', async (params, query, body) => {
     body = body || {};
     const session = await currentSession();
+    const priority = ['low', 'normal', 'high', 'urgent'].includes(body.priority) ? body.priority : 'normal';
+    if (session) {
+      const { data, error } = await sb.rpc('support_create_ticket', {
+        p_subject: body.subject || 'استفسار من المتجر',
+        p_message: body.message || '',
+        p_category: body.category || null,
+        p_priority: priority,
+        p_origin: ['seller', 'customer', 'rider'].includes(body.source) ? body.source : (session.role === 'seller' ? 'seller' : 'customer'),
+        p_name: body.name || session.name || null,
+        p_email: body.email || session.email || null,
+        p_ticket_number: body.ticketNumber || null
+      });
+      if (error) return errRes(error.message, 400);
+      return okRes(data, 201);
+    }
     const row = {
       ticket_number: body.ticketNumber || ('SUP-' + Date.now().toString(36).toUpperCase()),
-      user_external_id: (session && session.userId) || body.userExternalId || null,
+      user_external_id: null,
       email: body.email || null,
       name: body.name || null,
       subject: body.subject || 'استفسار من المتجر',
       message: body.message || '',
-      priority: ['low', 'normal', 'high', 'urgent'].includes(body.priority) ? body.priority : 'normal',
+      priority,
       source: 'storefront'
     };
     const { data, error } = await sb.from('support_tickets').insert(row).select().maybeSingle();
     if (error) return errRes(error.message, 400);
     return okRes(data || row, 201);
+  });
+
+  on('GET', 'support/mine', async () => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const { data, error } = await sb.rpc('support_my_tickets');
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+  on('POST', 'support/:ticket/reply', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const { data, error } = await sb.rpc('support_user_reply', { p_ticket_number: params.ticket, p_body: (body && body.body) || '' });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+  on('PATCH', 'support/:ticket/status', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const { data, error } = await sb.rpc('support_user_set_status', { p_ticket_number: params.ticket, p_status: body && body.status });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  /* موقع الزائر (بلا حساب) — يُحفظ بمعرّف الجهاز في visitor_locations */
+  on('POST', 'store/visitor-location', async (params, query, body) => {
+    body = body || {};
+    const { error } = await sb.rpc('save_visitor_location', {
+      p_device: String(body.deviceId || ''), p_lat: Number(body.latitude), p_lng: Number(body.longitude),
+      p_address: body.address || null, p_accuracy: body.accuracy != null ? Number(body.accuracy) : null
+    });
+    if (error) return errRes(error.message, 400);
+    return okRes({ ok: true });
+  });
+
+  /* عدّادات المشاهدة/السلة (تعمل للزائر أيضاً) */
+  on('POST', 'store/track', async (params, query, body) => {
+    body = body || {};
+    if (!isUuid(body.productUuid)) return okRes({ ok: false });
+    await sb.rpc('track_product_event', { p_product: body.productUuid, p_kind: body.kind === 'cart' ? 'cart' : 'view' });
+    return okRes({ ok: true });
   });
 
   on('POST', 'store/uploads', async (params, query, body) => {
@@ -696,9 +754,23 @@
 
   on('GET', 'admin/support', async () => {
     if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
-    const { data, error } = await sb.from('support_tickets').select('*').order('created_at', { ascending: false }).limit(1000);
+    const { data, error } = await sb.rpc('admin_support_list');
     if (error) return errRes(error.message, 400);
     return okRes(data || []);
+  });
+  on('GET', 'admin/support/:ticket', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_support_thread', { p_ticket_number: params.ticket });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+  on('POST', 'admin/support/:ticket/reply', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.rpc('admin_support_reply', {
+      p_ticket_number: params.ticket, p_body: (body && body.body) || '', p_status: (body && body.status) || 'in_progress'
+    });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
   });
 
   on('PATCH', 'admin/orders/:id/status', async (params, query, body) => {
@@ -1009,6 +1081,28 @@
     const allowed = ['accepted', 'preparing', 'ready', 'cancelled'];
     if (!allowed.includes(body && body.status)) return errRes('لا يملك البائع صلاحية تعيين هذه الحالة.');
     const { data, error } = await sb.rpc('seller_set_order_status', { p_store: store.id, p_id: params.id, p_status: body.status });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  on('GET', 'seller/stats', async (params, query) => {
+    const session = await requireSeller();
+    if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
+    const { data, error } = await sb.rpc('seller_product_stats', { p_days: Number(query.days) || 90 });
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+  on('GET', 'seller/data', async () => {
+    const session = await requireSeller();
+    if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
+    const { data, error } = await sb.rpc('seller_data_get');
+    if (error) return errRes(error.message, 400);
+    return okRes(data || {});
+  });
+  on('PUT', 'seller/data/:key', async (params, query, body) => {
+    const session = await requireSeller();
+    if (!session) return errRes('هذه الصفحة مخصصة للبائعين.', 403);
+    const { data, error } = await sb.rpc('seller_data_set', { p_key: params.key, p_value: (body && body.value) == null ? {} : body.value });
     if (error) return errRes(error.message, 400);
     return okRes(data);
   });

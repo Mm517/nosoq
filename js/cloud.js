@@ -198,6 +198,40 @@
     return request('/store/support', data);
   }
 
+  /* ---- الدعم (تذاكر حقيقية في قاعدة البيانات) ---- */
+  const supportMine = () => request('/support/mine', null, 'GET');
+  const supportReply = (ticket, body) => request('/support/' + encodeURIComponent(ticket) + '/reply', { body });
+  const supportSetStatus = (ticket, status) => request('/support/' + encodeURIComponent(ticket) + '/status', { status }, 'PATCH');
+
+  /* ---- موقع الزائر (بلا حساب) يُحفظ بمعرّف جهاز ثابت ---- */
+  const DEVICE_KEY = 'nasaq_device_id_v1';
+  function deviceId() {
+    try {
+      let id = localStorage.getItem(DEVICE_KEY);
+      if (!id) { id = 'dev-' + crypto.randomUUID(); localStorage.setItem(DEVICE_KEY, id); }
+      return id;
+    } catch (_) { return 'dev-' + Math.random().toString(36).slice(2, 12); }
+  }
+  const saveVisitorLocation = (loc) => request('/store/visitor-location', {
+    deviceId: deviceId(), latitude: loc.lat, longitude: loc.lng, address: loc.address || null, accuracy: loc.accuracy != null ? loc.accuracy : null
+  });
+
+  /* ---- عدّادات المشاهدة/السلة (fire-and-forget؛ لا تُظهر أخطاء للمشتري) ---- */
+  const seenViews = new Set();
+  function trackEvent(productUuid, kind) {
+    if (!productUuid) return;
+    const key = kind + ':' + productUuid;
+    if (kind === 'view') {
+      try { if (sessionStorage.getItem('nq_v_' + productUuid)) return; sessionStorage.setItem('nq_v_' + productUuid, '1'); } catch (_) { if (seenViews.has(key)) return; seenViews.add(key); }
+    }
+    request('/store/track', { productUuid, kind }).catch(() => {});
+  }
+
+  /* ---- بيانات لوحة البائع المحفوظة ---- */
+  const sellerStats = (days) => request('/seller/stats?days=' + (days || 90), null, 'GET');
+  const sellerDataGet = () => request('/seller/data', null, 'GET');
+  const sellerDataSet = (key, value) => request('/seller/data/' + encodeURIComponent(key), { value }, 'PUT');
+
   window.NasaqCloud = {
     getUserId, request,
     getSession,
@@ -227,6 +261,14 @@
     riderApplication: (data) => riderApplication(data),
     uploadDocument: (dataUrl, kind) => uploadDocument(dataUrl, kind),
     applicationStatus: () => applicationStatus(),
-    uploadImage: (dataUrl, filename) => safe(uploadImage(dataUrl, filename))
+    uploadImage: (dataUrl, filename) => safe(uploadImage(dataUrl, filename)),
+    /* رفع الفيديو وألوان المنتج: كانت مستدعاة من market.js لكن غير مُصدَّرة (فيفشل الحفظ) — لا تُغلَّف بـ safe()
+       لأن البائع لازم يشوف رسالة الخطأ الحقيقية (حجم الفيديو، صيغة غير مدعومة...). */
+    uploadVideo: (dataUrl, filename) => uploadVideo(dataUrl, filename),
+    syncProductColors: (productUuid, colors) => syncProductColors(productUuid, colors),
+    submitSupportRaw: (data) => submitSupport(data),
+    supportMine, supportReply, supportSetStatus,
+    saveVisitorLocation: (loc) => safe(saveVisitorLocation(loc)),
+    deviceId, trackEvent, sellerStats, sellerDataGet, sellerDataSet
   };
 })();

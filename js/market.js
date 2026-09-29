@@ -15,10 +15,23 @@
     ads: 'nasaq_ads_v1', wallet: 'nasaq_wallet_v1', tickets: 'nasaq_tickets_v1', notifs: 'nasaq_notifs_v1',
     demoStatus: 'nasaq_demo_status_v1', theme: 'nasaq_theme_v1'
   };
+  const CLOUD_KEYS = {}; /* مفتاح التخزين المحلي -> اسمه في seller_data */
+  CLOUD_KEYS[K.wallet] = 'wallet'; CLOUD_KEYS[K.ads] = 'ads';
 
+  /* مفاتيح لوحة البائع التي تُحفظ أيضاً في الداتابيس (جدول seller_data) — المحلي مجرد كاش سريع */
+  const pushTimers = {};
+  function pushSellerData(k) {
+    const name = CLOUD_KEYS[k], s = seller.get();
+    if (!name || !s || !s.cloudId || !cloud() || !cloud().sellerDataSet) return;
+    clearTimeout(pushTimers[k]);
+    pushTimers[k] = setTimeout(() => {
+      let v = null; try { v = JSON.parse(localStorage.getItem(k)); } catch (_) { /* تجاهل */ }
+      cloud().sellerDataSet(name, v == null ? {} : v).catch(() => { /* يُعاد المحاولة عند أول تعديل قادم */ });
+    }, 600);
+  }
   const ls = {
     get(k, d) { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (_) { return d; } },
-    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (_) { return false; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); pushSellerData(k); return true; } catch (_) { return false; } },
     del(k) { try { localStorage.removeItem(k); } catch (_) { /* تجاهل */ } }
   };
 
@@ -71,13 +84,60 @@
         createdAt: store.created_at || isoNow(), returnDays: CFG.returnDays, demo: false, prepDays: 2
       };
       ls.set(K.seller, s);
-      cloudOrders = null; cloudProducts = null; cloudNotifs = null;
+      cloudOrders = null; cloudProducts = null; cloudNotifs = null; cloudStats = null; cloudTickets = null;
+      sellerDataLoaded = false; loadSellerData();
       return s;
     },
     reset() { Object.keys(K).forEach((k) => { if (K[k] !== K.theme) ls.del(K[k]); }); ls.del('nasaq_orders_v1'); }
   };
   const me = () => seller.get();
   const demoOn = () => false; /* لا بيانات تجريبية عشوائية بعد الآن — المنصة تعمل ببيانات حقيقية فقط */
+
+
+  /* ---------- بيانات البائع المحفوظة في الداتابيس (المحفظة/الإعلانات) ---------- */
+  let sellerDataLoaded = false;
+  function loadSellerData() {
+    const s = me();
+    if (sellerDataLoaded || !cloud() || !s || !s.cloudId || !cloud().sellerDataGet) return;
+    sellerDataLoaded = true;
+    cloud().sellerDataGet().then((d) => {
+      d = d || {};
+      let changed = false;
+      [[K.wallet, 'wallet'], [K.ads, 'ads']].forEach((pair) => {
+        const remote = d[pair[1]];
+        const hasRemote = remote && (Array.isArray(remote) ? remote.length : Object.keys(remote).length);
+        try {
+          if (hasRemote) { localStorage.setItem(pair[0], JSON.stringify(remote)); changed = true; }
+          else if (localStorage.getItem(pair[0])) pushSellerData(pair[0]); /* بيانات محلية قديمة: نرفعها مرة واحدة */
+        } catch (_) { /* تجاهل */ }
+      });
+      if (changed) window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+    }).catch(() => { sellerDataLoaded = false; });
+  }
+
+  /* ---------- إحصائيات المشاهدة/السلة الحقيقية (product_daily_stats) ---------- */
+  let cloudStats = null, cloudStatsLoading = false;
+  function loadCloudStats() {
+    const s = me();
+    if (cloudStatsLoading || !cloud() || !s || !s.cloudId || !cloud().sellerStats) return;
+    cloudStatsLoading = true;
+    cloud().sellerStats(90).then((rows) => {
+      cloudStats = rows || []; cloudStatsLoading = false;
+      window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+    }).catch(() => { cloudStats = []; cloudStatsLoading = false; });
+  }
+  /* day -> {v,c} و productId -> {day -> [v,c]} من الصفوف الحقيقية */
+  function cloudStatsIndex() {
+    const byDay = {}, byProd = {};
+    (cloudStats || []).forEach((r) => {
+      const d = byDay[r.day] || (byDay[r.day] = { v: 0, c: 0 });
+      d.v += Number(r.views || 0); d.c += Number(r.carts || 0);
+      const id = r.product_id != null ? r.product_id : r.product_uuid;
+      const p = byProd[id] || (byProd[id] = {});
+      p[r.day] = [Number(r.views || 0), Number(r.carts || 0)];
+    });
+    return { byDay, byProd };
+  }
 
   /* ---------- جسر الطلبات الحقيقية (store_orders من Supabase) ---------- */
   let cloudOrders = null;
@@ -372,43 +432,26 @@
 
   /* ---------- تتبّع الزيارات (للمنتجات المملوكة للبائع فقط) ---------- */
   const track = {
-    _bump(p) {
-      const s = me();
-      if (!s || !p || p.sellerId !== s.id) return;
-      const st = ls.get(K.stats, {}), key = dkey();
-      const d = st[key] || (st[key] = { v: 0, u: 0, c: 0, p: {} });
-      const row = d.p[p.id] || (d.p[p.id] = [0, 0]);
-      return { st, d, row, key };
-    },
-    view(p) {
-      const x = track._bump(p); if (!x) return;
-      x.d.v++; x.row[0]++;
-      try {
-        if (!sessionStorage.getItem('nq_u_' + x.key)) { sessionStorage.setItem('nq_u_' + x.key, '1'); x.d.u++; }
-      } catch (_) { x.d.u++; }
-      ls.set(K.stats, x.st);
-    },
-    cart(p, qty) {
-      const x = track._bump(p); if (!x) return;
-      x.d.c += qty || 1; x.row[1] += qty || 1;
-      ls.set(K.stats, x.st);
-    }
+    /* أي زائر يفتح منتجاً أو يضيفه للسلة يُسجَّل في product_daily_stats عبر RPC،
+       فيرى البائع أرقاماً حقيقية لمنتجاته (وليس فقط مشاهداته هو لمنتجه). */
+    view(p) { if (p && p.uuid && cloud() && cloud().trackEvent) cloud().trackEvent(p.uuid, 'view'); },
+    cart(p, qty) { if (p && p.uuid && cloud() && cloud().trackEvent) cloud().trackEvent(p.uuid, 'cart'); }
   };
 
   const stats = {
     /* سلسلة يومية لآخر n يوماً: مشاهدات، زوار فريدون، إضافات للسلة، طلبات، إيراد (إجمالي المبيعات) */
     series(n, offset) {
-      const real = ls.get(K.stats, {});
+      if (cloudStats === null) loadCloudStats();
+      const idx = cloudStatsIndex();
       const all = orders.list().filter((o) => o.status !== 'cancelled');
       const byDay = {};
       all.forEach((o) => { const k = dkey(new Date(o.createdAt)); const x = byDay[k] || (byDay[k] = { o: 0, r: 0 }); x.o++; x.r += o.gross; });
       const out = [], end = addDays(new Date(), -(offset || 0));
       for (let i = n - 1; i >= 0; i--) {
-        const d = addDays(end, -i), k = dkey(d), rl = real[k] || { v: 0, u: 0, c: 0 };
-        const dm = demoOn() ? demoTraffic(k, (byDay[k] || {}).o || 0) : { v: 0, u: 0, c: 0 };
-        // الطلبات الحقيقية لا تدخل في حساب الزيارات التجريبية
+        const d = addDays(end, -i), k = dkey(d), rl = idx.byDay[k] || { v: 0, c: 0 };
         const b = byDay[k] || { o: 0, r: 0 };
-        out.push({ date: k, dow: d.getDay(), v: rl.v + dm.v, u: rl.u + dm.u, c: rl.c + dm.c, o: b.o, r: round2(b.r) });
+        /* الزوار الفريدون غير متتبَّعين على مستوى الداتابيس بعد؛ نعرض المشاهدات كتقدير أعلى للزوار */
+        out.push({ date: k, dow: d.getDay(), v: rl.v, u: rl.v, c: rl.c, o: b.o, r: round2(b.r) });
       }
       return out;
     },
@@ -425,21 +468,19 @@
     },
     byProduct(n) {
       const from = addDays(new Date(), -(n - 1)); from.setHours(0, 0, 0, 0);
-      const real = ls.get(K.stats, {});
+      if (cloudStats === null) loadCloudStats();
+      const idx = cloudStatsIndex();
       const ord = orders.list().filter((o) => o.status !== 'cancelled' && new Date(o.createdAt) >= from);
       const rows = {};
       const row = (id, name) => rows[id] || (rows[id] = { id, name, views: 0, carts: 0, sold: 0, revenue: 0 });
       products.list().forEach((p) => row(p.id, p.name));
-      Object.keys(real).forEach((k) => {
-        if (parseKey(k) < from) return;
-        Object.keys(real[k].p || {}).forEach((id) => { const p = window.Products.byId(id); const r = row(Number(id), p ? p.name : 'منتج #' + id); r.views += real[k].p[id][0]; r.carts += real[k].p[id][1]; });
+      Object.keys(idx.byProd).forEach((id) => {
+        Object.keys(idx.byProd[id]).forEach((day) => {
+          if (parseKey(day) < from) return;
+          const p = window.Products.byId(id); const r = row(Number(id), p ? p.name : 'منتج #' + id);
+          r.views += idx.byProd[id][day][0]; r.carts += idx.byProd[id][day][1];
+        });
       });
-      if (demoOn()) {
-        const cat = window.Products.all().filter((p) => !p.sellerId);
-        const w = cat.map((p) => Math.max(0.5, p.rating * Math.log(p.reviews + 2))), ws = w.reduce((a, b) => a + b, 0);
-        const ser = stats.series(n); const V = ser.reduce((a, d) => a + demoTraffic(d.date, d.o).v, 0), C = ser.reduce((a, d) => a + demoTraffic(d.date, d.o).c, 0);
-        cat.forEach((p, i) => { const r = row(p.id, p.name); r.views += Math.round((V * w[i]) / ws); r.carts += Math.round((C * w[i]) / ws); });
-      }
       ord.forEach((o) => o.lines.forEach((l) => { const r = row(l.productId, l.name); r.sold += l.qty; r.revenue += l.price * l.qty; }));
       return Object.keys(rows).map((k) => rows[k]).sort((a, b) => b.revenue - a.revenue || b.views - a.views);
     },
@@ -527,17 +568,73 @@
     }
   };
 
-  /* ---------- الدعم ---------- */
+  /* ---------- الدعم ----------
+     البائع الحقيقي (s.cloudId): التذاكر ورسائلها محفوظة في الداتابيس (support_tickets +
+     support_messages) وتصل للإدمن مباشرة في لوحة الدعم، وردود الإدمن تظهر هنا في نفس المحادثة.
+     البائع غير المعتمد بعد: يبقى محلياً كما كان. */
+  let cloudTickets = null, cloudTicketsLoading = false, cloudTicketsSig = '';
+  function mapTicket(t) {
+    const msgs = Array.isArray(t.messages) ? t.messages : [];
+    const closed = t.status === 'closed' || t.status === 'resolved';
+    return {
+      id: t.ticket_number, subject: t.subject || 'بدون موضوع', category: t.category || 'أخرى',
+      status: closed ? 'closed' : 'open', rawStatus: t.status, createdAt: t.created_at,
+      message: msgs.length ? msgs[0].text : '',
+      replies: msgs.slice(1).map((m) => ({ from: m.from === 'support' ? 'support' : 'seller', text: m.text, date: m.date }))
+    };
+  }
+  function loadCloudTickets(force) {
+    const s = me();
+    if (cloudTicketsLoading || !cloud() || !s || !s.cloudId || !cloud().supportMine) return;
+    if (cloudTickets !== null && !force) return;
+    cloudTicketsLoading = true;
+    cloud().supportMine().then((rows) => {
+      const list = (rows || []).map(mapTicket);
+      const sig = JSON.stringify(list.map((t) => [t.id, t.rawStatus, t.replies.length]));
+      const changed = sig !== cloudTicketsSig;
+      cloudTicketsSig = sig; cloudTickets = list; cloudTicketsLoading = false;
+      if (changed) window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready'));
+    }).catch(() => { if (cloudTickets === null) cloudTickets = []; cloudTicketsLoading = false; });
+  }
+  const isCloudSeller = () => { const s = me(); return !!(s && s.cloudId && cloud() && cloud().supportMine); };
+  const ticketErr = (e) => window.dispatchEvent(new CustomEvent('nasaq:cloud-error', { detail: (e && e.message) || 'تعذّر إرسال الرسالة، حاول مرة أخرى.' }));
   const tickets = {
-    list: () => ls.get(K.tickets, []),
+    list() { if (isCloudSeller()) { loadCloudTickets(); return (cloudTickets || []).slice(); } return ls.get(K.tickets, []); },
     get: (id) => tickets.list().find((t) => t.id === id),
+    refresh() { if (isCloudSeller()) loadCloudTickets(true); },
     create(t) {
-      const l = tickets.list(); const x = Object.assign({ id: 'TK-' + Date.now().toString(36).toUpperCase().slice(-5), status: 'open', createdAt: isoNow(), replies: [] }, t);
-      l.unshift(x); ls.set(K.tickets, l); return x;
+      const x = Object.assign({ id: 'TK-' + Date.now().toString(36).toUpperCase().slice(-5), status: 'open', createdAt: isoNow(), replies: [] }, t);
+      if (isCloudSeller()) {
+        const s = me();
+        (cloudTickets || (cloudTickets = [])).unshift(x); /* ظهور فوري، ثم تأكيد من الداتابيس */
+        cloud().submitSupportRaw({ ticketNumber: x.id, subject: x.subject, message: x.message, category: x.category, source: 'seller', name: s.name, email: s.email, priority: 'normal' })
+          .then(() => loadCloudTickets(true))
+          .catch((e) => { cloudTickets = (cloudTickets || []).filter((y) => y.id !== x.id); ticketErr(e); window.dispatchEvent(new CustomEvent('nasaq:seller-data-ready')); });
+        return x;
+      }
+      const l = tickets.list(); l.unshift(x); ls.set(K.tickets, l); return x;
     },
-    reply(id, text) { const l = tickets.list(), t = l.find((x) => x.id === id); if (!t) return false; t.replies.push({ from: 'seller', text, date: isoNow() }); t.status = 'open'; return ls.set(K.tickets, l); },
-    setStatus(id, status) { const l = tickets.list(), t = l.find((x) => x.id === id); if (!t) return false; t.status = status; return ls.set(K.tickets, l); }
+    reply(id, text) {
+      if (isCloudSeller()) {
+        const t = (cloudTickets || []).find((x) => x.id === id); if (!t) return false;
+        t.replies.push({ from: 'seller', text, date: isoNow() }); t.status = 'open';
+        cloud().supportReply(id, text).then(() => loadCloudTickets(true)).catch(ticketErr);
+        return true;
+      }
+      const l = tickets.list(), t = l.find((x) => x.id === id); if (!t) return false; t.replies.push({ from: 'seller', text, date: isoNow() }); t.status = 'open'; return ls.set(K.tickets, l);
+    },
+    setStatus(id, status) {
+      if (isCloudSeller()) {
+        const t = (cloudTickets || []).find((x) => x.id === id); if (!t) return false;
+        t.status = status; t.rawStatus = status;
+        cloud().supportSetStatus(id, status === 'closed' ? 'closed' : 'open').then(() => loadCloudTickets(true)).catch(ticketErr);
+        return true;
+      }
+      const l = tickets.list(), t = l.find((x) => x.id === id); if (!t) return false; t.status = status; return ls.set(K.tickets, l);
+    }
   };
+  /* تحديث دوري لردود الإدمن أثناء وجود البائع في صفحة الدعم */
+  setInterval(() => { if (!document.hidden && /^#\/support/.test(location.hash)) tickets.refresh(); }, 25000);
 
   /* ---------- الإشعارات ----------
      لأي بائع حقيقي (s.cloudId): تُقرأ من جدول notifications الحقيقي في

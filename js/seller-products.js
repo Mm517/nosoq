@@ -233,7 +233,7 @@
         if (seller.cloudId) {
           /* متجر حقيقي معتمد: يُرسَل المنتج لقاعدة البيانات مباشرة ويظهر فوراً
              لكل العملاء في المتجر والصفحة الرئيسية — لا حفظ محلي وهمي هنا. */
-          if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'جارٍ الحفظ…'; }
+          if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = /^data:video\//.test(rec.video || '') ? 'جارٍ رفع الفيديو… قد يستغرق دقيقة' : 'جارٍ الحفظ…'; }
           try {
             const row = await M.products.saveCloud(rec);
             if (!row) { err.textContent = 'تعذّر حفظ المنتج، تحقّق من اتصالك وحاول مجدداً.'; if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = edit ? 'حفظ التعديلات' : 'نشر المنتج'; } return; }
