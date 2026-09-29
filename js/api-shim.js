@@ -247,6 +247,7 @@
     body = body || {};
     const lat = Number(body.latitude), lng = Number(body.longitude);
     if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return errRes('إحداثيات الموقع غير صحيحة.');
+    if (!(lat >= 21.5 && lat <= 31.95 && lng >= 24.5 && lng <= 37.0)) return errRes('الخدمة متاحة داخل مصر فقط.');
     const acc = body.location_accuracy != null ? Number(body.location_accuracy) : null;
     const patch = {
       latitude: lat,

@@ -173,6 +173,7 @@
       accuracy: v.accuracy != null ? Number(v.accuracy) : null
     };
     if (!valid(loc)) return Promise.reject(new Error('إحداثيات الموقع غير صحيحة.'));
+    if (!(loc.lat >= 21.5 && loc.lat <= 31.95 && loc.lng >= 24.5 && loc.lng <= 37.0)) return Promise.reject(new Error('الخدمة متاحة داخل مصر فقط.'));
     writeJSON(GUEST_KEY, { lat: loc.lat, lng: loc.lng, address: loc.address, placeId: loc.placeId });
     writeJSON(LOC2, Object.assign({}, v.details || {}, { lat: loc.lat, lng: loc.lng, formatted: loc.address, placeId: loc.placeId }));
     try { const t = (v.details && (v.details.city || v.details.area)) || shortLabel(loc.address); if (t) localStorage.setItem(LOC_KEY, t); } catch (_) { /* تجاهل */ }

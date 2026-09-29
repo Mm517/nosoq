@@ -18,6 +18,11 @@
   const lang = () => { try { return (localStorage.getItem('nasaq_lang_v1') || 'ar').split('-')[0]; } catch (_) { return 'ar'; } };
   const DEFAULT_CENTER = { lat: 30.0444, lng: 31.2357 };   // القاهرة
   let uidN = 0;
+  /* مصر فقط: حدود تقريبية + التحقق من كود الدولة */
+  const EG = { s: 21.5, n: 31.95, w: 24.5, e: 37.0 };
+  const inEgypt = (lat, lng) => lat >= EG.s && lat <= EG.n && lng >= EG.w && lng <= EG.e;
+  const EG_MSG = 'الخدمة متاحة داخل مصر فقط. اختر موقعاً داخل مصر.';
+  const isEgyptAddr = (a) => !a.countryCode || String(a.countryCode).toUpperCase() === 'EG';
 
   const s = (v) => (v == null ? '' : String(v));
   const norm = (a) => ({
@@ -36,7 +41,9 @@
       if (!navigator.geolocation) return reject(new Error('متصفحك لا يدعم تحديد الموقع، ابحث عن عنوانك يدوياً.'));
       if (window.isSecureContext === false) return reject(new Error('تحديد الموقع يعمل فقط على اتصال آمن (https). ابحث عن عنوانك يدوياً.'));
       navigator.geolocation.getCurrentPosition(
-        (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy }),
+        (p) => inEgypt(p.coords.latitude, p.coords.longitude)
+          ? resolve({ lat: p.coords.latitude, lng: p.coords.longitude, accuracy: p.coords.accuracy })
+          : reject(new Error('موقعك الحالي خارج مصر. الخدمة متاحة داخل مصر فقط، اختر عنواناً داخل مصر.')),
         (e) => reject(new Error(e.code === 1 ? 'تم رفض إذن الموقع. فعّله من إعدادات المتصفح أو ابحث عن عنوانك.'
           : e.code === 3 ? 'انتهت مهلة تحديد الموقع، حاول مرة أخرى.' : 'تعذّر تحديد موقعك الآن، حاول لاحقاً أو ابحث عن عنوانك.')),
         { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
@@ -74,9 +81,9 @@
     return fromNominatim(await r.json(), lat, lng);
   }
   async function nomSearch(q) {
-    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&accept-language=' + lang() + '&q=' + encodeURIComponent(q));
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=eg&accept-language=' + lang() + '&q=' + encodeURIComponent(q));
     if (!r.ok) throw new Error('خدمة البحث غير متاحة الآن');
-    return (await r.json()).map((j) => fromNominatim(j, parseFloat(j.lat), parseFloat(j.lon)));
+    return (await r.json()).map((j) => fromNominatim(j, parseFloat(j.lat), parseFloat(j.lon))).filter((a) => inEgypt(a.lat, a.lng) && isEgyptAddr(a));
   }
 
   /* ---------- Google Maps ---------- */
@@ -166,7 +173,7 @@
     const field = (k) => q('[data-geo-f="' + k + '"]');
     const say = (t, err) => { msg.textContent = t || ''; msg.classList.toggle('is-error', !!err); };
     const by = q('[data-geo-by]');
-    by.textContent = mode === 'google' ? 'الخريطة: Google Maps (تفاعلية)' : 'الخريطة: OpenStreetMap — اسحب الدبوس أو اضغط على الخريطة لتحديد موقعك.';
+    by.textContent = mode === 'google' ? 'الخريطة: Google Maps (تفاعلية)' : 'الخريطة: OpenStreetMap — التوصيل داخل مصر فقط. اسحب الدبوس أو اضغط على الخريطة لتحديد موقعك.';
 
     function emit() { if (opts.onChange) opts.onChange(getValue()); }
     function getValue() {
@@ -212,6 +219,7 @@
           } catch (ge) { console.warn('[geo] Google Geocoding فشل، نستخدم OpenStreetMap:', ge && (ge.code || ge.message)); }
         }
         if (!a) a = await nomReverse(point.lat, point.lng);
+        if (a && !isEgyptAddr(a)) { if (my === reqId) say(EG_MSG, true); return; }
         if (my !== reqId) return;
         fill(a);
         const qi = q('[data-geo-q]'); if (qi && a.formatted) qi.value = a.formatted;
@@ -226,6 +234,11 @@
     }
 
     function setPoint(lat, lng, o) {
+      if (!inEgypt(lat, lng)) {
+        say(EG_MSG, true);
+        if (o && o.fromMap && point && moveG) moveG(point.lat, point.lng);   /* رجّع الدبوس لآخر موقع صحيح */
+        return;
+      }
       point = { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 };
       showCoords();
       if (!(o && o.fromMap)) showMap();
@@ -261,8 +274,8 @@
         let list = [];
         if (mode === 'google' && map && map.__geocoder) {
           try {
-            const r = await map.__geocoder.geocode({ address: text, language: lang() });
-            list = (r.results || []).slice(0, 5).map((x) => fromGoogle(x, x.geometry.location.lat(), x.geometry.location.lng()));
+            const r = await map.__geocoder.geocode({ address: text, language: lang(), componentRestrictions: { country: 'EG' } });
+            list = (r.results || []).slice(0, 5).map((x) => fromGoogle(x, x.geometry.location.lat(), x.geometry.location.lng())).filter((a) => inEgypt(a.lat, a.lng));
           } catch (ge) { console.warn('[geo] Google Geocoding فشل، نستخدم OpenStreetMap:', ge && (ge.code || ge.message)); }
         }
         if (!list.length) list = await nomSearch(text);
@@ -292,7 +305,7 @@
       try { advanced = (await gm.importLibrary('marker')).AdvancedMarkerElement; } catch (_) { advanced = null; }
       box.innerHTML = '';
       const start = point || DEFAULT_CENTER;
-      map = new GMap(box, { center: start, zoom: point ? 16 : 11, mapId: 'DEMO_MAP_ID', mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: 'greedy' });
+      map = new GMap(box, { center: start, zoom: point ? 16 : 11, mapId: 'DEMO_MAP_ID', mapTypeControl: false, restriction: { latLngBounds: { north: EG.n + 0.5, south: EG.s - 0.5, west: EG.w - 0.5, east: EG.e + 0.5 }, strictBounds: false }, streetViewControl: false, fullscreenControl: false, gestureHandling: 'greedy' });
       map.__geocoder = new geo.Geocoder();
       const marker = advanced
         ? new advanced({ map, position: start, gmpDraggable: true })
@@ -313,7 +326,7 @@
       const L = window.L;
       box.innerHTML = '';
       const start = point || DEFAULT_CENTER;
-      map = L.map(box, { center: [start.lat, start.lng], zoom: point ? 16 : 11, zoomControl: true, attributionControl: true });
+      map = L.map(box, { center: [start.lat, start.lng], zoom: point ? 16 : 11, zoomControl: true, attributionControl: true, minZoom: 5, maxBounds: [[EG.s - 0.5, EG.w - 0.5], [EG.n + 0.5, EG.e + 0.5]], maxBoundsViscosity: 0.9 });
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
       const marker = L.marker([start.lat, start.lng], { draggable: true });
       if (point) marker.addTo(map);
