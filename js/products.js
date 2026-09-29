@@ -24,7 +24,7 @@
     supportEmail: 'sellers@nasaq.example',
     /* مفتاح Google Maps (Maps JavaScript API + Geocoding API). اتركه فارغاً وسيعمل تحديد الموقع
        بالـ GPS مع معاينة خريطة جوجل، وعند وضع المفتاح تصبح الخريطة تفاعلية (تحريك الدبوس والبحث). */
-    googleMapsKey: 'AIzaSyBhyTWyqCZS5tiymk982I68CSvBRcKtMss',
+    googleMapsKey: '',   /* فارغ = خريطة OpenStreetMap المجانية (بدون مفتاح) */
     /* أسعار الإعلانات بالجنيه لليوم الواحد + خصم على المدد الطويلة */
     adPlacements: {
       hero:     { name: 'لافتة الصفحة الرئيسية', desc: 'تظهر ضمن شريط اللافتات في أول الرئيسية، أعلى ظهور في المتجر.', perDay: 150, ratio: '4:5 (مثال 800×1000)' },

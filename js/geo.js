@@ -109,6 +109,25 @@
     return gPromise;
   }
 
+  /* ---------- Leaflet + OpenStreetMap (مجاني بدون مفتاح) ---------- */
+  const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+  let lPromise = null;
+  function loadLeaflet() {
+    if (window.L && window.L.map) return Promise.resolve();
+    if (lPromise) return lPromise;
+    lPromise = new Promise((resolve, reject) => {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.min.css';
+      document.head.appendChild(css);
+      const sc = document.createElement('script');
+      sc.src = LEAFLET + 'leaflet.min.js';
+      sc.onload = () => resolve();
+      sc.onerror = () => { lPromise = null; reject(new Error('load')); };
+      document.head.appendChild(sc);
+    });
+    return lPromise;
+  }
+
   /* ---------- واجهة اختيار الموقع ---------- */
   const FIELDS = [
     ['city', 'المدينة'], ['area', 'الحي / المنطقة'], ['street', 'الشارع'], ['note', 'رقم المبنى / علامة مميزة'],
@@ -120,7 +139,7 @@
     const id = ++uidN;
     let point = opts.value && opts.value.lat != null ? { lat: opts.value.lat, lng: opts.value.lng } : null;
     let base = Object.assign({ country: '', countryCode: '', formatted: '', placeId: '' }, opts.value || {});
-    let map = null, moveG = null, mode = CFG.googleMapsKey ? 'google' : 'embed', reqId = 0, timer = 0;
+    let map = null, moveG = null, mode = CFG.googleMapsKey ? 'google' : 'leaflet', reqId = 0, timer = 0;
 
     el.innerHTML =
       '<div class="geo">' +
@@ -147,7 +166,7 @@
     const field = (k) => q('[data-geo-f="' + k + '"]');
     const say = (t, err) => { msg.textContent = t || ''; msg.classList.toggle('is-error', !!err); };
     const by = q('[data-geo-by]');
-    by.textContent = mode === 'google' ? 'الخريطة: Google Maps (تفاعلية)' : 'معاينة Google Maps. لتفعيل الخريطة التفاعلية أضف مفتاح Google Maps في إعدادات المتجر.';
+    by.textContent = mode === 'google' ? 'الخريطة: Google Maps (تفاعلية)' : 'الخريطة: OpenStreetMap — اسحب الدبوس أو اضغط على الخريطة لتحديد موقعك.';
 
     function emit() { if (opts.onChange) opts.onChange(getValue()); }
     function getValue() {
@@ -171,7 +190,7 @@
     /* رسم/تحريك الخريطة */
     function showMap() {
       if (!point) return;
-      if (mode === 'google' && map) { moveG(point.lat, point.lng); return; }
+      if ((mode === 'google' || mode === 'leaflet') && map) { moveG(point.lat, point.lng); return; }
       if (mode === 'embed') {
         clearTimeout(timer);
         timer = setTimeout(() => {
@@ -184,14 +203,18 @@
       const my = ++reqId;
       say('جارٍ جلب تفاصيل العنوان…');
       try {
-        let a;
+        let a = null;
         if (mode === 'google' && map && map.__geocoder) {
-          const r = await map.__geocoder.geocode({ location: { lat: point.lat, lng: point.lng }, language: lang() });
-          if (!r.results || !r.results.length) throw new Error('لا توجد نتائج');
-          a = fromGoogle(r.results[0], point.lat, point.lng);
-        } else a = await nomReverse(point.lat, point.lng);
+          /* Geocoding API ممكن تكون مش مفعّلة/مقيّدة على المفتاح: نجرّب جوجل وبعدين نرجع لـ OpenStreetMap تلقائياً */
+          try {
+            const r = await map.__geocoder.geocode({ location: { lat: point.lat, lng: point.lng }, language: lang() });
+            if (r.results && r.results.length) a = fromGoogle(r.results[0], point.lat, point.lng);
+          } catch (ge) { console.warn('[geo] Google Geocoding فشل، نستخدم OpenStreetMap:', ge && (ge.code || ge.message)); }
+        }
+        if (!a) a = await nomReverse(point.lat, point.lng);
         if (my !== reqId) return;
         fill(a);
+        const qi = q('[data-geo-q]'); if (qi && a.formatted) qi.value = a.formatted;
         say('تم تحديد العنوان. راجع التفاصيل وعدّلها إن لزم.');
       } catch (e) {
         if (my !== reqId) return;
@@ -221,17 +244,28 @@
     /* البحث عن عنوان */
     /* ليس <form> عمداً: الأداة تُوضع داخل نماذج أخرى (إنشاء المتجر) والمتصفح يحذف النماذج المتداخلة */
     q('[data-geo-go]').addEventListener('click', () => runSearch());
-    q('[data-geo-q]').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); runSearch(); } });
+    q('[data-geo-q]').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); clearTimeout(typeTimer); runSearch(); } });
+    /* اقتراحات أثناء الكتابة (بعد توقف ٧٠٠ مللي ثانية) */
+    let typeTimer = 0;
+    q('[data-geo-q]').addEventListener('input', (e) => {
+      clearTimeout(typeTimer);
+      const t = e.target.value.trim();
+      if (t.length < 3) { sugg.hidden = true; return; }
+      typeTimer = setTimeout(runSearch, 700);
+    });
     async function runSearch() {
       const text = q('[data-geo-q]').value.trim();
       if (text.length < 3) { say('اكتب 3 أحرف على الأقل للبحث.', true); return; }
       say('جارٍ البحث…'); sugg.hidden = true;
       try {
-        let list;
+        let list = [];
         if (mode === 'google' && map && map.__geocoder) {
-          const r = await map.__geocoder.geocode({ address: text, language: lang() });
-          list = (r.results || []).slice(0, 5).map((x) => fromGoogle(x, x.geometry.location.lat(), x.geometry.location.lng()));
-        } else list = await nomSearch(text);
+          try {
+            const r = await map.__geocoder.geocode({ address: text, language: lang() });
+            list = (r.results || []).slice(0, 5).map((x) => fromGoogle(x, x.geometry.location.lat(), x.geometry.location.lng()));
+          } catch (ge) { console.warn('[geo] Google Geocoding فشل، نستخدم OpenStreetMap:', ge && (ge.code || ge.message)); }
+        }
+        if (!list.length) list = await nomSearch(text);
         if (!list.length) { say('لم نجد هذا العنوان. جرّب كتابته بشكل مختلف.', true); return; }
         say('اختر العنوان الصحيح من النتائج:');
         sugg.innerHTML = list.map((a, i) => '<li><button type="button" data-geo-pick="' + i + '">' + esc(a.formatted || (a.city + ' ' + a.area)) + '</button></li>').join('');
@@ -243,6 +277,7 @@
       const b = e.target.closest('[data-geo-pick]'); if (!b) return;
       const a = sugg.__list[Number(b.dataset.geoPick)];
       sugg.hidden = true; say('');
+      const qi = q('[data-geo-q]'); if (qi && a.formatted) qi.value = a.formatted;
       setPoint(a.lat, a.lng, { address: a });
     });
     el.addEventListener('input', (e) => { if (e.target.matches('[data-geo-f]')) emit(); });
@@ -273,6 +308,21 @@
       if (!point) { if (advanced) marker.map = null; else marker.setMap(null); }
       showCoords();
     }
+    async function buildLeaflet() {
+      await loadLeaflet();
+      const L = window.L;
+      box.innerHTML = '';
+      const start = point || DEFAULT_CENTER;
+      map = L.map(box, { center: [start.lat, start.lng], zoom: point ? 16 : 11, zoomControl: true, attributionControl: true });
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+      const marker = L.marker([start.lat, start.lng], { draggable: true });
+      if (point) marker.addTo(map);
+      moveG = (lat, lng) => { marker.setLatLng([lat, lng]); if (!map.hasLayer(marker)) marker.addTo(map); map.setView([lat, lng], 16); };
+      marker.on('dragend', () => { const p = marker.getLatLng(); setPoint(p.lat, p.lng, { fromMap: true }); });
+      map.on('click', (e) => { moveG(e.latlng.lat, e.latlng.lng); setPoint(e.latlng.lat, e.latlng.lng, { fromMap: true }); });
+      setTimeout(() => map && map.invalidateSize(), 300);   /* النافذة بتفتح بعد التحميل */
+      showCoords();
+    }
     function toEmbed(why) {
       mode = 'embed'; map = null;
       by.textContent = why === 'auth' ? 'مفتاح Google Maps غير صالح، نعرض المعاينة العادية.' : 'تعذّر تحميل خرائط جوجل، نعرض المعاينة العادية.';
@@ -281,6 +331,7 @@
     }
 
     if (mode === 'google') buildGoogle().catch((e) => toEmbed(e && e.message));
+    else if (mode === 'leaflet') buildLeaflet().catch((e) => toEmbed(e && e.message));
     else if (point) { showCoords(); showMap(); }
 
     return {
