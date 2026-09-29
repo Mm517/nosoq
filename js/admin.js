@@ -32,8 +32,8 @@
     body: JSON.stringify(body)
   });
 
-  const formatMoney = (value) => Number(value || 0).toLocaleString('ar-EG', { style: 'currency', currency: 'EGP', maximumFractionDigits: 2 });
-  const formatDate = (value) => value ? new Date(value).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+  const formatMoney = (value) => Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ج.م';
+  const formatDate = (value) => value ? new Date(value).toLocaleString('ar-EG-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const setNotice = (message, isError) => { const node = $('#admin-notice'); node.textContent = message || ''; node.hidden = !message; node.style.background = isError ? '#fde8e6' : ''; node.style.color = isError ? '#7a1f17' : ''; };
   const badge = (status) => '<span class="admin-badge admin-badge--' + esc(status) + '">' + esc(labels[status] || status || '—') + '</span>';
 
@@ -63,11 +63,14 @@
   });
 
   /* ---------- Tabs ---------- */
-  const TABS = ['applications', 'users', 'sellers', 'riders', 'products', 'orders', 'financial', 'transactions', 'support', 'deliveries'];
+  let ROLE = 'admin';
+  const TABS = ['orders', 'deliveries', 'support', 'applications', 'users', 'sellers', 'riders', 'products', 'financial', 'transactions'];
   const loaders = {};
   const loaded = {};
   function activateTab(name) {
     if (!TABS.includes(name)) name = TABS[0];
+    if (ROLE === 'support') name = 'support';
+    const activeBtn = $('.admin-tab[data-tab="' + name + '"] span'); if (activeBtn) $('#admin-page-title').textContent = activeBtn.textContent;
     $$('.admin-tab').forEach((btn) => btn.classList.toggle('is-active', btn.dataset.tab === name));
     $$('.admin-panel').forEach((panel) => panel.classList.toggle('is-active', panel.id === 'panel-' + name));
     if (!loaded[name] && loaders[name]) {
@@ -415,32 +418,98 @@
     }
   });
 
-  /* ===================== 7) الطلبات (Orders) ===================== */
-  function renderOrders(orders) {
-    const body = $('#orders-body');
-    $('#orders-empty').hidden = orders.length > 0;
-    body.innerHTML = orders.map((order) => {
-      const customer = order.customer || {};
-      return '<tr>' +
-        '<td><strong dir="ltr">' + esc(order.order_number) + '</strong></td>' +
-        '<td>' + esc(customer.name || order.customer_external_id || 'عميل') + '<small dir="ltr">' + esc(customer.phone || customer.email || '') + '</small></td>' +
-        '<td>' + formatMoney(order.total) + '</td>' +
-        '<td>' + formatMoney(order.shipping) + '</td>' +
-        '<td>' + formatMoney(order.discount) + '</td>' +
-        '<td>' + esc(order.payment || '—') + '</td>' +
-        '<td>' + formatDate(order.created_at) + '</td>' +
-        '<td>' + statusSelect(order.status, ['new', 'processing', 'shipped', 'completed', 'cancelled'], order.id, 'order') + '</td>' +
-        '<td><button class="admin-link-btn" data-order-view="' + esc(order.id) + '">تفاصيل</button></td>' +
-        '</tr>';
+  /* ===================== 7) الطلبات (لوحة بطاقات لحظية) ===================== */
+  const ORD_FLOW = { new: ['processing', 'قبول الطلب'], processing: ['shipped', 'تم الشحن'], shipped: ['completed', 'تم التسليم'] };
+  const ORD_CHIPS = [['', 'الكل'], ['new', 'جديد'], ['processing', 'قيد التجهيز'], ['shipped', 'تم الشحن'], ['completed', 'مكتمل'], ['cancelled', 'ملغى']];
+  let allOrders = [], ordFilter = '', ordSearch = '', ordKnown = null, ordSound = false;
+
+  function timeAgo(value) {
+    if (!value) return '—';
+    const mins = Math.max(0, Math.round((Date.now() - new Date(value).getTime()) / 60000));
+    if (mins < 1) return 'الآن';
+    if (mins < 60) return 'منذ ' + mins + ' د';
+    const h = Math.round(mins / 60);
+    if (h < 24) return 'منذ ' + h + ' س';
+    return formatDate(value);
+  }
+  function beep() {
+    if (!ordSound) return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [880, 1175].forEach((f, i) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = f; o.type = 'sine'; o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(0.0001, ctx.currentTime + i * 0.16); g.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + i * 0.16 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + i * 0.16 + 0.15);
+        o.start(ctx.currentTime + i * 0.16); o.stop(ctx.currentTime + i * 0.16 + 0.16);
+      });
+    } catch (_) { /* المتصفح منع الصوت */ }
+  }
+  function setOrdersBadge() {
+    const n = allOrders.filter((o) => o.status === 'new').length;
+    const b = $('#orders-badge'); if (b) { b.hidden = !n; b.textContent = n; }
+  }
+  function renderOrders(fresh) {
+    setOrdersBadge();
+    const counts = {};
+    allOrders.forEach((o) => { counts[o.status] = (counts[o.status] || 0) + 1; });
+    $('#ord-chips').innerHTML = ORD_CHIPS.map((c) => '<button type="button" class="ord-chip' + (ordFilter === c[0] ? ' is-active' : '') + '" data-ord-filter="' + c[0] + '">' + c[1] +
+      '<b>' + (c[0] ? (counts[c[0]] || 0) : allOrders.length) + '</b></button>').join('');
+    const q = ordSearch.trim().toLowerCase();
+    const list = allOrders.filter((o) => (!ordFilter || o.status === ordFilter) && (!q ||
+      String(o.order_number || '').toLowerCase().includes(q) || String((o.customer && o.customer.name) || '').toLowerCase().includes(q) || String((o.customer && o.customer.phone) || '').includes(q)));
+    $('#orders-empty').hidden = list.length > 0;
+    $('#orders-grid').innerHTML = list.map((o) => {
+      const c = o.customer || {};
+      const items = Array.isArray(o.order_items) ? o.order_items : [];
+      const nm = c.name || 'عميل';
+      const step = ORD_FLOW[o.status];
+      return '<article class="ord-card ord-card--' + esc(o.status) + (fresh && fresh.has(o.id) ? ' is-fresh' : '') + '">' +
+        '<div class="ord-card__top"><div><div class="ord-num">#' + esc(o.order_number) + '</div><div class="ord-time">' + timeAgo(o.created_at) + '</div></div>' + badge(o.status) + '</div>' +
+        '<div class="ord-card__body">' +
+        '<div class="ord-cust"><span class="ord-avatar">' + esc(nm.trim().charAt(0) || 'ع') + '</span><div><strong>' + esc(nm) + '</strong><small>' + esc(c.phone || c.email || '') + '</small></div></div>' +
+        (items.length ? '<ul class="ord-items">' + items.slice(0, 3).map((it) => '<li><span>' + esc(it.product_name) + '</span><em>× ' + esc(it.quantity) + '</em></li>').join('') +
+          (items.length > 3 ? '<li><em>+ ' + (items.length - 3) + ' منتجات أخرى</em></li>' : '') + '</ul>' : '') +
+        '<div class="ord-meta"><span>' + esc(o.payment || 'الدفع غير محدد') + '</span><span class="ord-total">' + formatMoney(o.total) + '</span></div>' +
+        '</div>' +
+        '<div class="ord-actions">' +
+        (step ? '<button type="button" class="admin-button admin-button--primary" data-ord-move="' + esc(o.id) + '" data-to="' + step[0] + '">' + step[1] + '</button>' : '') +
+        '<button type="button" class="admin-button" data-order-view="' + esc(o.id) + '">التفاصيل</button>' +
+        (['new', 'processing'].includes(o.status) ? '<button type="button" class="admin-button ord-danger" data-ord-move="' + esc(o.id) + '" data-to="cancelled">إلغاء</button>' : '') +
+        '</div></article>';
     }).join('');
   }
-
-  loaders.orders = async function () {
-    skeletonRows('#orders-body', 9);
-    const orders = await api('/admin/orders' + ($('#order-filter').value ? '?status=' + encodeURIComponent($('#order-filter').value) : ''));
-    renderOrders(orders || []);
-  };
-  $('#order-filter').addEventListener('change', () => { loaded.orders = false; loaders.orders().catch((e) => setNotice(e.message, true)); });
+  async function fetchOrders(silent) {
+    if (!silent) $('#orders-grid').innerHTML = '<div class="ord-skel"></div><div class="ord-skel"></div><div class="ord-skel"></div>';
+    const list = (await api('/admin/orders')) || [];
+    const fresh = new Set();
+    if (ordKnown) list.forEach((o) => { if (!ordKnown.has(o.id) && o.status === 'new') fresh.add(o.id); });
+    ordKnown = new Set(list.map((o) => o.id));
+    allOrders = list;
+    renderOrders(fresh);
+    if (fresh.size) { beep(); setNotice('وصل ' + fresh.size + ' طلب جديد.'); }
+  }
+  loaders.orders = () => fetchOrders(false);
+  $('#ord-search').addEventListener('input', (e) => { ordSearch = e.target.value; renderOrders(); });
+  $('#ord-sound').addEventListener('click', (e) => {
+    ordSound = !ordSound; e.currentTarget.setAttribute('aria-pressed', ordSound);
+    e.currentTarget.textContent = ordSound ? '🔔 صوت التنبيه شغّال' : '🔕 صوت التنبيه';
+    if (ordSound) beep();
+  });
+  document.addEventListener('click', async (e) => {
+    const chip = e.target.closest('[data-ord-filter]');
+    if (chip) { ordFilter = chip.dataset.ordFilter; renderOrders(); return; }
+    const mv = e.target.closest('[data-ord-move]');
+    if (!mv) return;
+    if (mv.dataset.to === 'cancelled' && !window.confirm('تأكيد إلغاء الطلب؟')) return;
+    mv.disabled = true;
+    try {
+      await sendJson('/admin/orders/' + mv.dataset.ordMove + '/status', { status: mv.dataset.to }, 'PATCH');
+      const o = allOrders.find((x) => String(x.id) === String(mv.dataset.ordMove)); if (o) o.status = mv.dataset.to;
+      renderOrders(); api('/admin/summary').then(renderStats).catch(() => {});
+    } catch (err) { setNotice(err.message, true); mv.disabled = false; }
+  });
+  setInterval(() => { if (ROLE === 'admin' && !document.hidden && !$('#admin-app').hidden) fetchOrders(true).catch(() => {}); }, 25000);
 
   document.addEventListener('click', (e) => {
     const viewBtn = e.target.closest('[data-order-view]');
@@ -500,84 +569,176 @@
   };
   $('#transaction-status-filter').addEventListener('change', () => { loaded.transactions = false; loaders.transactions().catch((e) => setNotice(e.message, true)); });
 
-  /* ===================== الدعم (Support) — كما هو ===================== */
-  const ORIGIN = { seller: 'بائع', customer: 'عميل', rider: 'مندوب', guest: 'زائر' };
-  function renderSupport(tickets) {
-    const body = $('#support-body');
-    const openList = tickets.filter((ticket) => ['open', 'in_progress'].includes(ticket.status));
-    const unread = tickets.filter((ticket) => ticket.admin_unread && ['open', 'in_progress'].includes(ticket.status)).length;
-    $('#support-count').textContent = openList.length + ' مفتوحة';
-    setSupportBadge(unread);
-    $('#support-empty').hidden = tickets.length > 0;
-    body.innerHTML = tickets.map((ticket) => '<tr class="' + (ticket.admin_unread ? 'is-unread' : '') + '">' +
-      '<td><strong dir="ltr">' + esc(ticket.ticket_number) + '</strong><small>' + formatDate(ticket.last_message_at || ticket.created_at) + '</small></td>' +
-      '<td><strong>' + (ticket.admin_unread ? '<i class="admin-dot" aria-label="جديد"></i>' : '') + esc(ticket.subject) + '</strong><small>' + esc(ticket.message).slice(0, 90) + '</small></td>' +
-      '<td>' + esc(ticket.name || 'زائر') + ' <span class="admin-origin">' + esc(ORIGIN[ticket.origin] || 'عميل') + '</span><small dir="ltr">' + esc(ticket.email || '') + '</small></td>' +
-      '<td class="admin-priority admin-priority--' + esc(ticket.priority) + '">' + esc(ticket.priority) + '</td><td>' +
-      statusSelect(ticket.status, ['open', 'in_progress', 'resolved', 'closed'], ticket.id, 'support') + '</td>' +
-      '<td><button type="button" class="admin-button" data-open-ticket="' + esc(ticket.ticket_number) + '">فتح والرد</button></td></tr>').join('');
-  }
-  function setSupportBadge(n) {
-    const b = $('#support-badge'); if (!b) return;
-    b.hidden = !n; b.textContent = n;
-  }
-  loaders.support = async function () { skeletonRows('#support-body', 6); renderSupport((await api('/admin/support')) || []); };
+  /* ===================== الدعم (شات) ===================== */
+  /* الكود بيحدّد صاحب المحادثة: SL- بائع | RD- سائق | US- مستخدم | GS- زائر */
+  const SUP_GROUPS = [['', 'الكل', ''], ['SL', 'البائعين', 'SL-'], ['RD', 'السائقين', 'RD-'], ['US', 'المستخدمين', 'US-'], ['GS', 'زوّار', 'GS-']];
+  const ORIGIN = { seller: 'بائع', customer: 'مستخدم', rider: 'سائق', guest: 'زائر' };
+  const ORIGIN_PFX = { seller: 'SL', rider: 'RD', customer: 'US', guest: 'GS' };
+  const supGroupOf = (t) => { const m = /^(SL|RD|US|GS)-/i.exec(t.ticket_number || ''); return m ? m[1].toUpperCase() : (ORIGIN_PFX[t.origin] || 'GS'); };
+  const isOpenTicket = (t) => ['open', 'in_progress'].includes(t.status);
+  let supTickets = [], supGroup = '', supStatus = 'active', supSearch = '', supCur = null, supCurCount = -1, supFiles = [], supSigned = {};
+  const smEl = { conv: $('#sup-conv'), thread: $('#sup-thread') };
 
-  /* ---- نافذة محادثة التذكرة: قراءة كل الرسائل + الرد (يصل للمستخدم كإشعار) ---- */
-  const smModal = $('#support-modal');
-  let smTicket = null;
-  function smRender(data) {
-    const t = data.ticket;
-    $('#sm-title').textContent = t.subject || t.ticket_number;
-    $('#sm-meta').textContent = t.ticket_number + ' · ' + (t.name || 'زائر') + ' · ' + (ORIGIN[t.origin] || 'عميل') + (t.email ? ' · ' + t.email : '') + (t.category ? ' · ' + t.category : '');
-    const msgs = data.messages && data.messages.length ? data.messages : [{ role: 'user', body: t.message, created_at: t.created_at }];
-    $('#sm-thread').innerHTML = msgs.map((m) => '<li class="sm-msg sm-msg--' + (m.role === 'admin' ? 'admin' : 'user') + '"><b>' + (m.role === 'admin' ? 'الإدارة' : esc(t.name || 'المستخدم')) + '</b><p>' +
-      esc(m.body).replace(/\n/g, '<br>') + '</p><small>' + formatDate(m.created_at) + '</small></li>').join('');
-    $('#sm-status').value = ['open', 'in_progress', 'resolved', 'closed'].includes(t.status) ? (t.status === 'open' ? 'in_progress' : t.status) : 'in_progress';
-    const th = $('#sm-thread'); th.scrollTop = th.scrollHeight;
+  function setSupportBadge(n) { const b = $('#support-badge'); if (b) { b.hidden = !n; b.textContent = n; } }
+
+  function renderSupSummary() {
+    const open = supTickets.filter(isOpenTicket), unread = open.filter((t) => t.admin_unread).length;
+    const today = new Date().toDateString();
+    const closedToday = supTickets.filter((t) => t.status === 'closed' && t.closed_at && new Date(t.closed_at).toDateString() === today).length;
+    const by = (g) => open.filter((t) => supGroupOf(t) === g).length;
+    const cards = [['محادثات مفتوحة', open.length, 'من ' + supTickets.length + ' إجمالاً'], ['رسائل جديدة', unread, 'مستنية ردّ'], ['اتقفلت النهارده', closedToday, 'محادثات'],
+      ['بائعين / سائقين / مستخدمين', by('SL') + ' / ' + by('RD') + ' / ' + by('US'), 'المفتوح حالياً']];
+    $('#sup-summary').innerHTML = cards.map((c) => '<div class="sup-sum"><span>' + c[0] + '</span><strong>' + c[1] + '</strong><small>' + c[2] + '</small></div>').join('');
+    setSupportBadge(unread);
   }
-  async function smOpen(ticketNumber) {
-    smTicket = ticketNumber;
-    smModal.hidden = false;
-    $('#sm-thread').innerHTML = '<li class="sm-msg"><span class="skeleton skeleton--text" style="width:60%"></span></li>';
-    $('#sm-text').value = '';
+
+  function renderSupList() {
+    $('#sup-groups').innerHTML = SUP_GROUPS.map((g) => {
+      const n = supTickets.filter((t) => isOpenTicket(t) && (!g[0] || supGroupOf(t) === g[0])).length;
+      return '<button type="button" class="sup-group' + (supGroup === g[0] ? ' is-active' : '') + '" data-sup-group="' + g[0] + '">' + g[1] + (g[2] ? '<small>' + g[2] + '</small>' : '<small>&nbsp;</small>') + '<b>' + n + '</b></button>';
+    }).join('');
+    const q = supSearch.trim().toLowerCase();
+    const list = supTickets.filter((t) => (!supGroup || supGroupOf(t) === supGroup) &&
+      (supStatus === 'active' ? isOpenTicket(t) : (!supStatus || t.status === supStatus)) &&
+      (!q || [t.ticket_number, t.name, t.subject, t.email].some((v) => String(v || '').toLowerCase().includes(q))));
+    $('#support-empty').hidden = list.length > 0;
+    $('#sup-items').innerHTML = list.map((t) => {
+      const g = supGroupOf(t);
+      return '<li class="sup-item' + (t.admin_unread && isOpenTicket(t) ? ' is-unread' : '') + (supCur === t.ticket_number ? ' is-active' : '') + '" data-open-ticket="' + esc(t.ticket_number) + '">' +
+        '<span class="sup-av sup-av--' + g + '">' + g + '</span>' +
+        '<div><div class="sup-item__name">' + esc(t.name || 'زائر') + '<span>' + esc(t.ticket_number) + '</span></div>' +
+        '<div class="sup-item__sub">' + esc(t.subject || t.message || '') + (t.handled_by ? ' · رد: ' + esc(t.handled_by) : '') + '</div></div>' +
+        '<div class="sup-item__side"><span>' + timeAgo(t.last_message_at || t.created_at) + '</span>' +
+        (t.admin_unread && isOpenTicket(t) ? '<i class="sup-unread">جديد</i>' : badge(t.status)) + '</div></li>';
+    }).join('');
+  }
+
+  async function loadSupportList() {
+    supTickets = (await api('/admin/support')) || [];
+    renderSupSummary(); renderSupList();
+  }
+  loaders.support = async function () {
+    $('#sup-items').innerHTML = Array.from({ length: 6 }).map(() => '<li class="sup-item"><span class="skeleton" style="width:42px;height:42px;border-radius:50%"></span><div><span class="skeleton skeleton--text"></span></div><span></span></li>').join('');
+    await loadSupportList();
+    if (ROLE === 'admin') loadStaff().catch(() => {});
+  };
+
+  async function signPaths(msgs) {
+    const need = []; msgs.forEach((m) => (m.attachments || []).forEach((p) => { if (!supSigned[p]) need.push(p); }));
+    if (!need.length) return;
+    try { const out = await sendJson('/support/signed', { paths: need }); Object.assign(supSigned, out.urls || {}); } catch (_) { /* تظهر بدون معاينة */ }
+  }
+  async function smRender(data) {
+    const t = data.ticket, msgs = data.messages && data.messages.length ? data.messages : [{ role: 'user', body: t.message, created_at: t.created_at, attachments: [] }];
+    await signPaths(msgs);
+    const g = supGroupOf(t);
+    $('#sup-title').textContent = t.subject || t.ticket_number;
+    $('#sup-meta').textContent = t.ticket_number + ' · ' + (t.name || 'زائر') + ' (' + (ORIGIN[t.origin] || ORIGIN[{ SL: 'seller', RD: 'rider', US: 'customer' }[g]] || 'زائر') + ')' + (t.email ? ' · ' + t.email : '') + (t.category ? ' · ' + t.category : '');
+    const stick = smEl.thread.scrollHeight - smEl.thread.scrollTop - smEl.thread.clientHeight < 80;
+    smEl.thread.innerHTML = msgs.map((m) => {
+      const staff = m.role === 'admin' || m.role === 'support';
+      const who = staff ? ((m.role === 'admin' ? 'الإدارة' : 'الدعم') + (m.author_name ? ' · ' + m.author_name : '')) : (t.name || 'المستخدم');
+      const imgs = (m.attachments || []).map((p) => supSigned[p] ? '<img src="' + esc(supSigned[p]) + '" alt="مرفق" data-lightbox="' + esc(supSigned[p]) + '">' : '').join('');
+      return '<li class="sup-msg' + (staff ? ' sup-msg--staff' : '') + '"><b>' + esc(who) + '</b>' + (m.body ? '<p>' + esc(m.body) + '</p>' : '') + (imgs ? '<div class="sup-imgs">' + imgs + '</div>' : '') + '<small>' + formatDate(m.created_at) + '</small></li>';
+    }).join('') + (t.status === 'closed' ? '<li class="sup-sys">تم قفل المحادثة' + (t.closed_at ? ' · ' + formatDate(t.closed_at) : '') + '</li>' : '');
+    $('#sup-status').value = t.status;
+    const closed = t.status === 'closed';
+    $('#sup-form').hidden = closed; $('#sup-closed').hidden = !closed; $('#sup-close-btn').hidden = closed;
+    supCurCount = msgs.length;
+    if (stick || supCurCount <= 1) smEl.thread.scrollTop = smEl.thread.scrollHeight;
+  }
+  async function smOpen(ticket) {
+    supCur = ticket; supFiles = []; renderPreviews(); $('#sup-text').value = '';
+    $('#sup-placeholder').hidden = true; smEl.conv.hidden = false; $('#sup-shell').classList.add('is-chat');
+    smEl.thread.innerHTML = '<li class="sup-msg"><span class="skeleton skeleton--text" style="width:60%"></span></li>';
     try {
-      smRender(await api('/admin/support/' + encodeURIComponent(ticketNumber)));
-      loaded.support = false; loaders.support().catch(() => {}); /* يحدّث علامة "جديد" */
-      $('#sm-text').focus();
-    } catch (err) { smModal.hidden = true; setNotice(err.message, true); }
+      await smRender(await api('/admin/support/' + encodeURIComponent(ticket)));
+      const t = supTickets.find((x) => x.ticket_number === ticket); if (t) t.admin_unread = false;
+      renderSupSummary(); renderSupList(); $('#sup-text').focus();
+    } catch (err) { setNotice(err.message, true); smBack(); }
   }
-  function smClose() { smModal.hidden = true; smTicket = null; }
-  document.addEventListener('click', (e) => {
-    const open = e.target.closest('[data-open-ticket]');
-    if (open) { smOpen(open.dataset.openTicket); return; }
-    if (e.target.closest('[data-sm-close]')) smClose();
+  function smBack() { supCur = null; $('#sup-shell').classList.remove('is-chat'); smEl.conv.hidden = true; $('#sup-placeholder').hidden = false; renderSupList(); }
+  async function setTicketStatus(status) {
+    if (!supCur) return;
+    await sendJson('/admin/support/' + encodeURIComponent(supCur) + '/status', { status }, 'PATCH');
+    await smRender(await api('/admin/support/' + encodeURIComponent(supCur))); loadSupportList().catch(() => {});
+  }
+
+  function renderPreviews() {
+    $('#sup-previews').innerHTML = supFiles.map((f, i) => '<div class="sup-prev"><img src="' + f.dataUrl + '" alt=""><button type="button" data-sup-rm="' + i + '" aria-label="حذف">×</button></div>').join('');
+  }
+  $('#sup-file').addEventListener('change', async (e) => {
+    for (const file of Array.from(e.target.files || [])) {
+      if (supFiles.length >= 4) { setNotice('أقصى عدد 4 صور في الرسالة.', true); break; }
+      if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) { setNotice('الصور فقط (JPG / PNG / WebP / GIF).', true); continue; }
+      if (file.size > 5 * 1024 * 1024) { setNotice('الصورة أكبر من 5 ميجابايت.', true); continue; }
+      const dataUrl = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+      supFiles.push({ dataUrl, name: file.name });
+    }
+    e.target.value = ''; renderPreviews();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !smModal.hidden) smClose(); });
-  $('#sm-form').addEventListener('submit', async (e) => {
+  $('#sup-text').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; });
+  $('#sup-text').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#sup-form').requestSubmit(); } });
+
+  $('#sup-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const text = $('#sm-text').value.trim(); if (!text || !smTicket) return;
-    const btn = $('#sm-send'); btn.disabled = true;
+    const text = $('#sup-text').value.trim();
+    if ((!text && !supFiles.length) || !supCur) return;
+    const btn = $('#sup-send'); btn.disabled = true;
     try {
-      await sendJson('/admin/support/' + encodeURIComponent(smTicket) + '/reply', { body: text, status: $('#sm-status').value });
-      setNotice('تم إرسال الرد وإشعار صاحب التذكرة.');
-      $('#sm-text').value = '';
-      smRender(await api('/admin/support/' + encodeURIComponent(smTicket)));
-      loaded.support = false; loaders.support().catch(() => {});
+      const paths = [];
+      for (const f of supFiles) paths.push((await sendJson('/admin/support/' + encodeURIComponent(supCur) + '/upload', { dataUrl: f.dataUrl })).path);
+      const st = $('#sup-status').value;
+      await sendJson('/admin/support/' + encodeURIComponent(supCur) + '/reply', { body: text, status: st === 'open' ? 'in_progress' : st, attachments: paths });
+      $('#sup-text').value = ''; $('#sup-text').style.height = ''; supFiles = []; renderPreviews();
+      await smRender(await api('/admin/support/' + encodeURIComponent(supCur))); smEl.thread.scrollTop = smEl.thread.scrollHeight;
+      loadSupportList().catch(() => {});
     } catch (err) { setNotice(err.message, true); } finally { btn.disabled = false; }
   });
 
-  /* علامة التذاكر الجديدة على تبويب الدعم — تتحدّث كل دقيقة بدون فتح التبويب */
-  async function pollSupportBadge() {
-    try {
-      const list = (await api('/admin/support')) || [];
-      setSupportBadge(list.filter((t) => t.admin_unread && ['open', 'in_progress'].includes(t.status)).length);
-    } catch (_) { /* غير مسجّل كإدمن بعد */ }
-  }
-  setTimeout(pollSupportBadge, 2500);
-  setInterval(() => { if (!document.hidden) pollSupportBadge(); }, 60000);
+  document.addEventListener('click', (e) => {
+    const g = e.target.closest('[data-sup-group]'); if (g) { supGroup = g.dataset.supGroup; renderSupList(); return; }
+    const open = e.target.closest('[data-open-ticket]'); if (open) { smOpen(open.dataset.openTicket); return; }
+    const rm = e.target.closest('[data-sup-rm]'); if (rm) { supFiles.splice(Number(rm.dataset.supRm), 1); renderPreviews(); return; }
+    if (e.target.closest('#sup-back')) { smBack(); return; }
+    if (e.target.closest('#sup-close-btn')) { if (window.confirm('قفل المحادثة دي؟ تقدر تعيد فتحها بعدين.')) setTicketStatus('closed').catch((err) => setNotice(err.message, true)); return; }
+    if (e.target.closest('#sup-reopen')) { setTicketStatus('open').catch((err) => setNotice(err.message, true)); }
+  });
+  $('#sup-status').addEventListener('change', (e) => setTicketStatus(e.target.value).catch((err) => setNotice(err.message, true)));
+  $('#sup-search').addEventListener('input', (e) => { supSearch = e.target.value; renderSupList(); });
+  $('#sup-status-filter').addEventListener('change', (e) => { supStatus = e.target.value; renderSupList(); });
 
-  /* ===================== التوصيلات (Deliveries) — كما هو ===================== */
+  /* ---- فريق الدعم (للأدمن فقط) ---- */
+  async function loadStaff() {
+    const rows = (await api('/admin/support-staff')) || [];
+    $('#staff-count').textContent = rows.length + ' موظف';
+    $('#staff-body').innerHTML = rows.length ? rows.map((s) => '<tr><td><strong>' + esc(s.name || '—') + '</strong></td><td dir="ltr">' + esc(s.email || '') + '</td><td>' + formatDate(s.created_at) +
+      '</td><td><button class="admin-link-btn" style="color:var(--a-bad)" data-staff-remove="' + esc(s.user_id) + '">إزالة</button></td></tr>').join('') :
+      '<tr><td colspan="4" class="admin-empty">لم تضف موظفي دعم بعد.</td></tr>';
+  }
+  $('#staff-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await sendJson('/admin/support-staff', { email: $('#staff-email').value, name: $('#staff-name').value });
+      $('#staff-email').value = ''; $('#staff-name').value = ''; setNotice('تمت إضافة موظف الدعم. يدخل من نفس صفحة الأدمن ببريده وكلمة مروره.'); await loadStaff();
+    } catch (err) { setNotice(err.message, true); }
+  });
+  document.addEventListener('click', async (e) => {
+    const rm = e.target.closest('[data-staff-remove]'); if (!rm || !window.confirm('إزالة موظف الدعم ده؟')) return;
+    try { await api('/admin/support-staff/' + rm.dataset.staffRemove, { method: 'DELETE' }); await loadStaff(); } catch (err) { setNotice(err.message, true); }
+  });
+
+  /* تحديث تلقائي: القائمة والمحادثة المفتوحة كل 8 ثواني */
+  setInterval(() => {
+    if (document.hidden || $('#admin-app').hidden) return;
+    loadSupportList().catch(() => {});
+    if (supCur && !smEl.conv.hidden) api('/admin/support/' + encodeURIComponent(supCur)).then((d) => {
+      if ((d.messages || []).length !== supCurCount || (d.ticket && d.ticket.status !== $('#sup-status').value)) return smRender(d);
+    }).catch(() => {});
+  }, 8000);
+  setTimeout(() => { if (!$('#admin-app').hidden) loadSupportList().catch(() => {}); }, 2500);
+
+/* ===================== التوصيلات (Deliveries) — كما هو ===================== */
   let cachedRiders = [];
   function riderOptions(riders, selected) {
     return '<option value="">اختر مندوباً</option>' + riders.filter((rider) => rider.status === 'active').map((rider) =>
@@ -628,18 +789,27 @@
   /* ===================== تحميل أولي + تحديث ===================== */
   async function loadOverviewAndFirstTab() {
     setNotice('');
-    skeletonStats('#admin-stats', 5);
-    const summary = await api('/admin/summary');
-    renderStats(summary);
     Object.keys(loaded).forEach((k) => { loaded[k] = false; });
-    await loaders.applications();
-    loaded.applications = true;
+    if (ROLE === 'support') { activateTab('support'); return; }
+    skeletonStats('#admin-stats', 5);
+    api('/admin/summary').then(renderStats).catch((e) => setNotice(e.message, true));
+    activateTab('orders');
+  }
+
+  function applyRole() {
+    const support = ROLE === 'support';
+    $('#admin-role-tag').textContent = support ? 'دعم' : 'إدارة';
+    $$('.admin-tab').forEach((btn) => { btn.hidden = support && btn.dataset.tab !== 'support'; });
+    $('#admin-stats').hidden = support;
+    $('#staff-card').hidden = support;
   }
 
   async function showApp() {
     const session = await api('/admin/session');
+    ROLE = (session.user && session.user.role) === 'support' ? 'support' : 'admin';
     $('#admin-identity').textContent = session.user.email || 'مشرف نَسَق';
     $('#admin-login').hidden = true; $('#admin-app').hidden = false;
+    applyRole();
     await loadOverviewAndFirstTab();
   }
 
@@ -669,7 +839,7 @@
   $('#admin-refresh').addEventListener('click', () => {
     Object.keys(loaded).forEach((k) => { loaded[k] = false; });
     const activeTab = $('.admin-tab.is-active');
-    api('/admin/summary').then(renderStats).catch(() => {});
+    if (ROLE === 'admin') api('/admin/summary').then(renderStats).catch(() => {});
     if (activeTab && loaders[activeTab.dataset.tab]) {
       loaded[activeTab.dataset.tab] = true;
       loaders[activeTab.dataset.tab]().catch((err) => setNotice(err.message, true));

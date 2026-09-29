@@ -705,6 +705,16 @@
     return session;
   }
 
+  /* الأدمن أو موظف الدعم (يحدّده الأدمن من تبويب «الدعم» ← فريق الدعم) */
+  async function staffRole() {
+    const session = await currentSession();
+    if (!session) return null;
+    const { data } = await sb.rpc('support_whoami');
+    const role = data && data.role;
+    return (role === 'admin' || role === 'support') ? { session, role } : null;
+  }
+  const staffOnly = () => errRes('هذه الصفحة مخصصة للإدارة والدعم.', 403);
+
   /* روابط موقَّعة مؤقتة (ساعة) لعرض صور طلبات التقديم للإدمن فقط */
   on('POST', 'admin/application-documents', async (params, query, body) => {
     if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
@@ -719,16 +729,17 @@
     body = body || {};
     const { data, error } = await sb.auth.signInWithPassword({ email: String(body.email || '').trim().toLowerCase(), password: String(body.password || '') });
     if (error || !data.user) return errRes('فشل دخول الإدمن.', 401);
-    const role = await getRole(data.user.id);
-    if (role !== 'admin') { await sb.auth.signOut(); return errRes('الحساب ليس حساب إدمن.', 403); }
-    const sessionUser = { userId: data.user.id, email: data.user.email, role: 'admin', name: data.user.user_metadata && data.user.user_metadata.name };
+    const { data: who } = await sb.rpc('support_whoami');
+    const role = who && who.role;
+    if (role !== 'admin' && role !== 'support') { await sb.auth.signOut(); return errRes('الحساب ليس حساب إدمن أو دعم.', 403); }
+    const sessionUser = { userId: data.user.id, email: data.user.email, role, name: data.user.user_metadata && data.user.user_metadata.name };
     return okRes({ access_token: data.session.access_token, user: sessionUser });
   });
 
   on('GET', 'admin/session', async () => {
-    const session = await requireAdmin();
-    if (!session) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
-    return okRes({ user: { email: session.email, name: session.name, role: session.role } });
+    const st = await staffRole();
+    if (!st) return errRes('هذه الصفحة مخصصة للإدارة والدعم.', 403);
+    return okRes({ user: { email: st.session.email, name: st.session.name, role: st.role } });
   });
 
   on('GET', 'admin/summary', async () => {
@@ -754,22 +765,71 @@
   });
 
   on('GET', 'admin/support', async () => {
-    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    if (!(await staffRole())) return staffOnly();
     const { data, error } = await sb.rpc('admin_support_list');
     if (error) return errRes(error.message, 400);
     return okRes(data || []);
   });
   on('GET', 'admin/support/:ticket', async (params) => {
-    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    if (!(await staffRole())) return staffOnly();
     const { data, error } = await sb.rpc('admin_support_thread', { p_ticket_number: params.ticket });
     if (error) return errRes(error.message, 400);
     return okRes(data);
   });
   on('POST', 'admin/support/:ticket/reply', async (params, query, body) => {
-    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    if (!(await staffRole())) return staffOnly();
     const { data, error } = await sb.rpc('admin_support_reply', {
-      p_ticket_number: params.ticket, p_body: (body && body.body) || '', p_status: (body && body.status) || 'in_progress'
+      p_ticket_number: params.ticket, p_body: (body && body.body) || '', p_status: (body && body.status) || 'in_progress',
+      p_attachments: (body && Array.isArray(body.attachments)) ? body.attachments.slice(0, 6) : []
     });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+  /* رفع صورة داخل محادثة (bucket خاص support-files، المسار يبدأ برقم التذكرة) */
+  on('POST', 'admin/support/:ticket/upload', async (params, query, body) => {
+    if (!(await staffRole())) return staffOnly();
+    const match = /^data:(image\/(?:jpeg|png|webp|gif));base64,/.exec((body && body.dataUrl) || '');
+    if (!match) return errRes('صيغة الصورة غير مدعومة (JPG/PNG/WebP/GIF).');
+    const blob = await dataUrlToBlob(body.dataUrl);
+    if (blob.size > 5 * 1024 * 1024) return errRes('حجم الصورة أكبر من 5 ميجابايت.', 413);
+    const ext = match[1].split('/')[1].replace('jpeg', 'jpg');
+    const path = params.ticket + '/' + crypto.randomUUID() + '.' + ext;
+    const { error } = await sb.storage.from('support-files').upload(path, blob, { contentType: match[1], upsert: false });
+    if (error) return errRes('تعذّر رفع الصورة: ' + error.message, 400);
+    return okRes({ path }, 201);
+  });
+  on('POST', 'support/signed', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    const paths = ((body && body.paths) || []).filter((p) => typeof p === 'string' && p && !p.includes('..')).slice(0, 30);
+    if (!paths.length) return okRes({ urls: {} });
+    const { data, error } = await sb.storage.from('support-files').createSignedUrls(paths, 3600);
+    if (error) return errRes(error.message, 400);
+    const urls = {}; (data || []).forEach((x) => { if (x.path && x.signedUrl) urls[x.path] = x.signedUrl; });
+    return okRes({ urls });
+  });
+  on('PATCH', 'admin/support/:id/status', async (params, query, body) => {
+    if (!(await staffRole())) return staffOnly();
+    const { data, error } = await sb.rpc('staff_support_set_status', { p_ticket_number: params.id, p_status: body && body.status });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+  /* فريق الدعم — للأدمن فقط */
+  on('GET', 'admin/support-staff', async () => {
+    if (!(await requireAdmin())) return errRes('للأدمن فقط.', 403);
+    const { data, error } = await sb.rpc('admin_support_staff_list');
+    if (error) return errRes(error.message, 400);
+    return okRes(data || []);
+  });
+  on('POST', 'admin/support-staff', async (params, query, body) => {
+    if (!(await requireAdmin())) return errRes('للأدمن فقط.', 403);
+    const { data, error } = await sb.rpc('admin_support_staff_add', { p_email: (body && body.email) || '', p_name: (body && body.name) || null });
+    if (error) return errRes(error.message, 400);
+    return okRes(data, 201);
+  });
+  on('DELETE', 'admin/support-staff/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('للأدمن فقط.', 403);
+    const { data, error } = await sb.rpc('admin_support_staff_remove', { p_user_id: params.id });
     if (error) return errRes(error.message, 400);
     return okRes(data);
   });
@@ -862,14 +922,6 @@
     return okRes(data);
   });
 
-  on('PATCH', 'admin/support/:id/status', async (params, query, body) => {
-    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
-    const allowed = ['open', 'in_progress', 'resolved', 'closed'];
-    if (!allowed.includes(body && body.status)) return errRes('حالة التذكرة غير صحيحة.');
-    const { data, error } = await sb.from('support_tickets').update({ status: body.status }).eq('id', params.id).select().maybeSingle();
-    if (error) return errRes(error.message, 400);
-    return okRes(data);
-  });
 
   /* ---------- Admin Dashboard: طلبات التقديم (Applications) ---------- */
   on('GET', 'admin/applications', async (params, query) => {

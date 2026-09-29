@@ -603,7 +603,7 @@
     get: (id) => tickets.list().find((t) => t.id === id),
     refresh() { if (isCloudSeller()) loadCloudTickets(true); },
     create(t) {
-      const x = Object.assign({ id: 'TK-' + Date.now().toString(36).toUpperCase().slice(-5), status: 'open', createdAt: isoNow(), replies: [] }, t);
+      const x = Object.assign({ id: 'SL-' + Date.now().toString(36).toUpperCase().slice(-6), status: 'open', createdAt: isoNow(), replies: [] }, t);
       if (isCloudSeller()) {
         const s = me();
         (cloudTickets || (cloudTickets = [])).unshift(x); /* ظهور فوري، ثم تأكيد من الداتابيس */
