@@ -211,6 +211,7 @@
     },
     clearSession() {
       try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(SESSION_KEY); } catch (_) { /* تجاهل */ }
+      if (window.BuyerLocation && window.BuyerLocation.clear) window.BuyerLocation.clear();
     },
     token() { try { return localStorage.getItem(TOKEN_KEY) || ''; } catch (_) { return ''; } },
     syncUser: (data) => safe(syncUser(data)),

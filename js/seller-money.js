@@ -111,7 +111,7 @@
     const s = M.seller.get(), t0 = q.get('type');
     const d = { type: CFG.adPlacements[t0] ? t0 : 'hero', name: '', title: '', text: '', cta: 'تسوّق الآن', img: '', target: 'store', productId: '', custom: '', category: '', start: M.util.dkey(), days: 7, source: 'credit' };
     const own = M.products.list().filter((p) => p.status === 'active').map((p) => ({ id: p.id, name: p.name, demo: false }));
-    const pool = own.length ? own : (M.demo.on() ? P.all().filter((p) => !p.sellerId).map((p) => ({ id: p.id, name: p.name, demo: true })) : []);
+    const pool = own;
     if (pool.length) d.productId = pool[0].id;
 
     const html =

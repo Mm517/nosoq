@@ -239,6 +239,36 @@
     return okRes({ profile: data || Object.assign({ created_at: null }, row) });
   });
 
+  /* حفظ موقع المشتري فقط (من شريط «حدّد موقعك» / نافذة التوصيل / GPS) في صفّه بـ marketplace_users.
+     منفصل عن PATCH store/profile عشان ما يطلبش الاسم والهاتف، ولا يلمس أي عمود غير أعمدة الموقع. */
+  on('PATCH', 'store/location', async (params, query, body) => {
+    const session = await currentSession();
+    if (!session) return errRes('سجّل الدخول أولاً.', 401);
+    body = body || {};
+    const lat = Number(body.latitude), lng = Number(body.longitude);
+    if (!isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return errRes('إحداثيات الموقع غير صحيحة.');
+    const acc = body.location_accuracy != null ? Number(body.location_accuracy) : null;
+    const patch = {
+      latitude: lat,
+      longitude: lng,
+      location_accuracy: acc != null && isFinite(acc) && acc >= 0 ? acc : null,
+      location_updated_at: new Date().toISOString(),
+      address: body.address != null ? (String(body.address).trim() || null) : null,
+      google_place_id: body.google_place_id != null ? (String(body.google_place_id).trim() || null) : null
+    };
+    let { data, error } = await sb.from('marketplace_users').update(patch).eq('external_id', session.userId)
+      .select('external_id,latitude,longitude,address,google_place_id,location_accuracy,location_updated_at').maybeSingle();
+    if (!error && !data) {
+      /* حساب مسجَّل بدون صف في marketplace_users (حالة نادرة): ننشئه بالحد الأدنى ثم نحفظ الموقع */
+      const ins = Object.assign({ external_id: session.userId, email: session.email || null, name: session.name || 'عميل نَسَق', phone: session.phone || null, role: session.role || 'customer' }, patch);
+      const r = await sb.from('marketplace_users').upsert(ins, { onConflict: 'external_id' })
+        .select('external_id,latitude,longitude,address,google_place_id,location_accuracy,location_updated_at').maybeSingle();
+      data = r.data; error = r.error;
+    }
+    if (error) return errRes(error.message, 400);
+    return okRes({ profile: data || patch });
+  });
+
   on('GET', 'store/orders/mine', async () => {
     const session = await currentSession();
     if (!session) return errRes('سجّل الدخول أولاً.', 401);

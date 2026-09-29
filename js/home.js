@@ -78,14 +78,17 @@
   /* ---------- 2) بطاقات البلاطات: الصف الأول ---------- */
   const row1 = [];
 
-  row1.push(UI.tileCard({
-    id: 'tc-cats', title: 'تسوّق حسب الفئة', href: 'shop.html',
-    tiles: Products.categories.slice(0, 4).map((c) => {
-      const list = all.filter((p) => p.category === c.id);
-      const cover = list.find(inStock) || list[0];
-      return UI.tile({ href: 'shop.html?cat=' + c.id, img: img(cover), label: esc(c.name), sub: count(list.length) });
-    })
-  }));
+  /* أقسام فيها منتجات فعلاً فقط (لا أقسام فاضية ولا بطاقات بلا صور) */
+  const catTiles = Products.categories.map((c) => ({ c, list: all.filter((p) => p.category === c.id) })).filter((x) => x.list.length).slice(0, 4);
+  if (catTiles.length) {
+    row1.push(UI.tileCard({
+      id: 'tc-cats', title: 'تسوّق حسب الفئة', href: 'shop.html',
+      tiles: catTiles.map(({ c, list }) => {
+        const cover = list.find(inStock) || list[0];
+        return UI.tile({ href: 'shop.html?cat=' + c.id, img: img(cover), label: esc(c.name), sub: count(list.length) });
+      })
+    }));
+  }
 
   if (discounted.length) {
     const dealTones = ['', 'deep', 'mid', 'ink'];
@@ -127,19 +130,24 @@
   const row2 = [];
   const budgetTones = ['', 'mid', 'deep', 'ink'];
   const budgets = [200, 400, 700, 1000].filter((m) => all.some((p) => p.price <= m));
-  row2.push(UI.tileCard({
-    id: 'tc-budget', title: 'تسوّق حسب الميزانية', href: 'shop.html',
-    tiles: budgets.map((m, i) => UI.tile({
-      href: 'shop.html?max=' + m, big: m, small: 'ج.م فأقل', tone: budgetTones[i], label: 'أقل من ' + m + ' ج.م', sub: count(all.filter((p) => p.price <= m).length)
-    }))
-  }));
+  if (budgets.length) {
+    row2.push(UI.tileCard({
+      id: 'tc-budget', title: 'تسوّق حسب الميزانية', href: 'shop.html',
+      tiles: budgets.map((m, i) => UI.tile({
+        href: 'shop.html?max=' + m, big: m, small: 'ج.م فأقل', tone: budgetTones[i], label: 'أقل من ' + m + ' ج.م', sub: count(all.filter((p) => p.price <= m).length)
+      }))
+    }));
+  }
 
-  row2.push(UI.tileCard({
-    id: 'tc-top', title: 'الأعلى تقييماً', href: 'shop.html?sort=rating',
-    tiles: all.filter(inStock).sort((a, b) => (b.rating - a.rating) || (b.reviews - a.reviews)).slice(0, 4).map((p) => UI.tile({
-      href: 'product.html?id=' + p.id, img: img(p), label: esc(p.name), sub: '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' تقييم)'
-    }))
-  }));
+  const topRated = all.filter(inStock).sort((a, b) => (b.rating - a.rating) || (b.reviews - a.reviews)).slice(0, 4);
+  if (topRated.length) {
+    row2.push(UI.tileCard({
+      id: 'tc-top', title: 'الأعلى تقييماً', href: 'shop.html?sort=rating',
+      tiles: topRated.map((p) => UI.tile({
+        href: 'product.html?id=' + p.id, img: img(p), label: esc(p.name), sub: p.reviews ? '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' تقييم)' : 'جديد على نَسَق'
+      }))
+    }));
+  }
 
   const couponRows = Object.keys(Cart.coupons).map((code) =>
     '<div class="coupon-row"><span><span class="coupon-row__code" dir="ltr">' + esc(code) + '</span><span class="coupon-row__desc">' + esc(Cart.coupons[code].label) + '</span></span>' +
@@ -166,7 +174,9 @@
   };
 
   const moreRoot = $('more-root');
-  if (moreRoot) {
+  if (moreRoot && !all.length && Products.locationKnown()) {
+    moreRoot.innerHTML = UI.emptyHTML({ icon: 'store', title: 'لا توجد منتجات قريبة منك بعد', text: 'لم يضف أي متجر منتجات ضمن ' + Products.radiusKm + ' كم من موقعك حتى الآن. جرّب تغيير موقعك أو عد لاحقاً.', actions: [{ label: 'تغيير الموقع', attr: 'data-loc-open' }] });
+  } else if (moreRoot && all.length) {
     UI.load(moreRoot, {
       count: 4, skeleton: railSkeleton(4),
       render: () => UI.carousel({ id: 'car-more', title: 'منتجات قد تهمّك', href: 'shop.html', items: all.slice().sort(byFeatured).sort(sponsoredFirst).map(UI.pcard) })

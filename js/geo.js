@@ -69,12 +69,12 @@
     });
   }
   async function nomReverse(lat, lng) {
-    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=' + lang() + '&lat=' + lat + '&lon=' + lng + '&countrycodes=eg');
+    const r = await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=' + lang() + '&lat=' + lat + '&lon=' + lng);
     if (!r.ok) throw new Error('خدمة العناوين غير متاحة الآن');
     return fromNominatim(await r.json(), lat, lng);
   }
   async function nomSearch(q) {
-    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&accept-language=' + lang() + '&countrycodes=eg&q=' + encodeURIComponent(q));
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&accept-language=' + lang() + '&q=' + encodeURIComponent(q));
     if (!r.ok) throw new Error('خدمة البحث غير متاحة الآن');
     return (await r.json()).map((j) => fromNominatim(j, parseFloat(j.lat), parseFloat(j.lon)));
   }
@@ -102,7 +102,7 @@
       window.gm_authFailure = () => { gPromise = null; reject(new Error('auth')); };
       const sc = document.createElement('script');
       sc.async = true;
-      sc.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(CFG.googleMapsKey) + '&loading=async&language=' + lang() + '&region=EG&callback=__nqMapsReady';
+      sc.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(CFG.googleMapsKey) + '&loading=async&language=' + lang() + '&callback=__nqMapsReady';
       sc.onerror = () => { gPromise = null; reject(new Error('load')); };
       document.head.appendChild(sc);
     });
@@ -186,7 +186,7 @@
       try {
         let a;
         if (mode === 'google' && map && map.__geocoder) {
-          const r = await map.__geocoder.geocode({ location: { lat: point.lat, lng: point.lng }, language: lang(), region: 'EG' });
+          const r = await map.__geocoder.geocode({ location: { lat: point.lat, lng: point.lng }, language: lang() });
           if (!r.results || !r.results.length) throw new Error('لا توجد نتائج');
           a = fromGoogle(r.results[0], point.lat, point.lng);
         } else a = await nomReverse(point.lat, point.lng);
@@ -229,7 +229,7 @@
       try {
         let list;
         if (mode === 'google' && map && map.__geocoder) {
-          const r = await map.__geocoder.geocode({ address: text, language: lang(), region: 'EG', componentRestrictions: { country: 'EG' } });
+          const r = await map.__geocoder.geocode({ address: text, language: lang() });
           list = (r.results || []).slice(0, 5).map((x) => fromGoogle(x, x.geometry.location.lat(), x.geometry.location.lng()));
         } else list = await nomSearch(text);
         if (!list.length) { say('لم نجد هذا العنوان. جرّب كتابته بشكل مختلف.', true); return; }

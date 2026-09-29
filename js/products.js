@@ -24,7 +24,7 @@
     supportEmail: 'sellers@nasaq.example',
     /* مفتاح Google Maps (Maps JavaScript API + Geocoding API). اتركه فارغاً وسيعمل تحديد الموقع
        بالـ GPS مع معاينة خريطة جوجل، وعند وضع المفتاح تصبح الخريطة تفاعلية (تحريك الدبوس والبحث). */
-    googleMapsKey: '',
+    googleMapsKey: 'AIzaSyBhyTWyqCZS5tiymk982I68CSvBRcKtMss',
     /* أسعار الإعلانات بالجنيه لليوم الواحد + خصم على المدد الطويلة */
     adPlacements: {
       hero:     { name: 'لافتة الصفحة الرئيسية', desc: 'تظهر ضمن شريط اللافتات في أول الرئيسية، أعلى ظهور في المتجر.', perDay: 150, ratio: '4:5 (مثال 800×1000)' },
@@ -515,44 +515,7 @@
       });
   }
 
-  /* ---------- منتجات وهمية للعرض (js/demo-products.js) — تُخفى بـ NASAQ_SHOW_DEMO = false ---------- */
-  const PAL = {
-    k: ['أسود', '#2b2e35'], w: ['أبيض', '#eceef1'], g: ['رمادي', '#8b919d'], s: ['فضي', '#c5cad3'], b: ['أزرق', '#2f5fd0'],
-    n: ['كحلي', '#24345f'], r: ['أحمر', '#c9364a'], p: ['وردي', '#e58fb0'], y: ['أصفر', '#e6b422'], o: ['برتقالي', '#e2762b'],
-    e: ['أخضر', '#2f9a63'], t: ['بيج', '#cdb79a'], v: ['بنفسجي', '#7a4fc2'], d: ['ذهبي', '#c9a24b'], m: ['بني', '#7a5638']
-  };
-  const MULTI_COLOR = new Set(['electronics', 'appliances', 'home', 'clothes', 'shoes', 'bags', 'accessories', 'beauty']);
-  const SIZE_SETS = { clothes: ['S', 'M', 'L', 'XL'], shoes: ['38', '39', '40', '41', '42', '43'] };
-
-  function buildDemo() {
-    const rows = Array.isArray(window.NASAQ_DEMO_ROWS) ? window.NASAQ_DEMO_ROWS : [];
-    const out = [];
-    rows.forEach((line, i) => {
-      const f = line.split('|');
-      const cat = SUB2CAT[f[0]];
-      if (!cat) return;
-      const id = 900001 + out.length;
-      const main = PAL[f[7]] || PAL.k;
-      const alt = f[7] === 'w' ? PAL.k : PAL.w;
-      const fresh = i % 3 === 0;
-      out.push({
-        id, uuid: null, storeId: null, sellerId: null, seller: null, demo: true,
-        name: f[1], category: cat, sub: f[0],
-        price: Number(f[2]), oldPrice: f[3] ? Number(f[3]) : null,
-        isNew: fresh, rating: Number(f[4]), reviews: Number(f[5]), stock: Number(f[6]),
-        sizes: SIZE_SETS[cat] || [], soldOutSizes: [],
-        art: f[8] || SUB_INDEX[f[0]].art, sku: 'NQ-D' + id,
-        addedAt: new Date(Date.now() - (fresh ? (i % 10) + 1 : 20 + (i % 40)) * 864e5).toISOString(),
-        colors: MULTI_COLOR.has(cat) ? [{ name: main[0], hex: main[1] }, { name: alt[0], hex: alt[1] }] : [{ name: 'أساسي', hex: main[1] }],
-        description: f[1] + '. جودة موثوقة وسعر مناسب، مع إرجاع مجاني خلال ' + STORE.returnDays + ' يوماً.',
-        details: ['جودة موثوقة من بائع معتمد', 'إرجاع مجاني خلال ' + STORE.returnDays + ' يوماً', 'الدفع عند الاستلام متاح'],
-        photos: [], video: null
-      });
-    });
-    return out;
-  }
-
-  const PRODUCTS = buildCatalog().concat(window.NASAQ_SHOW_DEMO === false ? [] : buildDemo());
+  const PRODUCTS = buildCatalog();
 
   /* ---------- الصور: صور اللون المختار أولاً (إن وُجدت)، وإلا صور المنتج العامة، وإلا رسمة SVG بديلة ---------- */
   /* صور اللون الحالي: فقط لو كان لهذا اللون صور خاصة به (رفعها البائع)؛ غير ذلك null */

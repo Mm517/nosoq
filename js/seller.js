@@ -156,7 +156,6 @@
           '<div class="field"><span class="label">شعار المتجر (اختياري)</span><div class="logo-up"><span class="logo-up__pv" data-logo-pv>' + ic('store') + '</span>' +
             '<label class="btn btn--ghost btn--sm">' + ic('upload') + 'اختر صورة<input type="file" accept="image/*" data-logo hidden></label></div></div>' +
           '<div class="field"><span class="label">موقع المتجر (مصدر الشحن) *</span><div data-geo-root></div></div>' +
-          '<label class="check"><input type="checkbox" id="s-demo" checked> املأ لوحتي ببيانات تجريبية (طلبات وزيارات وأرباح) لأتعرّف على الأقسام، ويمكن حذفها لاحقاً من الإعدادات</label>' +
           '<label class="check"><input type="checkbox" id="s-terms" required> أوافق على شروط البائعين وعمولة المنصة (' + Math.round(CFG.commission * 100) + '%)</label>' +
           '<p class="field__error" id="setup-error" role="alert"></p>' +
           '<button class="btn btn--primary btn--lg" type="submit">افتح متجري</button>' +
@@ -188,7 +187,7 @@
         !$('#s-terms').checked ? 'وافق على الشروط للمتابعة' : '';
       if (problem) { err.textContent = problem; return; }
       err.textContent = '';
-      const s = M.seller.create({ name: v.name, slug: v.slug, category: $('#s-cat').value, phone: v.phone, email: v.email, description: $('#s-desc').value.trim(), logo: setupLogo, address: g, demo: $('#s-demo').checked });
+      const s = M.seller.create({ name: v.name, slug: v.slug, category: $('#s-cat').value, phone: v.phone, email: v.email, description: $('#s-desc').value.trim(), logo: setupLogo, address: g });
       if (!s) { err.textContent = 'تعذّر الحفظ، مساحة التخزين ممتلئة'; return; }
       location.hash = '#/dashboard';
       root.innerHTML = '';
@@ -217,9 +216,6 @@
 
   function qualityTable() {
     let list = M.products.list().map((p) => ({ p, demo: false }));
-    if (!list.length && M.demo.on()) {
-      list = window.Products.all().filter((p) => !p.sellerId).slice(0, 3).map((p) => ({ p: Object.assign({}, p, { photos: window.Products.gallery(p, 0) }), demo: true }));
-    }
     if (!list.length) return card('فحص جودة القوائم', empty({ icon: 'check', title: 'لا توجد منتجات لفحصها', text: 'أضف منتجاً وسنقيّم صوره ووصفه ومواصفاته ومخزونه.', action: { href: '#/products/new', label: 'أضف منتجاً' } }));
     return card('فحص جودة القوائم',
       '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>المنتج</th><th>التصنيف</th><th>أخطاء</th><th>تحذيرات</th><th>ناجح</th><th>درجة الجودة</th></tr></thead><tbody>' +

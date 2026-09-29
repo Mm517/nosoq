@@ -18,6 +18,7 @@
   const ICONS = {
     bag: '<path d="M6 8h12l1 12H5L6 8Z"/><path d="M9 8V7a3 3 0 0 1 6 0v1"/>',
     heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.4a4.3 4.3 0 0 1 7.5 2.4C19.5 15.4 12 20 12 20Z"/>',
+    home: '<path d="M4 11.2 12 4l8 7.2V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1v-7.8Z"/>',
     search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.3-4.3"/>',
     menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
     close: '<path d="M6 6l12 12M18 6 6 18"/>',
@@ -611,6 +612,25 @@
     '</div>';
   }
 
+  /* ---------- الشريط السفلي (موبايل): الرئيسية · حسابي · السلة · القائمة ---------- */
+  const TAB_PAGES = ['home', 'shop', 'product', 'store', 'cart', 'profile'];
+  function hasTabbar() { return TAB_PAGES.indexOf(document.body.dataset.page || '') > -1; }
+  function buildTabbar() {
+    const page = document.body.dataset.page || '';
+    const acct = currentAccount();
+    const it = (on, tag, attrs, ico, label, badge) =>
+      '<' + tag + ' class="tabbar__item' + (on ? ' is-on' : '') + '" ' + attrs + (on ? ' aria-current="page"' : '') + '>' +
+        '<span class="tabbar__ico">' + icon(ico) + (badge || '') + '</span><span>' + label + '</span></' + tag + '>';
+    return '<nav class="tabbar" aria-label="التنقل السفلي">' +
+      it(page === 'home', 'a', 'href="index.html"', 'home', 'الرئيسية') +
+      it(page === 'profile', 'a', 'href="' + (acct ? 'profile.html' : 'auth.html') + '"', 'user', acct ? 'حسابي' : 'دخول') +
+      (page === 'cart'
+        ? it(true, 'a', 'href="cart.html"', 'bag', 'السلة', '<span class="count-badge" data-cart-count hidden>0</span>')
+        : it(false, 'button', 'type="button" data-cart-open', 'bag', 'السلة', '<span class="count-badge" data-cart-count hidden>0</span>')) +
+      it(false, 'button', 'type="button" data-menu-open aria-haspopup="dialog" aria-controls="side-menu"', 'menu', 'القائمة') +
+    '</nav>';
+  }
+
   /* ---------- شريط التصنيفات تحت الهيدر (يمرّ تحت الهيدر الثابت عند التمرير) ---------- */
   function buildSubnav() {
     const page = document.body.dataset.page || '';
@@ -736,6 +756,28 @@
     });
   }
 
+  /* حفظ موقع التوصيل كخطوة واحدة مترابطة: نجيب الإحداثيات (لو مدينة بس نحوّلها لإحداثيات)،
+     نحفظها في السيرفر (لو مسجّل دخول) وعلى الجهاز، وبعدين نحدّث الصفحة عشان المتاجر القريبة
+     تظهر فوراً — بدون ما المستخدم يحدّد موقعه تاني في أي مكان. */
+  function commitLocation(v) {
+    const BL = window.BuyerLocation;
+    const before = BL && BL.get ? BL.get() : null;
+    const label = v.city || v.area || (v.formatted ? BL.shortLabel(v.formatted) : '') || 'موقعك المحدّد';
+    const coords = v.lat != null && v.lng != null
+      ? Promise.resolve(v)
+      : (window.Geo && window.Geo.search
+        ? window.Geo.search([v.area, v.city, 'مصر'].filter(Boolean).join('، ')).then((r) => (r && r[0] ? Object.assign({}, v, r[0]) : null)).catch(() => null)
+        : Promise.resolve(null));
+    return coords.then((c) => {
+      if (!c || c.lat == null || c.lng == null || !BL) { loc.setDetails(v); return label; }
+      return BL.save({ lat: c.lat, lng: c.lng, address: c.formatted || v.formatted, placeId: c.placeId || v.placeId, details: Object.assign({}, c, v) }).then(() => {
+        const moved = !before || Math.abs(before.lat - c.lat) > 1e-5 || Math.abs(before.lng - c.lng) > 1e-5;
+        if (moved) setTimeout(() => location.reload(), 700);
+        return label;
+      });
+    });
+  }
+
   /* ---------- الأحداث المفوّضة ---------- */
   function bindEvents() {
     document.addEventListener('click', (e) => {
@@ -757,10 +799,15 @@
       if (lg && window.I18n) { window.I18n.set(lg.dataset.lang); return; }
       if (t.closest('[data-loc-save]')) {
         const v = geoCtl ? geoCtl.getValue() : null;
-        if (!v || !(v.city || v.area)) { toast('حدّد مدينتك أو حيّك أولاً', { type: 'error' }); return; }
-        loc.setDetails(v);
-        closePanel();
-        toast('سيصلك طلبك إلى ' + (v.city || v.area), { duration: 2600 });
+        if (!v || !(v.city || v.area || v.lat != null)) { toast('حدّد موقعك على الخريطة أو اكتب مدينتك أولاً', { type: 'error' }); return; }
+        const btn = t.closest('[data-loc-save]');
+        btn.disabled = true;
+        commitLocation(v).then((label) => {
+          closePanel();
+          toast('سيصلك طلبك إلى ' + label, { duration: 2600 });
+        }).catch((err) => {
+          toast(err && err.message ? err.message : 'تعذّر حفظ الموقع، حاول مرة أخرى.', { type: 'error' });
+        }).then(() => { btn.disabled = false; });
         return;
       }
       /* نقرة على إعلان: تُحتسب للحملة */
@@ -771,9 +818,13 @@
       /* اختيار المدينة */
       const city = t.closest('[data-loc-city]');
       if (city) {
-        loc.set(city.dataset.locCity);
-        closePanel();
-        toast('سيصلك طلبك إلى ' + city.dataset.locCity, { duration: 2600 });
+        const name = city.dataset.locCity;
+        commitLocation({ city: name }).then((label) => {
+          closePanel();
+          toast('سيصلك طلبك إلى ' + label, { duration: 2600 });
+        }).catch((err) => {
+          toast(err && err.message ? err.message : 'تعذّر حفظ الموقع، حاول مرة أخرى.', { type: 'error' });
+        });
         return;
       }
 
@@ -875,6 +926,7 @@
 
     document.body.insertAdjacentHTML('beforeend',
       '<div class="overlay" data-overlay></div>' +
+      (hasTabbar() ? buildTabbar() : '') +
       buildSideMenu() + buildLocModal() + (window.I18n ? window.I18n.modalHTML(icon) : '') +
       '<aside class="drawer" id="cart-drawer" role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">' +
         '<div class="drawer__head"><h2 id="drawer-title" tabindex="-1">سلة التسوق <span data-drawer-count></span></h2>' +
@@ -883,6 +935,7 @@
       '<div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>' +
       '<div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>');
 
+    if (hasTabbar()) document.body.classList.add('has-tabbar');
     drawer = $('#cart-drawer');
     overlay = $('[data-overlay]');
     toastBox = $('#toasts');

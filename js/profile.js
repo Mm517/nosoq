@@ -115,6 +115,7 @@
           }, 'PATCH');
           const next = Object.assign({}, account, response.profile || {});
           localStorage.setItem('nasaq_session_v1', JSON.stringify(next));
+          if (window.BuyerLocation) window.BuyerLocation.save({ lat: geoValue.lat, lng: geoValue.lng, address: geoValue.formatted, placeId: geoValue.placeId, details: geoValue, localOnly: true });
           render(next, orders);
         } catch (error) {
           message.textContent = error.message || 'تعذّر حفظ الموقع.';
@@ -152,6 +153,7 @@
       }
     }
     render(account, orders);
+    if (window.NasaqSkeleton) window.NasaqSkeleton.done();
   }
   boot();
 })();
