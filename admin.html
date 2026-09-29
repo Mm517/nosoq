@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/admin.css">
+  <link rel="stylesheet" href="css/admin-pro.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/nasaq-config.js"></script>
   <script src="js/api-shim.js"></script>
@@ -205,6 +206,7 @@
                   <select class="admin-select" id="sup-status" aria-label="حالة المحادثة">
                     <option value="open">مفتوحة</option><option value="in_progress">قيد المتابعة</option><option value="resolved">تم الحل</option><option value="closed">مقفولة</option>
                   </select>
+                  <button class="admin-button" id="sup-escalate" type="button" hidden>🆘 طلب مساعدة الإدارة</button>
                   <button class="admin-button sup-close" id="sup-close-btn" type="button">قفل المحادثة</button>
                 </div>
               </header>
@@ -222,13 +224,19 @@
           </section>
         </div>
         <article class="admin-card admin-card--wide sup-staff" id="staff-card" hidden>
-          <div class="admin-card__head"><div><h2>فريق الدعم</h2><p>موظف الدعم يدخل من نفس صفحة الأدمن (بريده وكلمة مروره) ويشوف قسم الدعم بس. لازم يكون عنده حساب مسجّل في نَسَق.</p></div><span class="admin-count" id="staff-count"></span></div>
+          <div class="admin-card__head"><div><h2>فريق الدعم</h2><p>أنشئ لكل موظف يوزر وكلمة مرور وحدّد له الأكواد اللي يستلمها (SL بائعين · RD سائقين · US مستخدمين). يدخل من صفحة الدعم ويشوف محادثاته بس ويقدر يرد ويقفل المحادثة.</p></div><span class="admin-count" id="staff-count"></span></div>
           <form class="sup-staff__form" id="staff-form">
-            <input class="admin-select" id="staff-email" type="email" placeholder="البريد الإلكتروني للموظف" dir="ltr" required>
-            <input class="admin-select" id="staff-name" type="text" placeholder="الاسم (اختياري)">
-            <button class="admin-button admin-button--primary" type="submit">إضافة موظف دعم</button>
+            <input class="admin-select" id="staff-name" type="text" placeholder="اسم الموظف" required>
+            <input class="admin-select" id="staff-email" type="email" placeholder="البريد (اليوزر)" dir="ltr" required>
+            <input class="admin-select" id="staff-pass" type="text" placeholder="كلمة مرور (6 أحرف+)" dir="ltr" minlength="6" required>
+            <div class="sup-codes" id="staff-codes">
+              <label><input type="checkbox" value="seller" checked> <b dir="ltr">SL</b> بائعين</label>
+              <label><input type="checkbox" value="rider"> <b dir="ltr">RD</b> سائقين</label>
+              <label><input type="checkbox" value="customer"> <b dir="ltr">US</b> مستخدمين</label>
+            </div>
+            <button class="admin-button admin-button--primary" type="submit">إنشاء حساب موظف دعم</button>
           </form>
-          <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>الاسم</th><th>البريد</th><th>أُضيف في</th><th></th></tr></thead><tbody id="staff-body"></tbody></table></div>
+          <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>الاسم</th><th>البريد (اليوزر)</th><th>الأكواد التي يتعامل معها</th><th>أُضيف في</th><th></th></tr></thead><tbody id="staff-body"></tbody></table></div>
         </article>
       </section>
 

@@ -475,6 +475,7 @@
         '<div class="ord-actions">' +
         (step ? '<button type="button" class="admin-button admin-button--primary" data-ord-move="' + esc(o.id) + '" data-to="' + step[0] + '">' + step[1] + '</button>' : '') +
         '<button type="button" class="admin-button" data-order-view="' + esc(o.id) + '">التفاصيل</button>' +
+        '<a class="admin-button admin-button--primary" href="admin-order.html?id=' + esc(o.id) + '">🚚 تتبّع الطلب</a>' +
         (['new', 'processing'].includes(o.status) ? '<button type="button" class="admin-button ord-danger" data-ord-move="' + esc(o.id) + '" data-to="cancelled">إلغاء</button>' : '') +
         '</div></article>';
     }).join('');
@@ -529,6 +530,7 @@
       html += '<p><strong>المنتجات (' + items.length + ')</strong></p><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th></tr></thead><tbody>' +
         items.map((it) => '<tr><td>' + esc(it.product_name) + '</td><td>' + esc(it.quantity) + '</td><td>' + formatMoney(it.unit_price) + '</td></tr>').join('') + '</tbody></table></div>';
       if (detail.delivery) html += '<p><strong>التوصيل:</strong> ' + badge(detail.delivery.status) + (detail.delivery.riders ? ' — ' + esc(detail.delivery.riders.name) : '') + '</p>';
+      html += '<p><a class="admin-button admin-button--primary" href="admin-order.html?id=' + esc(o.id) + '">فتح صفحة تتبّع الطلب</a></p>';
       openModal('تفاصيل الطلب', html);
     }).catch((err) => setNotice(err.message, true));
   });
@@ -606,7 +608,7 @@
       const g = supGroupOf(t);
       return '<li class="sup-item' + (t.admin_unread && isOpenTicket(t) ? ' is-unread' : '') + (supCur === t.ticket_number ? ' is-active' : '') + '" data-open-ticket="' + esc(t.ticket_number) + '">' +
         '<span class="sup-av sup-av--' + g + '">' + g + '</span>' +
-        '<div><div class="sup-item__name">' + esc(t.name || 'زائر') + '<span>' + esc(t.ticket_number) + '</span></div>' +
+        '<div><div class="sup-item__name">' + (t.escalated ? '🆘 ' : '') + esc(t.name || 'زائر') + '<span>' + esc(t.ticket_number) + '</span></div>' +
         '<div class="sup-item__sub">' + esc(t.subject || t.message || '') + (t.handled_by ? ' · رد: ' + esc(t.handled_by) : '') + '</div></div>' +
         '<div class="sup-item__side"><span>' + timeAgo(t.last_message_at || t.created_at) + '</span>' +
         (t.admin_unread && isOpenTicket(t) ? '<i class="sup-unread">جديد</i>' : badge(t.status)) + '</div></li>';
@@ -642,6 +644,8 @@
       return '<li class="sup-msg' + (staff ? ' sup-msg--staff' : '') + '"><b>' + esc(who) + '</b>' + (m.body ? '<p>' + esc(m.body) + '</p>' : '') + (imgs ? '<div class="sup-imgs">' + imgs + '</div>' : '') + '<small>' + formatDate(m.created_at) + '</small></li>';
     }).join('') + (t.status === 'closed' ? '<li class="sup-sys">تم قفل المحادثة' + (t.closed_at ? ' · ' + formatDate(t.closed_at) : '') + '</li>' : '');
     $('#sup-status').value = t.status;
+    const esc2 = $('#sup-escalate'); if (esc2) { esc2.hidden = ROLE === 'admin' || !!t.escalated; }
+    if (t.escalated) $('#sup-meta').textContent += ' · 🆘 طُلبت مساعدة الإدارة';
     const closed = t.status === 'closed';
     $('#sup-form').hidden = closed; $('#sup-closed').hidden = !closed; $('#sup-close-btn').hidden = closed;
     supCurCount = msgs.length;
@@ -700,6 +704,7 @@
     const g = e.target.closest('[data-sup-group]'); if (g) { supGroup = g.dataset.supGroup; renderSupList(); return; }
     const open = e.target.closest('[data-open-ticket]'); if (open) { smOpen(open.dataset.openTicket); return; }
     const rm = e.target.closest('[data-sup-rm]'); if (rm) { supFiles.splice(Number(rm.dataset.supRm), 1); renderPreviews(); return; }
+    if (e.target.closest('#sup-escalate')) { const n = window.prompt('ملاحظة للإدارة (اختياري)') ; window.sb.rpc('support_escalate', { p_ticket_number: supCur, p_note: n || null }).then(() => smOpen(supCur)).catch((err) => setNotice(err.message, true)); return; }
     if (e.target.closest('#sup-back')) { smBack(); return; }
     if (e.target.closest('#sup-close-btn')) { if (window.confirm('قفل المحادثة دي؟ تقدر تعيد فتحها بعدين.')) setTicketStatus('closed').catch((err) => setNotice(err.message, true)); return; }
     if (e.target.closest('#sup-reopen')) { setTicketStatus('open').catch((err) => setNotice(err.message, true)); }
@@ -709,19 +714,38 @@
   $('#sup-status-filter').addEventListener('change', (e) => { supStatus = e.target.value; renderSupList(); });
 
   /* ---- فريق الدعم (للأدمن فقط) ---- */
+  const CODE_LABELS = [['seller', 'SL', 'بائعين'], ['rider', 'RD', 'سائقين'], ['customer', 'US', 'مستخدمين']];
   async function loadStaff() {
     const rows = (await api('/admin/support-staff')) || [];
     $('#staff-count').textContent = rows.length + ' موظف';
-    $('#staff-body').innerHTML = rows.length ? rows.map((s) => '<tr><td><strong>' + esc(s.name || '—') + '</strong></td><td dir="ltr">' + esc(s.email || '') + '</td><td>' + formatDate(s.created_at) +
-      '</td><td><button class="admin-link-btn" style="color:var(--a-bad)" data-staff-remove="' + esc(s.user_id) + '">إزالة</button></td></tr>').join('') :
-      '<tr><td colspan="4" class="admin-empty">لم تضف موظفي دعم بعد.</td></tr>';
+    $('#staff-body').innerHTML = rows.length ? rows.map((s) => '<tr><td><strong>' + esc(s.name || '—') + '</strong></td><td dir="ltr">' + esc(s.email || '') + '</td><td class="sup-codes">' +
+      CODE_LABELS.map((c) => '<label><input type="checkbox" data-staff-scope="' + esc(s.user_id) + '" value="' + c[0] + '"' + ((s.handles || []).includes(c[0]) ? ' checked' : '') + '> <b dir="ltr">' + c[1] + '</b> ' + c[2] + '</label>').join('') +
+      '</td><td>' + formatDate(s.created_at) + '</td><td><button class="admin-link-btn" style="color:var(--a-bad)" data-staff-remove="' + esc(s.user_id) + '">إزالة</button></td></tr>').join('') :
+      '<tr><td colspan="5" class="admin-empty">لم تضف موظفي دعم بعد.</td></tr>';
   }
+  document.addEventListener('change', async (e) => {
+    const c = e.target.closest('[data-staff-scope]'); if (!c) return;
+    const all = Array.from(document.querySelectorAll('[data-staff-scope="' + c.dataset.staffScope + '"]:checked')).map((x) => x.value);
+    if (!all.length) { c.checked = true; setNotice('لازم يبقى للموظف كود واحد على الأقل.', true); return; }
+    try { await window.sb.rpc('admin_support_staff_set_scope', { p_user_id: c.dataset.staffScope, p_handles: all }).then((r) => { if (r.error) throw r.error; }); setNotice('تم تحديث أكواد الموظف.'); } catch (err) { setNotice(err.message, true); }
+  });
   $('#staff-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const email = $('#staff-email').value.trim().toLowerCase(), name = $('#staff-name').value.trim(), pass = $('#staff-pass').value;
+    const handles = Array.from(document.querySelectorAll('#staff-codes input:checked')).map((x) => x.value);
+    if (!handles.length) { setNotice('اختر كود واحد على الأقل (SL / RD / US).', true); return; }
+    const btn = e.submitter || e.target.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
-      await sendJson('/admin/support-staff', { email: $('#staff-email').value, name: $('#staff-name').value });
-      $('#staff-email').value = ''; $('#staff-name').value = ''; setNotice('تمت إضافة موظف الدعم. يدخل من نفس صفحة الأدمن ببريده وكلمة مروره.'); await loadStaff();
+      /* عميل مؤقت بدون حفظ جلسة عشان جلسة الأدمن ما تتأثرش */
+      const tmp = window.supabase.createClient(window.NASAQ_SUPABASE_URL, window.NASAQ_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'nasaq-staff-tmp' } });
+      const su = await tmp.auth.signUp({ email, password: pass, options: { data: { name } } });
+      if (su.error && !/already|registered|exists/i.test(su.error.message)) throw su.error;
+      const r = await window.sb.rpc('admin_support_staff_create', { p_email: email, p_name: name, p_handles: handles });
+      if (r.error) throw r.error;
+      $('#staff-form').reset(); $('#staff-codes input[value=seller]').checked = true;
+      setNotice('تم إنشاء موظف الدعم. اليوزر: ' + email + ' — يدخل من support.html.'); await loadStaff();
     } catch (err) { setNotice(err.message, true); }
+    finally { if (btn) btn.disabled = false; }
   });
   document.addEventListener('click', async (e) => {
     const rm = e.target.closest('[data-staff-remove]'); if (!rm || !window.confirm('إزالة موظف الدعم ده؟')) return;
@@ -809,6 +833,7 @@
     ROLE = (session.user && session.user.role) === 'support' ? 'support' : 'admin';
     $('#admin-identity').textContent = session.user.email || 'مشرف نَسَق';
     $('#admin-login').hidden = true; $('#admin-app').hidden = false;
+    if (ROLE === 'support') { location.replace('support.html'); return; }
     applyRole();
     await loadOverviewAndFirstTab();
   }

@@ -221,58 +221,15 @@
   ];
   const TK_CATS = ['الطلبات', 'المنتجات', 'الأرباح والسحب', 'الإعلانات', 'مشكلة تقنية', 'أخرى'];
 
-  S.views.support = (args) => {
-    if (args[0]) return ticketView(decodeURIComponent(args[0]));
-    const list = M.tickets.list();
+  S.views.support = () => {
     const html =
       pageHead('الدعم', 'نحن هنا لمساعدتك في أي وقت') +
-      '<div class="dgrid dgrid--half">' +
-        card('إنشاء تذكرة دعم',
-          '<form class="dform" id="tk-form" novalidate>' +
-            fld('k-cat', 'نوع المشكلة', '<select class="select" id="k-cat">' + TK_CATS.map((c) => '<option>' + c + '</option>').join('') + '</select>') +
-            fld('k-sub', 'الموضوع *', '<input class="input" id="k-sub" maxlength="80">') +
-            fld('k-msg', 'التفاصيل *', '<textarea class="textarea" id="k-msg" rows="5" maxlength="1000"></textarea>') +
-            '<p class="field__error" id="tk-error" role="alert"></p>' +
-            '<div class="dform__foot"><button class="btn btn--primary" type="submit">إنشاء التذكرة</button><a class="btn btn--ghost" id="tk-mail" href="#" target="_blank" rel="noopener">' + ic('chat') + 'أرسلها بالبريد</a></div>' +
-            '<p class="hint">' + (M.seller.get() && M.seller.get().cloudId ? 'تصل تذكرتك مباشرة إلى فريق الإدارة، وتظهر الردود هنا وفي الإشعارات.' : 'تُحفظ التذاكر في هذا المتصفح حتى يُعتمد متجرك.') + ' للتواصل بالبريد: <bdi dir="ltr">' + esc(CFG.supportEmail) + '</bdi>.</p></form>') +
-        card('تذاكري', list.length
-          ? '<ul class="tickets">' + list.map((t) => '<li><a href="#/support/' + t.id + '"><strong>' + esc(t.subject) + '</strong><span>' + esc(t.category) + ' · ' + dateAr(t.createdAt) + '</span></a>' + pill(t.status === 'open' ? 'processing' : 'completed', t.status === 'open' ? 'مفتوحة' : 'مغلقة') + '</li>').join('') + '</ul>'
-          : empty({ icon: 'chat', title: 'لا توجد تذاكر', text: 'أنشئ تذكرة عند حاجتك للمساعدة.' })) +
-      '</div>' +
+      card('محادثة الدعم', '<p class="dnote">تواصل مباشرة مع فريق الدعم، وأرسل صور للمشكلة، وتابع الردود هنا وفي الإشعارات. كود محادثتك يبدأ بـ <bdi dir="ltr">SL-</bdi>.</p><div class="dform__foot"><button class="btn btn--primary" type="button" id="sup-open">' + ic('chat') + 'فتح محادثة الدعم</button></div>') +
       card('الأسئلة الشائعة', '<div class="faq">' + FAQ.map((f) => '<details><summary>' + esc(f[0]) + '</summary><p>' + esc(f[1]) + '</p></details>').join('') + '</div>');
-    function mount(root) {
-      M.tickets.refresh();
-      const mail = () => { const b = 'mailto:' + CFG.supportEmail + '?subject=' + encodeURIComponent($('#k-sub', root).value || 'استفسار بائع') + '&body=' + encodeURIComponent($('#k-msg', root).value + '\n\n— ' + M.seller.get().name); $('#tk-mail', root).href = b; };
-      root.addEventListener('input', (e) => { if (e.target.closest('#tk-form')) mail(); }); mail();
-      $('#tk-form', root).addEventListener('submit', (e) => {
-        e.preventDefault();
-        const sub = $('#k-sub', root).value.trim(), msg = $('#k-msg', root).value.trim();
-        if (sub.length < 4 || msg.length < 10) { $('#tk-error', root).textContent = 'اكتب موضوعاً واضحاً وتفاصيل لا تقل عن 10 أحرف'; return; }
-        const t = M.tickets.create({ subject: sub, category: $('#k-cat', root).value, message: msg });
-        S.toast('تم إرسال التذكرة ' + t.id + ' للإدارة'); location.hash = '#/support/' + t.id;
-      });
-    }
+    function mount(root) { const b = $('#sup-open', root); if (b) b.addEventListener('click', () => window.NasaqSupport && window.NasaqSupport.open()); }
     return { html, mount };
   };
 
-  function ticketView(id) {
-    const t = M.tickets.get(id);
-    if (!t) return { html: pageHead('التذكرة غير موجودة') + empty({ icon: 'chat', title: 'لم نعثر على التذكرة', action: { href: '#/support', label: 'العودة للدعم' } }) };
-    const msgs = [{ from: 'seller', text: t.message, date: t.createdAt }].concat(t.replies);
-    const html =
-      pageHead(t.subject, esc(t.category) + ' · ' + t.id + ' · ' + (t.status === 'open' ? 'مفتوحة' : 'مغلقة'), '<a class="btn btn--ghost btn--sm" href="#/support">→ كل التذاكر</a>') +
-      card('المحادثة', '<ol class="thread">' + msgs.map((m) => '<li class="thread__' + m.from + '"><b class="thread__who">' + (m.from === 'support' ? 'فريق الدعم' : 'أنت') + '</b><p>' + esc(m.text).replace(/\n/g, '<br>') + '</p><small>' + dateTimeAr(m.date) + '</small></li>').join('') + '</ol>' +
-        (t.status === 'open'
-          ? '<form class="dform" id="rp-form"><label class="sr-only" for="rp-t">ردك</label><textarea class="textarea" id="rp-t" rows="3" placeholder="أضف تفاصيل أو رداً…"></textarea><div class="dform__foot"><button class="btn btn--primary" type="submit">إرسال</button><button type="button" class="btn btn--ghost" data-act="tk-close" data-id="' + t.id + '">إغلاق التذكرة</button></div></form>'
-          : '<p class="dnote">هذه التذكرة مغلقة. <button type="button" class="link-btn" data-act="tk-open" data-id="' + t.id + '">إعادة فتحها</button></p>') +
-        '<p class="hint">' + (M.seller.get() && M.seller.get().cloudId ? 'المحادثة محفوظة في حسابك وتتحدّث تلقائياً عند رد فريق الدعم.' : 'هذه المحادثة محفوظة في متصفحك.') + '</p>');
-    function mount(root) {
-      M.tickets.refresh();
-      const f = $('#rp-form', root); if (!f) return;
-      f.addEventListener('submit', (e) => { e.preventDefault(); const v = $('#rp-t', root).value.trim(); if (!v) return; M.tickets.reply(t.id, v); S.rerender(); });
-    }
-    return { html, mount, title: t.subject };
-  }
   S.actions['tk-close'] = (b) => { M.tickets.setStatus(b.dataset.id, 'closed'); S.toast('تم إغلاق التذكرة'); S.rerender(); };
   S.actions['tk-open'] = (b) => { M.tickets.setStatus(b.dataset.id, 'open'); S.rerender(); };
 

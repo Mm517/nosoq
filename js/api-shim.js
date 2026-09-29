@@ -617,7 +617,7 @@
         p_message: body.message || '',
         p_category: body.category || null,
         p_priority: priority,
-        p_origin: ['seller', 'customer', 'rider'].includes(body.source) ? body.source : (session.role === 'seller' ? 'seller' : 'customer'),
+        p_origin: ['seller', 'customer', 'rider'].includes(body.source) ? body.source : (session.role === 'seller' ? 'seller' : session.role === 'rider' ? 'rider' : 'customer'),
         p_name: body.name || session.name || null,
         p_email: body.email || session.email || null,
         p_ticket_number: body.ticketNumber || null
@@ -650,7 +650,7 @@
   on('POST', 'support/:ticket/reply', async (params, query, body) => {
     const session = await currentSession();
     if (!session) return errRes('سجّل الدخول أولاً.', 401);
-    const { data, error } = await sb.rpc('support_user_reply', { p_ticket_number: params.ticket, p_body: (body && body.body) || '' });
+    const { data, error } = await sb.rpc('support_user_reply', { p_ticket_number: params.ticket, p_body: (body && body.body) || '', p_attachments: (body && Array.isArray(body.attachments)) ? body.attachments.slice(0, 6) : [] });
     if (error) return errRes(error.message, 400);
     return okRes(data);
   });
