@@ -33,6 +33,7 @@
     </section>
 
     <section class="admin-app" id="admin-app" hidden>
+      <div class="admin-backdrop" id="admin-backdrop" hidden></div>
       <aside class="admin-side" id="admin-side">
         <div class="admin-side__brand"><span class="admin-brand__dot"></span><strong>نَسَق</strong><small id="admin-role-tag">إدارة</small></div>
         <nav class="admin-tabs" id="admin-tabs" aria-label="أقسام لوحة الإدارة">
@@ -55,6 +56,7 @@
 
       <div class="admin-main">
         <header class="admin-header">
+          <button class="admin-burger" id="admin-burger" type="button" aria-label="القائمة" aria-controls="admin-side" aria-expanded="false"><span></span><span></span><span></span></button>
           <div><h1 id="admin-page-title">الطلبات</h1><p><span class="admin-live"></span> تحديث تلقائي مباشر</p></div>
           <div class="admin-header__actions"><button class="admin-button" id="admin-refresh" type="button"><svg class="ic"><use href="#i-refresh"/></svg><span>تحديث</span></button></div>
         </header>

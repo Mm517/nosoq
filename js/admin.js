@@ -736,14 +736,13 @@
     if (!handles.length) { setNotice('اختر كود واحد على الأقل (SL / RD / US).', true); return; }
     const btn = e.submitter || e.target.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
-      /* عميل مؤقت بدون حفظ جلسة عشان جلسة الأدمن ما تتأثرش */
-      const tmp = window.supabase.createClient(window.NASAQ_SUPABASE_URL, window.NASAQ_SUPABASE_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'nasaq-staff-tmp' } });
-      const su = await tmp.auth.signUp({ email, password: pass, options: { data: { name } } });
-      if (su.error && !/already|registered|exists/i.test(su.error.message)) throw su.error;
-      const r = await window.sb.rpc('admin_support_staff_create', { p_email: email, p_name: name, p_handles: handles });
+      /* إنشاء الحساب + صلاحية الدعم في خطوة واحدة على السيرفر (مؤكَّد فورًا، بدون إيميل تأكيد) */
+      if (pass.length < 6) throw new Error('كلمة المرور لازم تكون 6 أحرف على الأقل.');
+      const r = await window.sb.rpc('admin_support_staff_create_direct', { p_email: email, p_name: name, p_handles: handles, p_password: pass });
       if (r.error) throw r.error;
+      const res = r.data || {};
       $('#staff-form').reset(); $('#staff-codes input[value=seller]').checked = true;
-      setNotice('تم إنشاء موظف الدعم. اليوزر: ' + email + ' — يدخل من support.html.'); await loadStaff();
+      setNotice(res.created ? ('تم إنشاء موظف الدعم. يدخل من support.html بالبريد ' + email + ' وكلمة المرور اللي كتبتها.') : res.password_reset ? ('تم تغيير كلمة مرور الموظف. يدخل من support.html بالبريد ' + email) : ('الحساب موجود قبل كده وبقى موظف دعم. يدخل من support.html بنفس كلمة مروره الحالية.')); await loadStaff();
     } catch (err) { setNotice(err.message, true); }
     finally { if (btn) btn.disabled = false; }
   });
@@ -914,4 +913,16 @@
   showApp().catch(() => {
     localStorage.removeItem(TOKEN_KEY);
   });
+
+  /* قايمة الموبايل (الأربع خطوط) */
+  (function () {
+    const burger = document.getElementById('admin-burger'), side = document.getElementById('admin-side'), bd = document.getElementById('admin-backdrop');
+    if (!burger || !side || !bd) return;
+    const set = (open) => { document.body.classList.toggle('admin-nav-open', open); burger.setAttribute('aria-expanded', open ? 'true' : 'false'); bd.hidden = !open; };
+    burger.addEventListener('click', () => set(!document.body.classList.contains('admin-nav-open')));
+    bd.addEventListener('click', () => set(false));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
+    side.addEventListener('click', (e) => { if (e.target.closest('.admin-tab')) set(false); });
+    window.addEventListener('resize', () => { if (window.innerWidth > 860) set(false); });
+  })();
 })();
