@@ -76,3 +76,154 @@
  .admin-backdrop[hidden]{display:none}
  body.admin-nav-open{overflow:hidden}
 }
+
+/* =====================================================================
+   نَسَق — Admin polish v2  (نظام موحّد: أيقونات SVG، بطاقات تفاصيل، أزرار حذف، مودال، جداول)
+   ===================================================================== */
+:root{--a-focus:0 0 0 3px rgba(37,99,201,.22);--a-radius-sm:10px;--a-radius-md:14px;--a-radius-lg:20px;--a-ease:cubic-bezier(.2,.7,.2,1)}
+.ic{display:inline-block;vertical-align:middle;flex:none}
+.ic-slot{display:inline-flex;align-items:center}
+.admin-button .ic,.admin-link-btn .ic{width:17px;height:17px}
+.admin-body :focus-visible{outline:none;box-shadow:var(--a-focus)}
+.admin-body ::selection{background:rgba(37,99,201,.18)}
+
+/* ---- تسجيل الدخول ---- */
+.admin-shell{background:radial-gradient(1200px 500px at 85% -10%,rgba(37,99,201,.10),transparent 60%),radial-gradient(900px 500px at 0% 110%,rgba(18,41,74,.08),transparent 60%)}
+.admin-login{border-radius:var(--a-radius-lg);padding:38px 34px;box-shadow:0 30px 70px rgba(18,41,74,.14)}
+.admin-login h1{font-weight:800;letter-spacing:-.4px}
+.admin-brand strong,.admin-side__brand strong{font-weight:800;letter-spacing:-.3px}
+
+/* ---- القائمة الجانبية ---- */
+.admin-side{padding:22px 14px 16px;border-inline-end:1px solid rgba(255,255,255,.04)}
+.admin-side__brand{padding:2px 10px 10px;margin-bottom:2px;border-bottom:1px solid rgba(255,255,255,.08)}
+.admin-tabs{gap:3px}
+.admin-tab{position:relative;font-weight:600;font-size:14px;color:#a9bfdf}
+.admin-tab .ic{width:19px;height:19px;opacity:.9}
+.admin-tab:hover{background:rgba(255,255,255,.07)}
+.admin-tab.is-active{font-weight:700}
+.admin-tab.is-active::before{content:'';position:absolute;inset-block:10px;inset-inline-start:-14px;width:4px;border-radius:0 4px 4px 0;background:#7fb0ff}
+.admin-tabbadge{box-shadow:0 0 0 2px var(--a-side)}
+.admin-side__foot p{padding:0 8px}
+
+/* ---- الهيدر والإحصائيات ---- */
+.admin-header{padding-bottom:4px}
+.admin-header h1{font-size:clamp(22px,3vw,30px)}
+.admin-stat{border-radius:var(--a-radius-md);padding:18px 20px}
+.admin-stat__label{font-size:12.5px;letter-spacing:.2px}
+.admin-stat__value{font-size:26px}
+
+/* ---- الأزرار ---- */
+.admin-button{border-radius:var(--a-radius-sm);min-height:40px;font-weight:700;letter-spacing:.1px;box-shadow:0 1px 0 rgba(16,35,63,.03)}
+.admin-button:active{transform:translateY(1px)}
+.admin-button--danger{color:var(--a-bad);background:#fff;border-color:rgba(217,45,32,.32)}
+.admin-button--danger:hover{background:var(--a-bad);border-color:var(--a-bad);color:#fff}
+.admin-button--danger-outline{color:var(--a-bad);border-color:rgba(217,45,32,.4);background:#fff}
+.admin-button--danger-outline:hover{background:var(--a-bad-soft);border-color:var(--a-bad);color:var(--a-bad)}
+.admin-button--warn{color:#8f5b00;background:#fff6e9;border-color:#f0cf95}
+.admin-button--warn:hover{background:#ffedcf;border-color:#d9931a;color:#7a4e06}
+.admin-iconbtn{width:40px;min-width:40px;padding:0;flex:0 0 40px!important}
+.admin-row-actions{align-items:center;gap:8px}
+.admin-row-actions .admin-iconbtn{width:34px;min-width:34px;min-height:34px;flex:none}
+.admin-link-btn{font-weight:700;padding:6px 4px;border-radius:8px}
+.admin-link-btn:hover{text-decoration:none;background:var(--a-primary-soft)}
+.ord-actions .admin-iconbtn{flex:0 0 40px}
+
+/* ---- الجداول والكروت ---- */
+.admin-card{border:1px solid var(--a-line);border-radius:var(--a-radius-md);box-shadow:var(--a-shadow)}
+.admin-table th{font-size:12px;letter-spacing:.3px;padding:13px 18px}
+.admin-table td{padding:14px 18px}
+.admin-table tbody tr{transition:background .12s}
+.admin-table tbody tr[data-detail]{cursor:pointer}
+.admin-table tbody tr[data-detail]:hover td{background:#f2f7ff}
+.admin-table--compact th,.admin-table--compact td{padding:9px 12px;font-size:13px}
+.admin-table--compact{min-width:0}
+.admin-badge{display:inline-flex;align-items:center;gap:6px;font-weight:700;padding:4px 11px}
+.admin-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.75}
+.admin-toolbar h1{font-size:22px;font-weight:800;letter-spacing:-.2px}
+.admin-select,.admin-status{border-radius:var(--a-radius-sm)}
+.admin-empty{padding:44px 16px}
+
+/* ---- بطاقات الطلبات ---- */
+.ord-card{border-radius:var(--a-radius-md)}
+.ord-num{font-weight:800;letter-spacing:-.2px}
+.ord-actions{align-items:stretch}
+.ord-actions .admin-button{border-radius:var(--a-radius-sm)}
+.ord-actions .ord-danger:hover{background:var(--a-bad-soft)}
+.ord-sound{gap:8px}
+
+/* ---- المودال + بطاقة التفاصيل ---- */
+.admin-modal-backdrop{background:rgba(12,24,44,.55);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:a-fade .18s ease}
+.admin-modal{max-width:780px;border-radius:var(--a-radius-lg);padding:0;overflow:hidden;display:flex;flex-direction:column;animation:a-pop .22s var(--a-ease);box-shadow:0 40px 100px rgba(8,18,36,.42)}
+.admin-modal__head{margin:0;padding:18px 24px;border-bottom:1px solid var(--a-line);background:#f7faff;align-items:center}
+.admin-modal__head h2{font-size:17px;font-weight:800}
+.admin-modal__close{width:36px;height:36px;font-size:20px;line-height:1;display:grid;place-items:center;transition:background .15s,color .15s}
+.admin-modal__close:hover{background:var(--a-bad-soft);color:var(--a-bad)}
+.admin-modal__body{padding:22px 24px 24px;overflow-y:auto;gap:16px;max-height:calc(88vh - 74px)}
+.admin-modal__actions{align-items:center;margin-top:6px}
+.admin-modal__actions .admin-button--danger{margin-inline-start:auto}
+@keyframes a-fade{from{opacity:0}to{opacity:1}}
+@keyframes a-pop{from{opacity:0;transform:translateY(12px) scale(.98)}to{opacity:1;transform:none}}
+.dc-head{display:flex;align-items:center;gap:14px}
+.dc-ico{width:48px;height:48px;border-radius:14px;background:var(--a-primary-soft);color:var(--a-primary-dark);display:grid;place-items:center;flex:none}
+.dc-ico .ic{width:24px;height:24px}
+.dc-head__txt{flex:1;min-width:0}
+.dc-head h3{margin:0;font-size:19px;font-weight:800;overflow-wrap:anywhere}
+.dc-head p{margin:2px 0 0;color:var(--a-muted);font-size:13px}
+.dc-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.dc-stat{background:#f7faff;border:1px solid var(--a-line);border-radius:var(--a-radius-md);padding:12px 14px;display:grid;gap:3px}
+.dc-stat span{color:var(--a-muted);font-size:12px;font-weight:700}
+.dc-stat strong{font-size:17px;font-weight:800;overflow-wrap:anywhere}
+.dc-sec{display:grid;gap:10px}
+.dc-sec h4{margin:0;font-size:12.5px;font-weight:800;color:var(--a-muted);letter-spacing:.4px;display:flex;align-items:center;gap:10px}
+.dc-sec h4::after{content:'';flex:1;height:1px;background:var(--a-line)}
+.dc-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))!important;gap:10px 14px!important;margin:0}
+.dc-item{background:#fff;border:1px solid var(--a-line);border-radius:12px;padding:10px 14px;min-width:0}
+.dc-item dt{color:var(--a-muted);font-size:12px;font-weight:700;margin-bottom:2px}
+.dc-item dd{margin:0;font-weight:700;font-size:14px;overflow-wrap:anywhere}
+.dc-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.dc-list li{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#f7faff;border:1px solid var(--a-line);border-radius:12px;padding:10px 14px;font-size:14px}
+.dc-list li>span:first-child{display:flex;align-items:center;gap:8px;font-weight:700}
+.dc-inline{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13px;color:var(--a-muted)}
+.admin-modal__body dl:not(.dc-grid){background:#f7faff;border:1px solid var(--a-line);border-radius:14px;padding:14px 16px}
+
+/* ---- الدعم ---- */
+.sup-flag{display:inline-flex;align-items:center;gap:5px;color:#b45309;vertical-align:middle}
+.sup-flag--txt{background:#fff6e9;border:1px solid #f0cf95;border-radius:99px;padding:1px 9px;font-size:11px;font-weight:700;margin-inline-start:4px}
+.sup-sum{border:1px solid var(--a-line);border-radius:var(--a-radius-md)}
+.sup-list,.sup-chat{border:1px solid var(--a-line)}
+.sup-group{border-radius:var(--a-radius-sm);transition:all .15s}
+.sup-group:hover{border-color:var(--a-primary)}
+.sup-back{place-items:center;color:var(--a-primary-dark)}
+.sup-msg{box-shadow:0 1px 2px rgba(16,35,63,.05)}
+.sup-head__actions{flex-wrap:wrap}
+.sup-attach .ic{width:20px;height:20px}
+.sup-send .ic{width:17px;height:17px}
+.sup-thread{background:var(--a-bg)}
+
+/* ---- تفاصيل الأدمن للسكرول والجوال ---- */
+@media(max-width:820px){
+  .admin-modal-backdrop{align-items:flex-end;padding:0}
+  .admin-modal{max-width:100%;border-radius:22px 22px 0 0;max-height:92vh}
+  .admin-modal__body{padding:18px 16px calc(20px + env(safe-area-inset-bottom,0px));max-height:calc(92vh - 70px)}
+  .dc-grid{grid-template-columns:1fr!important}
+  .admin-modal__actions .admin-button{flex:1}
+  .admin-modal__actions .admin-button--danger{margin-inline-start:0}
+  .admin-table tbody tr[data-detail]:active td{background:#eaf2fd}
+}
+
+/* ---- الوضع الداكن للمكوّنات الجديدة ---- */
+@media(prefers-color-scheme:dark){
+  .admin-modal,.admin-card{background:var(--a-card)}
+  .admin-modal__head,.dc-stat,.dc-list li,.admin-modal__body dl:not(.dc-grid){background:#0f1c33}
+  .dc-item{background:#12203a}
+  .admin-button{background:#0d182c}
+  .admin-button--danger,.admin-button--danger-outline{background:#0d182c}
+  .admin-button--danger:hover{background:var(--a-bad);color:#fff}
+  .admin-button--warn{background:#2b2410;color:#f3d28a;border-color:#5a4718}
+  .admin-table tbody tr[data-detail]:hover td{background:#16274a}
+  .admin-modal__close{background:#1a2f57;color:var(--a-ink)}
+  .sup-thread{background:#0a1424}
+  .sup-msg{background:#12203a}
+  .admin-shell{background:radial-gradient(1200px 500px at 85% -10%,rgba(37,99,201,.16),transparent 60%)}
+  .dc-ico{background:#1a2f57;color:#9cc2ff}
+}

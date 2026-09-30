@@ -5,6 +5,7 @@
    ========================================================================== */
 (function () {
   'use strict';
+  const BACK_ICON = '<svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-inline-end:4px"><path d="M9 6l6 6-6 6"/></svg>';
   const S = window.Seller;
   if (!S) return;
   const { M, U, esc, money, fmt, ic, $, $$, dateAr, dateTimeAr, pill, pimg, empty, card, pageHead, armed, fld } = S;
@@ -99,7 +100,7 @@
       }).join('') + '</div><p class="hint">خصم ' + CFG.adDiscounts.map((d) => Math.round(d.off * 100) + '% لمدة ' + d.days + ' يوماً فأكثر').join('، ') + '. الإعلانات المخالفة تُزال دون استرداد.</p>') +
       card('حملاتك', list.length
         ? '<div class="dtable-wrap"><table class="dtable"><thead><tr><th>الحملة</th><th>المكان</th><th>الفترة</th><th>الحالة</th><th>ظهور</th><th>نقرات</th><th>CTR</th><th>التكلفة</th><th><span class="sr-only">إجراء</span></th></tr></thead><tbody>' +
-          list.map((c) => { const st = M.ads.statusOf(c), m = AD_STATUS[st]; return '<tr><td>' + esc(c.name) + '</td><td>' + esc(CFG.adPlacements[c.type].name) + '</td><td>' + dateAr(M.util.parseKey(c.start)) + ' → ' + dateAr(M.util.parseKey(M.ads.endOf(c))) + '</td><td>' + pill(m[0], m[1]) + '</td>' +
+          list.map((c) => { const st = M.ads.statusOf(c), m = AD_STATUS[st]; return '<tr><td>' + esc(c.name) + '</td><td>' + esc(CFG.adPlacements[c.type].name) + '</td><td>' + dateAr(M.util.parseKey(c.start)) + ' – ' + dateAr(M.util.parseKey(M.ads.endOf(c))) + '</td><td>' + pill(m[0], m[1]) + '</td>' +
             '<td>' + fmt(c.impressions) + '</td><td>' + fmt(c.clicks) + '</td><td>' + (c.impressions ? ((c.clicks / c.impressions) * 100).toFixed(2) : '0.00') + '%</td><td>' + money(c.total) + '</td>' +
             '<td class="acts">' + (st === 'ended' ? '' : '<button type="button" class="btn btn--ghost btn--sm" data-act="ad-toggle" data-id="' + c.id + '">' + (c.paused ? 'استئناف' : 'إيقاف مؤقت') + '</button>') + '</td></tr>'; }).join('') + '</tbody></table></div>'
         : empty({ icon: 'megaphone', title: 'لا توجد حملات بعد', text: 'اختر مكان الإعلان أعلاه وابدأ حملتك الأولى.' }));
@@ -115,7 +116,7 @@
     if (pool.length) d.productId = pool[0].id;
 
     const html =
-      pageHead('حملة إعلانية جديدة', '<a href="#/ads">→ العودة إلى الإعلانات</a>') +
+      pageHead('حملة إعلانية جديدة', '<a href="#/ads">' + BACK_ICON + 'العودة إلى الإعلانات</a>') +
       '<div class="dgrid dgrid--form"><form class="dcard dform" id="ad-form" novalidate>' +
         '<fieldset class="dform__fs"><legend>1. مكان الإعلان</legend><div class="radios" id="ad-types">' + Object.keys(CFG.adPlacements).map((k) => {
           const pl = CFG.adPlacements[k];
@@ -263,7 +264,7 @@
           '<div class="dform"><span class="label">الإشعارات</span>' +
             [['orders', 'طلب جديد'], ['stock', 'نفاد المخزون'], ['ads', 'حالة الحملات']].map((x) => '<label class="check"><input type="checkbox" data-pref="' + x[0] + '"' + (pref[x[0]] !== false ? ' checked' : '') + '> ' + x[1] + '</label>').join('') +
             '<span class="label">المظهر واللغة</span><div class="dform__foot"><button type="button" class="btn btn--ghost btn--sm" data-act="theme">' + ic('moon') + 'تبديل الوضع الداكن</button><button type="button" class="btn btn--ghost btn--sm" data-lang-open>' + ic('globe') + 'تغيير اللغة</button></div>' +
-            '<p class="hint">مفتاح خرائط جوجل: ' + (CFG.googleMapsKey ? 'مفعّل ✓' : 'غير مضبوط. أضفه في <bdi dir="ltr">js/products.js → googleMapsKey</bdi> لتفعيل الخريطة التفاعلية.') + '</p></div>') +
+            '<p class="hint">مفتاح خرائط جوجل: ' + (CFG.googleMapsKey ? 'مفعّل' : 'غير مضبوط. أضفه في <bdi dir="ltr">js/products.js (googleMapsKey)</bdi> لتفعيل الخريطة التفاعلية.') + '</p></div>') +
         card('التوثيق والبيانات',
           '<div class="dform"><p>وثّق هويتك لتحصل على شارة «بائع موثّق».</p><a class="btn btn--ghost btn--sm" href="become-seller.html">' + ic('idcard') + 'استكمال التوثيق</a><a class="btn btn--ghost btn--sm" href="application-status.html">حالة الطلب</a>' +
           '<label class="check"><input type="checkbox" data-act="demo-toggle"' + (s.demo ? ' checked' : '') + '> عرض بيانات تجريبية (طلبات وزيارات وأرباح)</label>' +

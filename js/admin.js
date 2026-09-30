@@ -36,6 +36,11 @@
   const formatDate = (value) => value ? new Date(value).toLocaleString('ar-EG-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
   const setNotice = (message, isError) => { const node = $('#admin-notice'); node.textContent = message || ''; node.hidden = !message; node.style.background = isError ? '#fde8e6' : ''; node.style.color = isError ? '#7a1f17' : ''; };
   const badge = (status) => '<span class="admin-badge admin-badge--' + esc(status) + '">' + esc(labels[status] || status || '—') + '</span>';
+  /* أيقونات SVG (بديل الإيموجي) + كاشات الجداول لبطاقات التفاصيل */
+  const ic = (name, size) => (window.NIcon ? window.NIcon(name, { size: size || 16 }) : '');
+  let sellersCache = [], ridersCache = [], deliveriesCache = [], txCache = [];
+  const delBtn = (kind, id, label, iconOnly) => '<button type="button" class="admin-button ' + (iconOnly ? 'admin-iconbtn ' : '') + 'admin-button--danger" data-del="' + kind + '" data-id="' + esc(id) + '" data-label="' + esc(label) + '" title="حذف" aria-label="حذف ' + esc(label) + '">' + ic('trash', 16) + (iconOnly ? '' : '<span>حذف</span>') + '</button>';
+  const detBtn = (kind, id) => '<button type="button" class="admin-link-btn" data-detail-btn="' + kind + ':' + esc(id) + '">تفاصيل</button>';
 
   /* ---------- Modal ---------- */
   const modalBackdrop = () => $('#admin-modal-backdrop');
@@ -156,12 +161,10 @@
     html += '<p><strong>المرفقات:</strong></p>';
     if (privatePaths.length) html += '<div id="app-docs" data-paths="' + esc(JSON.stringify(privatePaths)) + '"><span class="admin-empty" style="padding:0">جارٍ تحميل الصور…</span></div>';
     if (directUrls.length || !privatePaths.length) html += photoThumbs(directUrls);
-    if (app.status === 'pending') {
-      html += '<div class="admin-modal__actions">' +
-        '<button class="admin-button admin-button--primary" data-app-approve="' + esc(app.id) + '">قبول الطلب</button>' +
-        '<button class="admin-button" style="color:var(--admin-danger);border-color:var(--admin-danger)" data-app-reject="' + esc(app.id) + '">رفض الطلب</button>' +
-        '</div>';
-    }
+    html += '<div class="admin-modal__actions">' +
+      (app.status === 'pending' ? '<button class="admin-button admin-button--primary" data-app-approve="' + esc(app.id) + '">' + ic('check', 16) + '<span>قبول الطلب</span></button>' +
+        '<button class="admin-button admin-button--danger-outline" data-app-reject="' + esc(app.id) + '">' + ic('x', 16) + '<span>رفض الطلب</span></button>' : '') +
+      delBtn('application', app.id, 'طلب التقديم ' + (app.request_id || '')) + '</div>';
     return html;
   }
 
@@ -193,13 +196,13 @@
   function renderApplications(apps) {
     const body = $('#applications-body');
     $('#applications-empty').hidden = apps.length > 0;
-    body.innerHTML = apps.map((app) => '<tr>' +
+    body.innerHTML = apps.map((app) => '<tr data-detail="app">' +
       '<td><strong dir="ltr">' + esc(app.request_id || '') + '</strong><small>' + formatDate(app.submitted_at || app.created_at) + '</small></td>' +
       '<td>' + esc(app.name || '—') + '</td>' +
       '<td>' + (app.account_type === 'seller' ? 'بائع' : 'سائق') + '</td>' +
       '<td dir="ltr">' + esc(app.phone || app.email || '—') + '</td>' +
       '<td>' + badge(app.status) + '</td>' +
-      '<td><button class="admin-link-btn" data-app-view="' + esc(app.id) + '">التفاصيل</button></td>' +
+      '<td class="admin-row-actions"><button class="admin-link-btn" data-app-view="' + esc(app.id) + '">التفاصيل</button>' + delBtn('application', app.id, 'طلب التقديم ' + (app.request_id || ''), true) + '</td>' +
       '</tr>').join('');
     body.dataset.cache = JSON.stringify(apps);
   }
@@ -234,7 +237,7 @@
   function renderUsers(users) {
     const body = $('#users-body');
     $('#users-empty').hidden = users.length > 0;
-    body.innerHTML = users.map((u) => '<tr>' +
+    body.innerHTML = users.map((u) => '<tr data-detail="user">' +
       '<td><strong>' + esc(u.name || '—') + '</strong></td>' +
       '<td dir="ltr">' + esc(u.phone || u.email || '—') + '</td>' +
       '<td>' + esc(labels[u.role] || u.role) + '</td>' +
@@ -245,7 +248,7 @@
       '<td class="admin-row-actions">' +
       '<button class="admin-link-btn" data-user-view="' + esc(u.external_id) + '">تفاصيل</button>' +
       '<button class="admin-button" data-user-toggle="' + esc(u.external_id) + '" data-current="' + esc(u.account_status || 'active') + '">' + (u.account_status === 'disabled' ? 'تفعيل' : 'تعطيل') + '</button>' +
-      '<button class="admin-button" style="color:var(--admin-danger)" data-user-delete="' + esc(u.external_id) + '">حذف</button>' +
+      '<button class="admin-button admin-button--danger" data-user-delete="' + esc(u.external_id) + '">' + ic('trash', 16) + '<span>حذف</span></button>' +
       '</td></tr>').join('');
   }
 
@@ -270,6 +273,7 @@
     html += detail.orders.length ? '<div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>الطلب</th><th>الإجمالي</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>' +
       detail.orders.map((o) => '<tr><td dir="ltr">' + esc(o.order_number) + '</td><td>' + formatMoney(o.total) + '</td><td>' + formatDate(o.created_at) + '</td><td>' + badge(o.status) + '</td></tr>').join('') +
       '</tbody></table></div>' : '<p class="admin-empty">لا توجد طلبات.</p>';
+    html += '<div class="admin-modal__actions"><button class="admin-button admin-button--danger" type="button" data-user-delete="' + esc(externalId) + '">' + ic('trash', 16) + '<span>حذف المستخدم</span></button></div>';
     openModal('تفاصيل المستخدم — ' + (p.name || ''), html);
   }
 
@@ -296,8 +300,9 @@
   /* ===================== 4) البائعون (Sellers) ===================== */
   function renderSellers(sellers) {
     const body = $('#sellers-body');
+    sellersCache = sellers;
     $('#sellers-empty').hidden = sellers.length > 0;
-    body.innerHTML = sellers.map((s) => '<tr>' +
+    body.innerHTML = sellers.map((s) => '<tr data-detail="seller">' +
       '<td><strong>' + esc(s.name || 'متجر بلا اسم') + '</strong><small dir="ltr">' + esc(s.slug || '') + '</small></td>' +
       '<td>' + esc(s.products_count || 0) + '</td>' +
       '<td>' + esc(s.orders_count || 0) + '</td>' +
@@ -305,7 +310,7 @@
       '<td>' + formatMoney(s.commission_total) + ' (' + esc(s.commission_rate) + '%)</td>' +
       '<td>' + formatMoney(s.net_earnings) + '</td>' +
       '<td>' + statusSelect(s.status, ['active', 'rejected', 'suspended'], s.store_id, 'store') + '</td>' +
-      '<td><button class="admin-link-btn" data-seller-earnings="' + esc(s.store_id) + '" data-seller-name="' + esc(s.name || '') + '">الأرباح</button></td>' +
+      '<td class="admin-row-actions">' + detBtn('seller', s.store_id) + '<button class="admin-link-btn" data-seller-earnings="' + esc(s.store_id) + '" data-seller-name="' + esc(s.name || '') + '">الأرباح</button>' + delBtn('store', s.store_id, 'المتجر ' + (s.name || ''), true) + '</td>' +
       '</tr>').join('');
   }
 
@@ -337,15 +342,16 @@
   /* ===================== 5) السائقون (Riders) ===================== */
   function renderRidersFull(riders) {
     const body = $('#riders-full-body');
+    ridersCache = riders;
     $('#riders-full-empty').hidden = riders.length > 0;
-    body.innerHTML = riders.map((r) => '<tr>' +
+    body.innerHTML = riders.map((r) => '<tr data-detail="rider">' +
       '<td><strong>' + esc(r.name || 'مندوب') + '</strong></td>' +
       '<td dir="ltr">' + esc(r.phone || '—') + '</td>' +
       '<td>' + esc(r.vehicle || '—') + '</td>' +
       '<td>' + esc(r.city || '—') + '</td>' +
       '<td>' + (r.is_online ? '<span class="admin-badge admin-badge--active">متصل</span>' : '<span class="admin-badge">غير متصل</span>') + '</td>' +
       '<td>' + statusSelect(r.status, ['active', 'rejected', 'suspended'], r.id, 'rider') + '</td>' +
-      '<td><button class="admin-link-btn" data-rider-earnings="' + esc(r.id) + '" data-rider-name="' + esc(r.name || '') + '">الأرباح</button></td>' +
+      '<td class="admin-row-actions">' + detBtn('rider', r.id) + '<button class="admin-link-btn" data-rider-earnings="' + esc(r.id) + '" data-rider-name="' + esc(r.name || '') + '">الأرباح</button>' + delBtn('rider', r.id, 'السائق ' + (r.name || ''), true) + '</td>' +
       '</tr>').join('');
   }
 
@@ -370,7 +376,7 @@
     body.innerHTML = products.map((p) => {
       const photo = Array.isArray(p.photos) && p.photos[0] ? p.photos[0] : '';
       const store = p.stores || {};
-      return '<tr>' +
+      return '<tr data-detail="product">' +
         '<td>' + (photo ? '<img class="admin-thumb" src="' + esc(photo) + '" data-lightbox="' + esc(photo) + '">' : '—') + '</td>' +
         '<td><strong>' + esc(p.name || '—') + '</strong><small>' + esc(p.sku || '') + '</small></td>' +
         '<td>' + formatMoney(p.price) + '</td>' +
@@ -378,7 +384,7 @@
         '<td>' + esc(store.name || '—') + '</td>' +
         '<td>' + statusSelect(p.status, ['pending', 'active', 'rejected', 'hidden', 'archived'], p.id, 'product') + '</td>' +
         '<td class="admin-row-actions"><button class="admin-link-btn" data-product-view="' + esc(p.id) + '">التفاصيل</button>' +
-        '<button class="admin-button" style="color:var(--admin-danger)" data-product-delete="' + esc(p.id) + '">حذف</button></td>' +
+        '<button class="admin-button admin-iconbtn admin-button--danger" data-product-delete="' + esc(p.id) + '" title="حذف" aria-label="حذف المنتج">' + ic('trash', 16) + '</button></td>' +
         '</tr>';
     }).join('');
     body.dataset.cache = JSON.stringify(products);
@@ -405,7 +411,8 @@
         '<dt>المخزون</dt><dd>' + esc(p.stock) + '</dd>' +
         '<dt>الحالة</dt><dd>' + badge(p.status) + '</dd>' +
         (p.rejection_reason ? '<dt>سبب الرفض</dt><dd>' + esc(p.rejection_reason) + '</dd>' : '') +
-        '</dl><p><strong>الصور:</strong></p>' + photoThumbs(p.photos);
+        '</dl><p><strong>الصور:</strong></p>' + photoThumbs(p.photos) +
+        '<div class="admin-modal__actions"><button class="admin-button admin-button--danger" type="button" data-product-delete="' + esc(p.id) + '">' + ic('trash', 16) + '<span>حذف المنتج</span></button></div>';
       openModal('تفاصيل المنتج', html);
       return;
     }
@@ -475,8 +482,9 @@
         '<div class="ord-actions">' +
         (step ? '<button type="button" class="admin-button admin-button--primary" data-ord-move="' + esc(o.id) + '" data-to="' + step[0] + '">' + step[1] + '</button>' : '') +
         '<button type="button" class="admin-button" data-order-view="' + esc(o.id) + '">التفاصيل</button>' +
-        '<a class="admin-button admin-button--primary" href="admin-order.html?id=' + esc(o.id) + '">🚚 تتبّع الطلب</a>' +
+        '<a class="admin-button admin-button--primary" href="admin-order.html?id=' + esc(o.id) + '">' + ic('truck', 16) + '<span>تتبّع الطلب</span></a>' +
         (['new', 'processing'].includes(o.status) ? '<button type="button" class="admin-button ord-danger" data-ord-move="' + esc(o.id) + '" data-to="cancelled">إلغاء</button>' : '') +
+        delBtn('order', o.id, 'الطلب #' + o.order_number, true) +
         '</div></article>';
     }).join('');
   }
@@ -494,7 +502,7 @@
   $('#ord-search').addEventListener('input', (e) => { ordSearch = e.target.value; renderOrders(); });
   $('#ord-sound').addEventListener('click', (e) => {
     ordSound = !ordSound; e.currentTarget.setAttribute('aria-pressed', ordSound);
-    e.currentTarget.textContent = ordSound ? '🔔 صوت التنبيه شغّال' : '🔕 صوت التنبيه';
+    e.currentTarget.innerHTML = ic(ordSound ? 'bell' : 'bell-off', 17) + '<span>' + (ordSound ? 'صوت التنبيه شغّال' : 'صوت التنبيه') + '</span>';
     if (ordSound) beep();
   });
   document.addEventListener('click', async (e) => {
@@ -515,24 +523,7 @@
   document.addEventListener('click', (e) => {
     const viewBtn = e.target.closest('[data-order-view]');
     if (!viewBtn) return;
-    api('/admin/orders/' + viewBtn.dataset.orderView).then((detail) => {
-      const o = detail.order;
-      const items = Array.isArray(o.order_items) ? o.order_items : [];
-      let html = '<dl>' +
-        '<dt>رقم الطلب</dt><dd dir="ltr">' + esc(o.order_number) + '</dd>' +
-        '<dt>الإجمالي</dt><dd>' + formatMoney(o.total) + '</dd>' +
-        '<dt>الشحن</dt><dd>' + formatMoney(o.shipping) + '</dd>' +
-        '<dt>الخصم</dt><dd>' + formatMoney(o.discount) + '</dd>' +
-        '<dt>الدفع</dt><dd>' + esc(o.payment || '—') + '</dd>' +
-        '<dt>الحالة</dt><dd>' + badge(o.status) + '</dd>' +
-        '<dt>التاريخ</dt><dd>' + formatDate(o.created_at) + '</dd>' +
-        '</dl>';
-      html += '<p><strong>المنتجات (' + items.length + ')</strong></p><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th></tr></thead><tbody>' +
-        items.map((it) => '<tr><td>' + esc(it.product_name) + '</td><td>' + esc(it.quantity) + '</td><td>' + formatMoney(it.unit_price) + '</td></tr>').join('') + '</tbody></table></div>';
-      if (detail.delivery) html += '<p><strong>التوصيل:</strong> ' + badge(detail.delivery.status) + (detail.delivery.riders ? ' — ' + esc(detail.delivery.riders.name) : '') + '</p>';
-      html += '<p><a class="admin-button admin-button--primary" href="admin-order.html?id=' + esc(o.id) + '">فتح صفحة تتبّع الطلب</a></p>';
-      openModal('تفاصيل الطلب', html);
-    }).catch((err) => setNotice(err.message, true));
+    showOrderDetail(viewBtn.dataset.orderView).catch((err) => setNotice(err.message, true));
   });
 
   /* ===================== 8) اللوحة المالية ===================== */
@@ -550,8 +541,9 @@
   /* ===================== 9) المعاملات ===================== */
   function renderTransactions(list) {
     const body = $('#transactions-body');
+    txCache = list;
     $('#transactions-empty').hidden = list.length > 0;
-    body.innerHTML = list.map((t) => '<tr>' +
+    body.innerHTML = list.map((t) => '<tr data-detail="tx">' +
       '<td dir="ltr">' + esc(String(t.id).slice(0, 8)) + '</td>' +
       '<td dir="ltr">' + esc(t.orders ? t.orders.order_number : '—') + '</td>' +
       '<td>' + esc(t.stores ? t.stores.name : '—') + '</td>' +
@@ -561,6 +553,7 @@
       '<td>' + formatMoney(t.net_seller_amount) + '</td>' +
       '<td>' + badge(t.status) + '</td>' +
       '<td>' + formatDate(t.created_at) + '</td>' +
+      '<td class="admin-row-actions">' + detBtn('tx', t.id) + delBtn('transaction', t.id, 'المعاملة', true) + '</td>' +
       '</tr>').join('');
   }
   loaders.transactions = async function () {
@@ -608,7 +601,7 @@
       const g = supGroupOf(t);
       return '<li class="sup-item' + (t.admin_unread && isOpenTicket(t) ? ' is-unread' : '') + (supCur === t.ticket_number ? ' is-active' : '') + '" data-open-ticket="' + esc(t.ticket_number) + '">' +
         '<span class="sup-av sup-av--' + g + '">' + g + '</span>' +
-        '<div><div class="sup-item__name">' + (t.escalated ? '🆘 ' : '') + esc(t.name || 'زائر') + '<span>' + esc(t.ticket_number) + '</span></div>' +
+        '<div><div class="sup-item__name">' + (t.escalated ? '<span class="sup-flag" title="طُلبت مساعدة الإدارة">' + ic('lifebuoy', 14) + '</span>' : '') + esc(t.name || 'زائر') + '<span>' + esc(t.ticket_number) + '</span></div>' +
         '<div class="sup-item__sub">' + esc(t.subject || t.message || '') + (t.handled_by ? ' · رد: ' + esc(t.handled_by) : '') + '</div></div>' +
         '<div class="sup-item__side"><span>' + timeAgo(t.last_message_at || t.created_at) + '</span>' +
         (t.admin_unread && isOpenTicket(t) ? '<i class="sup-unread">جديد</i>' : badge(t.status)) + '</div></li>';
@@ -645,7 +638,8 @@
     }).join('') + (t.status === 'closed' ? '<li class="sup-sys">تم قفل المحادثة' + (t.closed_at ? ' · ' + formatDate(t.closed_at) : '') + '</li>' : '');
     $('#sup-status').value = t.status;
     const esc2 = $('#sup-escalate'); if (esc2) { esc2.hidden = ROLE === 'admin' || !!t.escalated; }
-    if (t.escalated) $('#sup-meta').textContent += ' · 🆘 طُلبت مساعدة الإدارة';
+    if (t.escalated) $('#sup-meta').insertAdjacentHTML('beforeend', ' <span class="sup-flag sup-flag--txt">' + ic('lifebuoy', 14) + 'طُلبت مساعدة الإدارة</span>');
+    const sd = $('#sup-delete'); if (sd) { sd.hidden = ROLE !== 'admin'; sd.dataset.del = 'ticket'; sd.dataset.id = t.ticket_number; sd.dataset.label = 'المحادثة ' + t.ticket_number; }
     const closed = t.status === 'closed';
     $('#sup-form').hidden = closed; $('#sup-closed').hidden = !closed; $('#sup-close-btn').hidden = closed;
     supCurCount = msgs.length;
@@ -714,7 +708,7 @@
   $('#sup-status-filter').addEventListener('change', (e) => { supStatus = e.target.value; renderSupList(); });
 
   /* ---- فريق الدعم (للأدمن فقط) ---- */
-  const CODE_LABELS = [['seller', 'SL', 'بائعين'], ['rider', 'RD', 'سائقين'], ['customer', 'US', 'مستخدمين']];
+  const CODE_LABELS = [['seller', 'SL', 'بائعين'], ['rider', 'RD', 'سائقين'], ['customer', 'US', 'مستخدمين'], ['guest', 'GS', 'زوّار']];
   async function loadStaff() {
     const rows = (await api('/admin/support-staff')) || [];
     $('#staff-count').textContent = rows.length + ' موظف';
@@ -769,15 +763,17 @@
   }
   function renderDeliveries(deliveries, riders) {
     const body = $('#deliveries-body');
+    deliveriesCache = deliveries;
     $('#deliveries-empty').hidden = deliveries.length > 0;
     body.innerHTML = deliveries.map((delivery) => {
       const store = delivery.stores || {};
       const currentRider = delivery.riders || {};
-      return '<tr><td><strong dir="ltr">' + esc(delivery.order_number || delivery.order_id || delivery.id) + '</strong></td>' +
+      return '<tr data-detail="delivery"><td><strong dir="ltr">' + esc(delivery.order_number || delivery.order_id || delivery.id) + '</strong></td>' +
         '<td>' + esc(store.name || '—') + '</td><td>' + esc(delivery.delivery_address || delivery.address || '—') + '</td>' +
         '<td>' + esc(labels[delivery.status] || delivery.status || '—') + '</td><td><select class="admin-select admin-delivery-rider" data-delivery-id="' + esc(delivery.id) + '">' +
         (currentRider.name ? '<option value="' + esc(delivery.rider_id) + '">' + esc(currentRider.name) + '</option>' : '') +
-        riderOptions(riders, delivery.rider_id) + '</select></td></tr>';
+        riderOptions(riders, delivery.rider_id) + '</select></td>' +
+        '<td class="admin-row-actions">' + detBtn('delivery', delivery.id) + delBtn('delivery', delivery.id, 'التوصيلة', true) + '</td></tr>';
     }).join('');
   }
   loaders.deliveries = async function () {
@@ -807,6 +803,138 @@
       setNotice('تم حفظ نطاق الطلبات القريبة.');
     } catch (err) { setNotice(err.message, true); }
     finally { btn.disabled = false; }
+  });
+
+  /* ===================== بطاقات التفاصيل + الحذف الكامل (للأدمن) ===================== */
+  const kv = (rows) => '<dl class="dc-grid">' + rows.filter((r) => r[1] != null && r[1] !== '').map((r) =>
+    '<div class="dc-item"><dt>' + esc(r[0]) + '</dt><dd' + (r[2] === 'ltr' ? ' dir="ltr"' : '') + '>' + (r[2] === 'raw' ? r[1] : esc(r[1])) + '</dd></div>').join('') + '</dl>';
+  const dcHead = (icon, title, sub, badgeHtml) => '<div class="dc-head"><span class="dc-ico">' + ic(icon, 22) + '</span><div class="dc-head__txt"><h3>' + esc(title) + '</h3>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + (badgeHtml || '') + '</div>';
+  const dcSec = (title, inner) => '<section class="dc-sec">' + (title ? '<h4>' + esc(title) + '</h4>' : '') + inner + '</section>';
+  const dcStats = (items) => '<div class="dc-stats">' + items.map((i) => '<div class="dc-stat"><span>' + esc(i[0]) + '</span><strong>' + esc(i[1]) + '</strong></div>').join('') + '</div>';
+  const dcActions = (inner) => '<div class="admin-modal__actions">' + inner + '</div>';
+  const addrText = (a) => (a && typeof a === 'object') ? (a.raw || a.formatted || JSON.stringify(a)) : a;
+  const YN = (v) => (v ? 'نعم' : 'لا');
+
+  async function showOrderDetail(id) {
+    const detail = await api('/admin/orders/' + encodeURIComponent(id));
+    const o = detail.order, c = o.customer || {};
+    const items = Array.isArray(o.order_items) ? o.order_items : [];
+    let html = dcHead('receipt', 'طلب #' + o.order_number, formatDate(o.created_at), badge(o.status));
+    html += dcStats([['الإجمالي', formatMoney(o.total)], ['الشحن', formatMoney(o.shipping)], ['الخصم', formatMoney(o.discount)], ['الدفع', o.payment === 'cod' ? 'عند الاستلام' : (o.payment || '—')]]);
+    html += dcSec('العميل', kv([['الاسم', c.name], ['الهاتف', c.phone, 'ltr'], ['البريد', c.email, 'ltr'], ['العنوان', addrText(c.address) || c.city]]));
+    html += dcSec('المنتجات (' + items.length + ')', '<div class="admin-table-wrap"><table class="admin-table admin-table--compact"><thead><tr><th>المنتج</th><th>المقاس / اللون</th><th>الكمية</th><th>السعر</th></tr></thead><tbody>' +
+      items.map((it) => '<tr><td>' + esc(it.product_name) + '</td><td>' + esc([it.size, it.color].filter(Boolean).join(' / ') || '—') + '</td><td>' + esc(it.quantity) + '</td><td>' + formatMoney(it.unit_price) + '</td></tr>').join('') + '</tbody></table></div>');
+    const so = detail.storeOrders || [];
+    if (so.length) html += dcSec('طلبات المتاجر', '<ul class="dc-list">' + so.map((x) => '<li><span>' + ic('store', 15) + esc((x.stores && x.stores.name) || x.store_name || 'متجر') + '</span><span>' + badge(x.status) + '</span><b>' + formatMoney(x.subtotal) + '</b></li>').join('') + '</ul>');
+    if (detail.delivery) html += dcSec('التوصيل', kv([['الحالة', badge(detail.delivery.status), 'raw'], ['المندوب', detail.delivery.riders && detail.delivery.riders.name], ['هاتف المندوب', detail.delivery.riders && detail.delivery.riders.phone, 'ltr'], ['تحصيل عند التسليم', detail.delivery.cod_amount != null ? formatMoney(detail.delivery.cod_amount) : '']]));
+    html += dcActions('<a class="admin-button admin-button--primary" href="admin-order.html?id=' + esc(o.id) + '">' + ic('truck', 16) + '<span>فتح صفحة التتبّع</span></a>' + delBtn('order', o.id, 'الطلب #' + o.order_number));
+    openModal('تفاصيل الطلب', html);
+  }
+
+  async function showSellerDetail(id) {
+    const row = sellersCache.find((x) => String(x.store_id) === String(id)) || {};
+    const [st, earn] = await Promise.all([api('/admin/stores/' + encodeURIComponent(id)).catch(() => ({})), api('/admin/sellers/' + encodeURIComponent(id) + '/earnings').catch(() => null)]);
+    const name = row.name || st.name || 'متجر';
+    let html = dcHead('store', name, st.category || '', badge(row.status || st.status));
+    html += dcStats([['المنتجات', row.products_count || 0], ['الطلبات', row.orders_count || 0], ['إجمالي المبيعات', formatMoney(row.total_sales)], ['صافي الأرباح', formatMoney(row.net_earnings)]]);
+    html += dcSec('بيانات المتجر', kv([['اسم المتجر', name], ['الرابط', st.slug || row.slug, 'ltr'], ['التصنيف', st.category], ['الهاتف', st.phone, 'ltr'], ['العنوان', addrText(st.address)],
+      ['نسبة العمولة', (row.commission_rate != null ? row.commission_rate : st.commission_rate) != null ? (row.commission_rate != null ? row.commission_rate : st.commission_rate) + '%' : ''], ['إجمالي العمولة', formatMoney(row.commission_total)], ['تاريخ الإنشاء', st.created_at ? formatDate(st.created_at) : ''], ['ملاحظة المراجعة', st.review_note]]));
+    if (earn) html += dcSec('الأرباح', earningsHtml(earn, 'orders_count'));
+    html += dcActions('<label class="dc-inline">الحالة ' + statusSelect(row.status || st.status, ['active', 'rejected', 'suspended'], id, 'store') + '</label>' + delBtn('store', id, 'المتجر ' + name));
+    openModal('تفاصيل المتجر — ' + name, html);
+  }
+
+  async function showRiderDetail(id) {
+    const row = ridersCache.find((x) => String(x.id) === String(id)) || {};
+    const [rd, earn] = await Promise.all([api('/admin/riders/' + encodeURIComponent(id)).catch(() => row), api('/admin/riders/' + encodeURIComponent(id) + '/earnings').catch(() => null)]);
+    const r = Object.assign({}, row, rd);
+    let html = dcHead('bike', r.name || 'مندوب', r.vehicle || '', badge(r.status));
+    html += dcSec('بيانات السائق', kv([['الاسم', r.name], ['الهاتف', r.phone, 'ltr'], ['المركبة', r.vehicle], ['المدينة', r.city], ['المنطقة', r.area], ['التغطية', r.coverage],
+      ['متصل الآن', YN(r.is_online)], ['تاريخ الانضمام', r.created_at ? formatDate(r.created_at) : ''], ['ملاحظة المراجعة', r.review_note]]));
+    if (earn) html += dcSec('الأرباح', earningsHtml(earn, 'deliveries_count'));
+    html += dcActions('<label class="dc-inline">الحالة ' + statusSelect(r.status, ['active', 'rejected', 'suspended'], id, 'rider') + '</label>' + delBtn('rider', id, 'السائق ' + (r.name || '')));
+    openModal('تفاصيل السائق — ' + (r.name || ''), html);
+  }
+
+  function showDeliveryDetail(id) {
+    const d = deliveriesCache.find((x) => String(x.id) === String(id));
+    if (!d) return;
+    const num = d.order_number || d.order_id || d.id;
+    let html = dcHead('truck', 'توصيلة ' + num, formatDate(d.requested_at), badge(d.status));
+    html += dcSec('التوصيلة', kv([['الطلب', num, 'ltr'], ['المتجر', d.stores && d.stores.name], ['العنوان', d.delivery_address || d.address], ['المندوب', d.riders && d.riders.name], ['هاتف المندوب', d.riders && d.riders.phone, 'ltr'],
+      ['أجرة التوصيل', d.fee != null ? formatMoney(d.fee) : ''], ['تحصيل عند التسليم', d.cod_amount != null ? formatMoney(d.cod_amount) : ''], ['ملاحظة', d.note]]));
+    html += dcSec('التوقيت', kv([['وقت الطلب', d.requested_at ? formatDate(d.requested_at) : ''], ['وقت التعيين', d.assigned_at ? formatDate(d.assigned_at) : ''], ['وقت الاستلام', d.picked_up_at ? formatDate(d.picked_up_at) : ''], ['وقت التسليم', d.delivered_at ? formatDate(d.delivered_at) : '']]));
+    html += dcActions(delBtn('delivery', d.id, 'التوصيلة'));
+    openModal('تفاصيل التوصيلة', html);
+  }
+
+  function showTxDetail(id) {
+    const t = txCache.find((x) => String(x.id) === String(id));
+    if (!t) return;
+    let html = dcHead('receipt', 'معاملة ' + String(t.id).slice(0, 8), formatDate(t.created_at), badge(t.status));
+    html += dcStats([['المبلغ', formatMoney(t.amount)], ['العمولة', formatMoney(t.commission_amount)], ['صافي البائع', formatMoney(t.net_seller_amount)], ['أجرة السائق', formatMoney(t.rider_fee)]]);
+    html += dcSec('التفاصيل', kv([['رقم المعاملة', t.id, 'ltr'], ['الطلب', t.orders && t.orders.order_number, 'ltr'], ['البائع', t.stores && t.stores.name], ['السائق', t.riders && t.riders.name], ['نسبة العمولة', t.commission_rate != null ? t.commission_rate + '%' : ''], ['التاريخ', formatDate(t.created_at)]]));
+    html += dcActions(delBtn('transaction', t.id, 'المعاملة'));
+    openModal('تفاصيل المعاملة', html);
+  }
+
+  /* الضغط على أي صف في الجداول يفتح بطاقة التفاصيل (إلا لو ضغطت على زر/قائمة جواه) */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-detail-btn]');
+    let kind = null, id = null;
+    if (btn) { const parts = btn.dataset.detailBtn.split(':'); kind = parts.shift(); id = parts.join(':'); }
+    else {
+      const tr = e.target.closest('tr[data-detail]');
+      if (!tr || e.target.closest('button,a,select,input,label,textarea,[data-lightbox]')) return;
+      const inner = tr.querySelector('[data-detail-btn],[data-app-view],[data-user-view],[data-product-view]');
+      if (inner) inner.click();
+      return;
+    }
+    const run = { seller: showSellerDetail, rider: showRiderDetail, delivery: showDeliveryDetail, tx: showTxDetail }[kind];
+    if (run) Promise.resolve(run(id)).catch((err) => setNotice(err.message, true));
+  });
+
+  /* ---- الحذف الكامل: تأكيد واضح ثم مسح نهائي + تحديث الشاشة الحالية ---- */
+  const DEL_WARN = {
+    order: 'هيتمسح الطلب مع بنوده وتوصيلاته ومعاملاته المالية.',
+    store: 'هيتمسح المتجر ومنتجاته. لو عليه طلبات قديمة هيرفض الحذف — استخدم «موقوف» وقتها.',
+    rider: 'لو عليه توصيلات قديمة هيرفض الحذف — استخدم «موقوف» وقتها.',
+    ticket: 'هتتمسح المحادثة بكل رسائلها وصورها.',
+    application: 'هيتمسح طلب التقديم من السجل.',
+    transaction: 'هتتمسح المعاملة من السجل المالي وهيتغيّر ملخص اللوحة المالية.',
+    delivery: 'هتتمسح التوصيلة من السجل.'
+  };
+  async function removeTicketFiles(tn) {
+    try {
+      const d = await api('/admin/support/' + encodeURIComponent(tn));
+      const paths = [];
+      (d.messages || []).forEach((m) => (m.attachments || []).forEach((p) => { const v = typeof p === 'string' ? p : (p && p.path); if (v) paths.push(v); }));
+      if (paths.length && window.sb) await window.sb.storage.from('support-files').remove(paths);
+    } catch (_) { /* الصور ممكن تفضل في التخزين، ده مش بيمنع حذف المحادثة */ }
+  }
+  const AFTER_DELETE = {
+    order: () => fetchOrders(true),
+    store: () => { loaded.sellers = false; return loaders.sellers(); },
+    rider: () => { loaded.riders = false; return loaders.riders(); },
+    application: () => { loaded.applications = false; return loaders.applications(); },
+    transaction: () => { loaded.transactions = false; return loaders.transactions(); },
+    delivery: () => { loaded.deliveries = false; return loaders.deliveries(); },
+    ticket: async () => { smBack(); await loadSupportList(); }
+  };
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-del]');
+    if (!b || ROLE !== 'admin') return;
+    const kind = b.dataset.del, id = b.dataset.id, label = b.dataset.label || '';
+    if (!window.confirm('حذف ' + label + ' نهائياً؟\n' + (DEL_WARN[kind] || '') + '\nالإجراء ده مينفعش يترجع فيه.')) return;
+    b.disabled = true;
+    try {
+      if (kind === 'ticket') await removeTicketFiles(id);
+      await api('/admin/purge/' + kind + '/' + encodeURIComponent(id), { method: 'DELETE' });
+      setNotice('تم الحذف.'); closeModal();
+      if (AFTER_DELETE[kind]) await AFTER_DELETE[kind]();
+      api('/admin/summary').then(renderStats).catch(() => {});
+      ['financial'].forEach((k) => { loaded[k] = false; });
+    } catch (err) { setNotice(err.message, true); b.disabled = false; }
   });
 
   /* ===================== تحميل أولي + تحديث ===================== */
@@ -892,7 +1020,7 @@
         } else if (type === 'rider') {
           await sendJson('/admin/riders/' + id + '/review', { status: value });
         }
-        setNotice('تم تحديث الحالة.');
+        setNotice('تم تحديث الحالة.'); closeModal();
         Object.keys(loaded).forEach((k) => { loaded[k] = false; });
         const activeTab = $('.admin-tab.is-active');
         if (activeTab && loaders[activeTab.dataset.tab]) { loaded[activeTab.dataset.tab] = true; await loaders[activeTab.dataset.tab](); }

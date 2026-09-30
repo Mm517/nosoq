@@ -53,11 +53,30 @@
   }
 
   /* ---------- الجلسة / الدور الحالي ---------- */
-  async function getRole(userId) {
-    const { data: adminRow } = await sb.from('admin_users').select('user_id').eq('user_id', userId).maybeSingle();
-    if (adminRow) return 'admin';
-    const { data: mu } = await sb.from('marketplace_users').select('role').eq('external_id', userId).maybeSingle();
-    return (mu && mu.role) || 'customer';
+  /* الدور: admin | support | seller | rider | customer.
+     موظف الدعم (جدول support_staff في الداتا بيس) بيتعرّف تلقائياً كـ support من أي تسجيل دخول عادي. */
+  const roleCache = {};
+  async function getRole(userId, fresh) {
+    const hit = roleCache[userId];
+    if (!fresh && hit && Date.now() - hit.t < 30000) return hit.role;
+    let role = null;
+    try {
+      const { data, error } = await sb.rpc('nasaq_my_role');
+      if (!error && data) role = data;
+    } catch (_) { /* الدالة لسه متشغّلتش — نكمل بالطريقة القديمة */ }
+    if (!role) {
+      const { data: adminRow } = await sb.from('admin_users').select('user_id').eq('user_id', userId).maybeSingle();
+      if (adminRow) role = 'admin';
+      if (!role) {
+        try { const { data: who } = await sb.rpc('support_whoami'); if (who && who.role === 'support') role = 'support'; } catch (_) { /* تجاهل */ }
+      }
+      if (!role) {
+        const { data: mu } = await sb.from('marketplace_users').select('role').eq('external_id', userId).maybeSingle();
+        role = (mu && mu.role) || 'customer';
+      }
+    }
+    roleCache[userId] = { role, t: Date.now() };
+    return role;
   }
 
   async function currentSession() {
@@ -169,11 +188,12 @@
     }
     const { data, error } = await sb.auth.signInWithPassword({ email: email.toLowerCase(), password: String(password) });
     if (error || !data.user || !data.session) return errRes('بيانات الدخول غير صحيحة.', 401);
-    const role = await getRole(data.user.id);
-    await syncMarketplaceUser(data.user, role);
+    const role = await getRole(data.user.id, true);
+    /* موظف الدعم مالوش صف في marketplace_users ولا بنغيّر دوره هناك — حسابه حساب دعم بس */
+    if (role !== 'support') await syncMarketplaceUser(data.user, role);
     const sessionUser = { userId: data.user.id, email: data.user.email, role, name: data.user.user_metadata && data.user.user_metadata.name };
     persistLocal(data.session.access_token, sessionUser);
-    return okRes({ access_token: data.session.access_token, user: sessionUser });
+    return okRes({ access_token: data.session.access_token, user: sessionUser, redirect: role === 'support' ? 'support.html' : null });
   });
 
   on('GET', 'auth/session', async () => {
@@ -1026,6 +1046,32 @@
     const { error } = await sb.from('products').delete().eq('id', params.id);
     if (error) return errRes(error.message, 400);
     return new Response(null, { status: 204 });
+  });
+
+  /* ---------- Admin Dashboard: حذف كامل لأي عنصر (طلب/منتج/متجر/سائق/طلب تقديم/محادثة/معاملة/توصيلة) ---------- */
+  const PURGE_KINDS = ['order', 'product', 'store', 'rider', 'application', 'ticket', 'transaction', 'delivery'];
+  on('DELETE', 'admin/purge/:kind/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    if (!PURGE_KINDS.includes(params.kind)) return errRes('نوع غير مدعوم للحذف.');
+    const { data, error } = await sb.rpc('admin_delete_entity', { p_kind: params.kind, p_id: params.id });
+    if (error) return errRes(error.message, 400);
+    return okRes(data);
+  });
+
+  /* ---------- Admin Dashboard: تفاصيل متجر / سائق (بطاقة كاملة) ---------- */
+  on('GET', 'admin/stores/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.from('stores').select('*').eq('id', params.id).maybeSingle();
+    if (error) return errRes(error.message, 400);
+    if (!data) return errRes('المتجر غير موجود.', 404);
+    return okRes(data);
+  });
+  on('GET', 'admin/riders/:id', async (params) => {
+    if (!(await requireAdmin())) return errRes('هذه الصفحة مخصصة للإدمن.', 403);
+    const { data, error } = await sb.from('riders').select('*').eq('id', params.id).maybeSingle();
+    if (error) return errRes(error.message, 400);
+    if (!data) return errRes('السائق غير موجود.', 404);
+    return okRes(data);
   });
 
   /* ---------- Admin Dashboard: تفاصيل طلب (Order detail) ---------- */

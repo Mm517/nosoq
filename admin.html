@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="css/admin-pro.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/nasaq-config.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/api-shim.js"></script>
   <script defer src="js/distance.js"></script>
   <script defer src="js/admin.js"></script>
@@ -147,7 +148,7 @@
           <div class="ord-chips" id="ord-chips" role="tablist" aria-label="فلترة الطلبات"></div>
           <div class="ord-tools">
             <input class="admin-select ord-search" id="ord-search" type="search" placeholder="ابحث برقم الطلب أو اسم العميل" dir="rtl">
-            <button class="admin-button ord-sound" id="ord-sound" type="button" aria-pressed="false">🔕 صوت التنبيه</button>
+            <button class="admin-button ord-sound" id="ord-sound" type="button" aria-pressed="false"><i class="ic-slot" data-icon="bell-off" data-size="17"></i><span>صوت التنبيه</span></button>
           </div>
         </div>
         <div class="ord-grid" id="orders-grid"></div>
@@ -176,7 +177,7 @@
         </div>
         <article class="admin-card admin-card--wide">
           <div class="admin-table-wrap"><table class="admin-table">
-            <thead><tr><th>المعاملة</th><th>الطلب</th><th>البائع</th><th>السائق</th><th>المبلغ</th><th>العمولة</th><th>الصافي</th><th>الحالة</th><th>التاريخ</th></tr></thead>
+            <thead><tr><th>المعاملة</th><th>الطلب</th><th>البائع</th><th>السائق</th><th>المبلغ</th><th>العمولة</th><th>الصافي</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead>
             <tbody id="transactions-body"></tbody>
           </table></div>
           <p class="admin-empty" id="transactions-empty" hidden>لا توجد معاملات بعد.</p>
@@ -202,14 +203,15 @@
             <div class="sup-placeholder" id="sup-placeholder"><svg class="ic"><use href="#i-chat"/></svg><p>اختار محادثة من القائمة عشان تبدأ الرد</p></div>
             <div class="sup-conv" id="sup-conv" hidden>
               <header class="sup-head">
-                <button class="sup-back" id="sup-back" type="button" aria-label="رجوع للقائمة">→</button>
+                <button class="sup-back" id="sup-back" type="button" aria-label="رجوع للقائمة"><i class="ic-slot" data-icon="chev-right" data-size="18"></i></button>
                 <div class="sup-head__txt"><h2 id="sup-title">—</h2><p id="sup-meta"></p></div>
                 <div class="sup-head__actions">
                   <select class="admin-select" id="sup-status" aria-label="حالة المحادثة">
                     <option value="open">مفتوحة</option><option value="in_progress">قيد المتابعة</option><option value="resolved">تم الحل</option><option value="closed">مقفولة</option>
                   </select>
-                  <button class="admin-button" id="sup-escalate" type="button" hidden>🆘 طلب مساعدة الإدارة</button>
+                  <button class="admin-button admin-button--warn" id="sup-escalate" type="button" hidden><i class="ic-slot" data-icon="lifebuoy" data-size="17"></i><span>طلب مساعدة الإدارة</span></button>
                   <button class="admin-button sup-close" id="sup-close-btn" type="button">قفل المحادثة</button>
+                  <button class="admin-button admin-button--danger" id="sup-delete" type="button" hidden><i class="ic-slot" data-icon="trash" data-size="17"></i><span>حذف</span></button>
                 </div>
               </header>
               <ol class="sup-thread" id="sup-thread"></ol>
@@ -226,7 +228,7 @@
           </section>
         </div>
         <article class="admin-card admin-card--wide sup-staff" id="staff-card" hidden>
-          <div class="admin-card__head"><div><h2>فريق الدعم</h2><p>أنشئ لكل موظف يوزر وكلمة مرور وحدّد له الأكواد اللي يستلمها (SL بائعين · RD سائقين · US مستخدمين). يدخل من صفحة الدعم ويشوف محادثاته بس ويقدر يرد ويقفل المحادثة.</p></div><span class="admin-count" id="staff-count"></span></div>
+          <div class="admin-card__head"><div><h2>فريق الدعم</h2><p>أنشئ لكل موظف يوزر وكلمة مرور وحدّد له الأكواد اللي يستلمها (SL بائعين · RD سائقين · US مستخدمين · GS زوّار). كل موظف يشوف ويرد على أنواع المحادثات اللي حددتها له بس، من صفحة الدعم.</p></div><span class="admin-count" id="staff-count"></span></div>
           <form class="sup-staff__form" id="staff-form">
             <input class="admin-select" id="staff-name" type="text" placeholder="اسم الموظف" required>
             <input class="admin-select" id="staff-email" type="email" placeholder="البريد (اليوزر)" dir="ltr" required>
@@ -235,6 +237,7 @@
               <label><input type="checkbox" value="seller" checked> <b dir="ltr">SL</b> بائعين</label>
               <label><input type="checkbox" value="rider"> <b dir="ltr">RD</b> سائقين</label>
               <label><input type="checkbox" value="customer"> <b dir="ltr">US</b> مستخدمين</label>
+              <label><input type="checkbox" value="guest"> <b dir="ltr">GS</b> زوّار</label>
             </div>
             <button class="admin-button admin-button--primary" type="submit">إنشاء حساب موظف دعم</button>
           </form>
@@ -257,7 +260,7 @@
         </article>
         <article class="admin-card admin-card--wide">
           <div class="admin-table-wrap"><table class="admin-table">
-            <thead><tr><th>الطلب</th><th>المتجر</th><th>العنوان</th><th>الحالة</th><th>المندوب</th></tr></thead>
+            <thead><tr><th>الطلب</th><th>المتجر</th><th>العنوان</th><th>الحالة</th><th>المندوب</th><th></th></tr></thead>
             <tbody id="deliveries-body"></tbody>
           </table></div>
           <p class="admin-empty" id="deliveries-empty" hidden>لا توجد توصيلات حالياً.</p>

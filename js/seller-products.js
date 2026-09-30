@@ -3,6 +3,7 @@
    ========================================================================== */
 (function () {
   'use strict';
+  const BACK_ICON = '<svg class="icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" style="vertical-align:-3px;margin-inline-end:4px"><path d="M9 6l6 6-6 6"/></svg>';
   const S = window.Seller;
   if (!S) return;
   const { M, U, esc, money, fmt, ic, $, $$, dateAr, dateTimeAr, pill, pimg, empty, card, pageHead, armed, csv, fld } = S;
@@ -75,7 +76,7 @@
     d.colors.forEach((c) => { c.images = c.images || []; c.stock = Number(c.stock || 0); });
 
     const html =
-      pageHead(edit ? 'تعديل المنتج' : 'إضافة منتج جديد', '<a href="#/products">→ العودة إلى المنتجات</a>') +
+      pageHead(edit ? 'تعديل المنتج' : 'إضافة منتج جديد', '<a href="#/products">' + BACK_ICON + 'العودة إلى المنتجات</a>') +
       '<div class="dgrid dgrid--form">' +
         '<form class="dcard dform" id="prod-form" novalidate>' +
           fld('p-name', 'اسم المنتج *', '<input class="input" id="p-name" maxlength="90" value="' + esc(d.name) + '" autocomplete="off">', 'اكتب اسماً واضحاً يذكر النوع والخامة، مثل «حقيبة جلد طبيعي بحزام»') +
@@ -353,7 +354,7 @@
     const isTerminal = o.status === 'cancelled' || o.status === 'returned';
     const { stages, doneUpTo } = buildTimeline(o.history);
     const html =
-      pageHead('طلب ' + o.id, dateTimeAr(o.createdAt) + ' · ' + (PAY[o.payment] || ''), '<a class="btn btn--ghost btn--sm" href="#/orders">→ كل الطلبات</a>') +
+      pageHead('طلب ' + o.id, dateTimeAr(o.createdAt) + ' · ' + (PAY[o.payment] || ''), '<a class="btn btn--ghost btn--sm" href="#/orders">' + BACK_ICON + 'كل الطلبات</a>') +
       '<div class="dgrid dgrid--main"><div class="dcol">' +
         card('حالة الطلب', (isTerminal ? '<p class="txt-bad">' + ic('close') + ' ' + (o.status === 'cancelled' ? 'هذا الطلب ملغي.' : 'هذا الطلب مرتجع.') + '</p>' : '') +
           '<ol class="steps">' + stages.map((s, i) => '<li class="' + (i <= doneUpTo ? 'is-done' : i === doneUpTo + 1 && !isTerminal ? 'is-cur' : '') + '"><span>' + (i <= doneUpTo ? ic('check') : i + 1) + '</span>' + esc(s.label) + (s.at ? '<time>' + dateTimeAr(s.at) + '</time>' : '') + '</li>').join('') + '</ol>' +

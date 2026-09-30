@@ -572,6 +572,7 @@
     const name = esc(account.name || account.email || 'حسابي');
     let roleLink = '';
     if (account.role === 'admin') roleLink = '<li><a href="admin.html">لوحة الإدارة</a></li>';
+    else if (account.role === 'support') roleLink = '<li><a href="support.html">لوحة الدعم</a></li>';
     else if (account.role === 'seller') roleLink = '<li><a href="seller.html">لوحة البائع</a></li>';
     else if (account.role === 'rider') roleLink = '<li><a href="rider.html">لوحة المندوب</a></li>';
     else roleLink = '<li><a href="become-seller.html">بيع منتجاتك معنا</a></li><li><a href="become-rider.html">انضم كمندوب توصيل</a></li>';
@@ -671,6 +672,7 @@
     const account = currentAccount();
     const accountTitle = account ? esc(account.name || account.email || 'حسابي') : 'أهلاً، سجّل الدخول';
     const roleItems = account && account.role === 'admin' ? li('admin.html', 'لوحة الإدارة') :
+      account && account.role === 'support' ? li('support.html', 'لوحة الدعم') :
       account && account.role === 'seller' ? li('seller.html', 'لوحة البائع') :
       account && account.role === 'rider' ? li('rider.html', 'لوحة المندوب') :
       li('become-seller.html', 'بيع منتجاتك معنا') + li('become-rider.html', 'انضم كمندوب توصيل');

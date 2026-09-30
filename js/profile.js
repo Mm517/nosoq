@@ -12,15 +12,17 @@
     seller: ['لوحة البائع', 'أدر متجرك ومنتجاتك وطلباتك', 'seller.html'],
     rider: ['لوحة المندوب', 'تابع التوصيلات والأرباح اليومية', 'rider.html'],
     admin: ['لوحة الإدارة', 'شغّل السوق وتابع الدعم والطلبات', 'admin.html'],
+    support: ['لوحة الدعم', 'رد على محادثات العملاء حسب نطاقك', 'support.html'],
     customer: ['ابدأ البيع معنا', 'حوّل منتجاتك إلى متجر على نَسَق', 'become-seller.html']
   };
   const ORDER_STATUS = { new: 'جديد', processing: 'قيد المعالجة', shipped: 'تم الشحن', completed: 'مكتمل', cancelled: 'ملغي' };
   function readSession() {
     try { return JSON.parse(localStorage.getItem('nasaq_session_v1') || 'null'); } catch (_) { return null; }
   }
+  const CH = () => (window.NIcon ? window.NIcon('chev-left', { size: 18 }) : '');
   function roleLink(account) {
     const item = roleCopy[account.role] || roleCopy.customer;
-    return '<a class="profile-role-link" href="' + item[2] + '"><span><strong>' + item[0] + '</strong><br><small>' + item[1] + '</small></span><span aria-hidden="true">←</span></a>';
+    return '<a class="profile-role-link" href="' + item[2] + '"><span><strong>' + item[0] + '</strong><br><small>' + item[1] + '</small></span><span aria-hidden="true">' + CH() + '</span></a>';
   }
   function orderMarkupFrom(orders) {
     if (!orders || !orders.length) return '<div class="profile-orders__empty">لا توجد طلبات محفوظة بعد. <a href="shop.html">تصفّح المنتجات</a></div>';
@@ -47,8 +49,12 @@
     root.innerHTML = '<section class="profile-hero"><div class="profile-identity"><div class="profile-avatar" aria-hidden="true">' + esc(initials) + '</div><div><p class="profile-kicker">مرحباً بك في نَسَق</p><h1>' + esc(name) + '</h1><p class="profile-email">' + esc(account.email || '') + '</p></div></div><span class="profile-role">' + esc(roleNames[account.role] || roleNames.customer) + '</span></section>' +
       '<div class="profile-grid"><section class="profile-card"><h2>بيانات الحساب</h2><p class="profile-card__sub">عدّل بياناتك وستظهر في حسابك وكل طلباتك القادمة.</p><form class="profile-form" data-profile-form><div class="profile-fields"><div class="field"><label for="profile-name">الاسم</label><input class="input" id="profile-name" name="name" value="' + esc(name) + '" autocomplete="name" required></div><div class="field"><label for="profile-phone">رقم الهاتف</label><input class="input" id="profile-phone" name="phone" value="' + esc(account.phone || '') + '" autocomplete="tel" dir="ltr" required></div><div class="field"><label for="profile-email">البريد الإلكتروني</label><input class="input" id="profile-email" value="' + esc(account.email || '') + '" dir="ltr" readonly></div></div><p class="profile-form__message" data-profile-message role="status"></p><div class="profile-actions"><button class="btn btn--primary" type="submit">حفظ البيانات</button><a class="btn btn--ghost" href="shop.html?wishlist=1">المفضلة</a><a class="btn btn--ghost" href="cart.html">سلة التسوق</a><button class="btn btn--quiet" type="button" data-profile-logout>تسجيل الخروج</button></div></form></section>' +
       '<section class="profile-card" data-location-card><h2>موقعك</h2><p class="profile-card__sub" data-location-summary>' + locationSummary + '</p><button class="btn btn--ghost" type="button" data-location-edit-toggle>' + (hasLocation ? 'تعديل الموقع' : 'تحديد الموقع') + '</button><form class="profile-form" data-location-form hidden><div data-geo-root></div><p class="profile-form__message" data-location-message role="status"></p><div class="profile-actions"><button class="btn btn--primary" type="submit">حفظ الموقع</button><button class="btn btn--quiet" type="button" data-location-cancel>إلغاء</button></div></form></section>' +
-      '<section class="profile-card"><h2>مساحتك في نَسَق</h2><p class="profile-card__sub">الوصول السريع للأدوات المناسبة لدورك.</p><div class="profile-role-nav">' + roleLink(account) + (account.role === 'customer' ? '<a class="profile-role-link" href="become-rider.html"><span><strong>انضم كمندوب توصيل</strong><br><small>قدّم طلبك وابدأ رحلتك مع نَسَق</small></span><span aria-hidden="true">←</span></a>' : '') + '</div></section>' +
+      '<section class="profile-card"><h2>مساحتك في نَسَق</h2><p class="profile-card__sub">الوصول السريع للأدوات المناسبة لدورك.</p><div class="profile-role-nav">' + roleLink(account) + (account.role === 'customer' ? '<a class="profile-role-link" href="become-rider.html"><span><strong>انضم كمندوب توصيل</strong><br><small>قدّم طلبك وابدأ رحلتك مع نَسَق</small></span><span aria-hidden="true">' + CH() + '</span></a>' : '') +
+        '<button type="button" class="profile-role-link profile-role-link--btn" data-open-support><span><strong>الدعم والمساعدة</strong><br><small>ابدأ محادثة مع فريق الدعم أو تابع محادثاتك</small></span><span aria-hidden="true">' + CH() + '</span></button>' +
+        '</div></section>' +
       '<section class="profile-card profile-orders"><h2>طلباتك</h2><p class="profile-card__sub">آخر الطلبات المرتبطة بحسابك، محدّثة مباشرة من قاعدة البيانات.</p>' + orderMarkup + '</section></div>';
+    const supportBtn = root.querySelector('[data-open-support]');
+    if (supportBtn) supportBtn.addEventListener('click', () => { if (window.NasaqSupport) window.NasaqSupport.open(); });
     const form = root.querySelector('[data-profile-form]');
     if (form) form.addEventListener('submit', async (event) => {
       event.preventDefault();

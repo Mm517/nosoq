@@ -144,7 +144,7 @@
     row2.push(UI.tileCard({
       id: 'tc-top', title: 'الأعلى تقييماً', href: 'shop.html?sort=rating',
       tiles: topRated.map((p) => UI.tile({
-        href: 'product.html?id=' + p.id, img: img(p), label: esc(p.name), sub: p.reviews ? '★ ' + p.rating.toFixed(1) + ' (' + p.reviews + ' تقييم)' : 'جديد على نَسَق'
+        href: 'product.html?id=' + p.id, img: img(p), label: esc(p.name), sub: p.reviews ? '<svg class="icon" viewBox="0 0 24 24" width="13" height="13" fill="currentColor" aria-hidden="true" focusable="false" style="vertical-align:-1px;margin-inline-end:3px;color:var(--c-star,#f5a524)"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg>' + p.rating.toFixed(1) + ' (' + p.reviews + ' تقييم)' : 'جديد على نَسَق'
       }))
     }));
   }

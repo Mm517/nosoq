@@ -27,6 +27,9 @@
     /* الرابط auth.html?tab=signup يفتح تبويب إنشاء الحساب مباشرة (من قائمة الحساب في الهيدر) */
     const wanted = new URLSearchParams(location.search).get('tab');
     if (wanted && tabs.some((t) => t.dataset.tab === wanted)) activate(wanted);
+
+    /* موظف دعم مسجّل دخول بالفعل → لوحة الدعم بدل صفحة الدخول */
+    try { const cur = JSON.parse(localStorage.getItem('nasaq_session_v1') || 'null'); if (cur && cur.role === 'support') location.replace('support.html'); } catch (_) { /* تجاهل */ }
   }
 
   /* ---------- موقع المستخدم عند التسجيل (داخل نموذج إنشاء الحساب) ---------- */
@@ -71,7 +74,8 @@
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'بيانات الدخول غير صحيحة.');
         if (window.NasaqCloud) window.NasaqCloud.saveSession(data);
-        location.href = 'index.html';
+        /* موظف الدعم (حسب الداتا بيس) يروح لصفحة الدعم على طول */
+        location.href = (data.user && data.user.role === 'support') ? 'support.html' : 'index.html';
       } catch (error) {
         formError(loginForm, error.message);
       } finally {
