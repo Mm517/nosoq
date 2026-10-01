@@ -19,6 +19,7 @@
   <script src="js/skeleton.js"></script>
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/onboarding.css">
+  <link rel="stylesheet" href="css/wizard.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/nasaq-config.js"></script>
@@ -33,6 +34,8 @@
   <script defer src="js/geo.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/onboarding.js"></script>
+  <script defer src="js/wizard.js"></script>
+  <script defer src="js/signup-wizards.js"></script>
 </head>
 <body data-page="become-rider">
   <header id="site-header" class="site-header"></header>
@@ -51,131 +54,164 @@
           <p class="onboarding__sub">انضم لأسطول توصيل نَسَق وحقق دخلاً مرناً ومجزياً مع كل طلب تقوم بتوصيله.</p>
         </div>
 
-        <form id="rider-form" class="checkout__form" novalidate style="margin-top:var(--sp-7)">
-          <fieldset class="fieldset">
-            <legend class="step-legend"><span class="step-legend__num">1</span> بياناتك الشخصية</legend>
-            <div class="form-grid form-grid--2">
-              <div class="field span-2">
-                <label for="r-name">الاسم بالكامل</label>
-                <input class="input" id="r-name" type="text" placeholder="أدخل اسمك الثلاثي كما في البطاقة" autocomplete="name" required data-field-name>
-              </div>
-              <div class="field">
-                <label for="r-phone">رقم الهاتف (واتساب والتواصل)</label>
-                <input class="input" id="r-phone" type="tel" inputmode="tel" dir="ltr" placeholder="01050447879" required data-field-phone>
-              </div>
-              <div class="field">
-                <label for="r-nid">الرقم القومي (14 رقم)</label>
-                <input class="input" id="r-nid" type="text" inputmode="numeric" dir="ltr" placeholder="أدخل الـ 14 رقماً بالبطاقة" required>
-              </div>
-              <div class="field">
-                <label for="r-email">البريد الإلكتروني</label>
-                <input class="input" id="r-email" type="email" dir="ltr" placeholder="name@example.com" autocomplete="email" required data-field-email>
-              </div>
-              <div class="field">
-                <label>صورة البطاقة الشخصية (وجه وظهر)</label>
-                <div class="dropzone">
-                  <svg class="icon dropzone__icon" aria-hidden="true"><use href="#i-idcard"></use></svg>
-                  <strong data-dz-label data-default="ارفع صورة الوجه والظهر للبطاقة">ارفع صورة الوجه والظهر للبطاقة</strong>
-                  <small>تأكد من وضوح الأرقام وسريان البطاقة</small>
-                  <input type="file" accept="image/*" data-doc="idPhoto" aria-label="صورة البطاقة الشخصية">
-                </div>
-              </div>
-              <div class="field">
-                <label>صورة شخصية حديثة</label>
-                <div class="dropzone">
-                  <svg class="icon dropzone__icon" aria-hidden="true"><use href="#i-camera"></use></svg>
-                  <strong data-dz-label data-default="اضغط لرفع الصورة أو التقاطها">اضغط لرفع الصورة أو التقاطها</strong>
-                  <small>خلفية بيضاء وواضحة (PNG أو JPG)</small>
-                  <input type="file" accept="image/*" data-doc="personalPhoto" aria-label="صورة شخصية حديثة">
-                </div>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend class="step-legend"><span class="step-legend__num">2</span> منطقة ووسيلة التوصيل</legend>
-            <div class="form-grid form-grid--2">
-              <div class="field">
-                <label for="r-gov">المحافظة</label>
-                <select class="select" id="r-gov" required>
-                  <option value="" selected disabled>اختر المحافظة</option>
-                  <option>القاهرة</option>
-                  <option>الجيزة</option>
-                  <option>القليوبية</option>
-                  <option>الإسكندرية</option>
-                  <option>الدقهلية</option>
-                  <option>الشرقية</option>
-                  <option>أخرى</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="r-area">الحي / المدينة</label>
-                <input class="input" id="r-area" type="text" placeholder="مثال: المعادي، مدينتي" required>
-              </div>
-              <div class="field span-2">
-                <label for="r-range">حدود ونطاق التوصيل المتاح لك</label>
-                <textarea class="textarea" id="r-range" rows="2" placeholder="مثال: التجمع، المعادي، مدينتي (أو نطاق 15 كم)"></textarea>
-              </div>
-              <div class="field span-2">
-                <label>وسيلة التوصيل المتوفرة معك</label>
-                <div class="vehicle-grid" role="radiogroup" aria-label="وسيلة التوصيل">
-                  <label class="vehicle-option">
-                    <input type="radio" name="vehicle" value="motorbike" checked>
-                    <svg class="icon" aria-hidden="true"><use href="#i-motorbike"></use></svg>
-                    <span>موتوسيكل</span>
-                  </label>
-                  <label class="vehicle-option">
-                    <input type="radio" name="vehicle" value="scooter">
-                    <svg class="icon" aria-hidden="true"><use href="#i-motorbike"></use></svg>
-                    <span>سكوتر</span>
-                  </label>
-                  <label class="vehicle-option">
-                    <input type="radio" name="vehicle" value="car">
-                    <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
-                    <span>سيارة</span>
-                  </label>
-                  <label class="vehicle-option">
-                    <input type="radio" name="vehicle" value="bike">
-                    <svg class="icon" aria-hidden="true"><use href="#i-bicycle"></use></svg>
-                    <span>عجلة / هوائية</span>
-                  </label>
-                </div>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset class="fieldset">
-            <legend class="step-legend"><span class="step-legend__num">3</span> بيانات الدخول والأمان</legend>
-            <div class="form-grid form-grid--2">
-              <div class="field">
-                <label for="r-pass">كلمة المرور</label>
-                <input class="input" id="r-pass" type="password" placeholder="6 أحرف أو أرقام على الأقل" autocomplete="new-password" required data-pass>
-              </div>
-              <div class="field">
-                <label for="r-pass2">تأكيد كلمة المرور</label>
-                <input class="input" id="r-pass2" type="password" placeholder="أعد إدخال كلمة المرور" autocomplete="new-password" required data-pass-confirm aria-describedby="err-r-pass2">
-                <p class="field__error" id="err-r-pass2"></p>
-              </div>
-            </div>
-          </fieldset>
-
-          <div class="notice">
-            <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
-            <div>
-              <strong>ملاحظة هامة وتأكيد الحساب</strong>
-              <p>سيتم مراجعة بياناتك وصور المستندات المسجلة وتأكيد تفعيل الحساب خلال <strong>12 ساعة</strong> من قِبل فريق عمليات نَسَق، وسنرسل لك إشعاراً عبر واتساب والرسائل النصية.</p>
-            </div>
+        <form id="rider-form" class="wz" data-wizard="rider" novalidate>
+      <div data-wz-stepper></div>
+      <p class="wz-notice" data-wz-notice role="status" hidden></p>
+      <div class="wz-body">
+      <section class="wz-step" data-step="account" data-label="wz_st_account" aria-labelledby="wz-t-account" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-account" data-wz-title tabindex="-1" data-i18n="wz_r1_title">حساب المندوب</h2>
+          <p data-i18n="wz_r1_desc">بيانات الدخول الخاصة بك كمندوب توصيل.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-fields wz-fields--2">
+          <p class="wz-notice span-2" data-show-if="loggedIn" hidden data-i18n="wz_logged_in_note">أنت مسجَّل الدخول بالفعل، سنستخدم حسابك الحالي ولا تحتاج كلمة مرور جديدة.</p>
+          <div class="field span-2">
+            <label for="r-name" data-i18n="wz_f_name">الاسم بالكامل</label>
+            <input class="input" id="r-name" name="name" type="text" placeholder="أدخل اسمك الثلاثي أو الرباعي كما في البطاقة" data-i18n-placeholder="wz_ph_fullname" autocomplete="name" data-rules="required">
           </div>
-
           <div class="field">
-            <label class="check" for="f-terms">
-              <input type="checkbox" id="f-terms" required>
-              <span>أوافق على شروط الاستخدام واتفاقية مندوبي التوصيل وإشعار الخصوصية المعمول به في منصة نَسَق</span>
-            </label>
+            <label for="r-email" data-i18n="wz_f_email">البريد الإلكتروني</label>
+            <input class="input" id="r-email" name="email" type="email" inputmode="email" dir="ltr" autocapitalize="off" spellcheck="false" placeholder="name@example.com" autocomplete="email" data-rules="required email">
           </div>
-
-          <button type="submit" class="btn btn--accent btn--lg btn--block">تقديم طلب الانضمام كمندوب توصيل</button>
-        </form>
+          <div class="field">
+            <label for="r-phone" data-i18n="wz_f_phone">رقم الهاتف</label>
+            <input class="input" id="r-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="01050447879" autocomplete="tel" data-rules="required phone">
+          </div>
+          <div class="field" data-hide-if="loggedIn">
+            <label for="r-pass" data-i18n="wz_f_password">كلمة المرور</label>
+            <input class="input" id="r-pass" name="password" type="password" placeholder="6 أحرف أو أرقام على الأقل" data-i18n-placeholder="wz_ph_pass" autocomplete="new-password" data-rules="required password:6">
+            <div data-wz-strength data-for="password"></div>
+            <p class="field__hint" id="r-pass-hint" data-i18n="wz_pass_hint">6 أحرف على الأقل. الأفضل خلط الحروف والأرقام والرموز.</p>
+          </div>
+          <div class="field" data-hide-if="loggedIn">
+            <label for="r-pass2" data-i18n="wz_f_password2">تأكيد كلمة المرور</label>
+            <input class="input" id="r-pass2" name="password2" type="password" placeholder="أعد إدخال كلمة المرور" data-i18n-placeholder="wz_ph_pass2" autocomplete="new-password" data-rules="required match:#r-pass">
+          </div>
+        </div>
+      </section>
+      <section class="wz-step" data-step="vehicle" data-label="wz_st_vehicle" aria-labelledby="wz-t-vehicle" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-vehicle" data-wz-title tabindex="-1" data-i18n="wz_r2_title">منطقة ووسيلة التوصيل</h2>
+          <p data-i18n="wz_r2_desc">اختر وسيلة التوصيل المتوفرة معك والمنطقة التي تغطيها.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-fields wz-fields--2">
+          <div class="field span-2">
+            <span class="label" id="r-veh-label" data-i18n="wz_f_vehicle">وسيلة التوصيل المتوفرة معك</span>
+            <div class="vehicle-grid" role="radiogroup" aria-labelledby="r-veh-label">
+              <label class="vehicle-option">
+                <input type="radio" name="vehicle" value="motorbike" checked>
+                <svg class="icon" aria-hidden="true"><use href="#i-motorbike"></use></svg>
+                <span data-i18n="wz_veh_motorbike">موتوسيكل</span>
+              </label>
+              <label class="vehicle-option">
+                <input type="radio" name="vehicle" value="scooter">
+                <svg class="icon" aria-hidden="true"><use href="#i-motorbike"></use></svg>
+                <span data-i18n="wz_veh_scooter">سكوتر</span>
+              </label>
+              <label class="vehicle-option">
+                <input type="radio" name="vehicle" value="car">
+                <svg class="icon" aria-hidden="true"><use href="#i-car"></use></svg>
+                <span data-i18n="wz_veh_car">سيارة</span>
+              </label>
+              <label class="vehicle-option">
+                <input type="radio" name="vehicle" value="bike">
+                <svg class="icon" aria-hidden="true"><use href="#i-bicycle"></use></svg>
+                <span data-i18n="wz_veh_bike">عجلة / هوائية</span>
+              </label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="r-gov" data-i18n="wz_f_gov">المحافظة</label>
+            <select class="select" id="r-gov" name="city" data-rules="required" autocomplete="address-level1">
+              <option value="" selected disabled data-i18n="wz_pick_gov">اختر المحافظة</option>
+              <option value="القاهرة" data-i18n="wz_gov_0">القاهرة</option>
+              <option value="الجيزة" data-i18n="wz_gov_1">الجيزة</option>
+              <option value="القليوبية" data-i18n="wz_gov_2">القليوبية</option>
+              <option value="الإسكندرية" data-i18n="wz_gov_3">الإسكندرية</option>
+              <option value="الدقهلية" data-i18n="wz_gov_4">الدقهلية</option>
+              <option value="الشرقية" data-i18n="wz_gov_5">الشرقية</option>
+              <option value="أخرى" data-i18n="wz_gov_6">أخرى</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="r-area" data-i18n="wz_f_area">الحي / المدينة</label>
+            <input class="input" id="r-area" name="area" type="text" placeholder="مثال: المعادي، مدينتي" data-i18n-placeholder="wz_ph_area" data-rules="required">
+          </div>
+          <div class="field span-2">
+            <label for="r-range"><span data-i18n="wz_f_range">حدود ونطاق التوصيل المتاح لك</span> <span class="wz-opt" data-i18n="wz_optional">(اختياري)</span></label>
+            <textarea class="textarea" id="r-range" name="coverage" rows="2" placeholder="مثال: التجمع، المعادي، مدينتي (أو نطاق 15 كم)" data-i18n-placeholder="wz_ph_range"></textarea>
+          </div>
+        </div>
+      </section>
+      <section class="wz-step" data-step="docs" data-label="wz_st_docs" aria-labelledby="wz-t-docs" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-docs" data-wz-title tabindex="-1" data-i18n="wz_r3_title">الهوية والصور</h2>
+          <p data-i18n="wz_r3_desc">نراجعها قبل اعتماد حسابك، وتبقى خاصة بفريق نَسَق فقط.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-fields wz-fields--2">
+          <div class="field span-2">
+            <label for="r-nid" data-i18n="wz_f_nid">الرقم القومي (14 رقم)</label>
+            <input class="input" id="r-nid" name="nid" type="text" inputmode="numeric" dir="ltr" placeholder="أدخل 14 رقماً بالبطاقة الشخصية" data-i18n-placeholder="wz_ph_nid" data-rules="required nid">
+          </div>
+          <div class="field span-2">
+            <span class="label" data-i18n="wz_f_photo_id">صورة البطاقة الشخصية (وجه وظهر)</span>
+            <div class="dropzone">
+              <svg class="icon dropzone__icon" aria-hidden="true"><use href="#i-idcard"></use></svg>
+              <strong data-dz-label data-i18n="wz_dz_id">ارفع صورة الوجه والظهر للبطاقة</strong>
+              <small data-i18n="wz_dz_id_hint">تأكد من وضوح الأرقام وسريان البطاقة</small>
+              <input type="file" accept="image/*" name="doc_idPhoto" id="f-idPhoto" data-doc="idPhoto" data-rules="image" aria-label="صورة البطاقة الشخصية (وجه وظهر)" data-i18n-aria-label="wz_f_photo_id">
+            </div>
+          </div>
+          <div class="field span-2">
+            <span class="label" data-i18n="wz_f_photo_personal">صورة شخصية حديثة</span>
+            <div class="dropzone">
+              <svg class="icon dropzone__icon" aria-hidden="true"><use href="#i-camera"></use></svg>
+              <strong data-dz-label data-i18n="wz_dz_rider_photo">اضغط لرفع الصورة أو التقاطها</strong>
+              <small data-i18n="wz_dz_rider_photo_hint">خلفية بيضاء وواضحة (PNG أو JPG)</small>
+              <input type="file" accept="image/*" name="doc_personalPhoto" id="f-personalPhoto" data-doc="personalPhoto" data-rules="image" aria-label="صورة شخصية حديثة" data-i18n-aria-label="wz_f_photo_personal">
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="wz-step" data-step="review" data-label="wz_st_review" aria-labelledby="wz-t-review" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-review" data-wz-title tabindex="-1" data-i18n="wz_apply_review_title">مراجعة وإرسال الطلب</h2>
+          <p data-i18n="wz_review_desc">تأكد أن كل شيء صحيح، ثم وافق على الشروط لإتمام التسجيل.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-summary" data-wz-summary></div>
+        <div class="notice">
+          <svg class="icon" aria-hidden="true"><use href="#i-clock"></use></svg>
+          <div>
+            <strong data-i18n="wz_notice_rider_title">ملاحظة هامة وتأكيد الحساب</strong>
+            <p data-i18n="wz_notice_rider">تتم مراجعة بياناتك وصور المستندات وتفعيل حسابك خلال 12 ساعة من فريق عمليات نَسَق، وسنرسل لك إشعاراً عبر واتساب والرسائل النصية.</p>
+          </div>
+        </div>
+        <div class="field">
+          <label class="check" for="f-terms">
+            <input type="checkbox" id="f-terms" name="terms" data-nodraft data-rules="checked">
+            <span data-i18n="wz_terms_rider">أوافق على شروط الاستخدام واتفاقية مندوبي التوصيل وإشعار الخصوصية المعمول به في منصة نَسَق</span>
+          </label>
+        </div>
+      </section>
+      </div>
+      <div class="wz-nav">
+        <button type="button" class="btn btn--ghost btn--lg" data-wz-prev hidden><span data-i18n="wz_prev">السابق</span></button>
+        <button type="button" class="btn btn--accent btn--lg" data-wz-next aria-disabled="true"><span data-i18n="wz_next">التالي</span></button>
+        <button type="submit" class="btn btn--accent btn--lg" data-wz-submit data-label="wz_submit_rider" hidden><span data-wz-submit-label data-i18n="wz_submit_rider">تقديم طلب الانضمام كمندوب توصيل</span></button>
+      </div>
+      <div class="wz-success" data-wz-success hidden>
+        <div class="wz-success__icon" aria-hidden="true">✓</div>
+        <h2 data-wz-title tabindex="-1" data-i18n="wz_ok_app_title">طلبك قيد المراجعة</h2>
+        <p data-i18n="wz_ok_app_desc">استلمنا طلبك وسيراجعه فريق نَسَق خلال 12 ساعة. احتفظ برقم الطلب للمتابعة.</p>
+        <div class="wz-success__id"><small data-i18n="wz_ok_app_id">رقم الطلب</small><strong data-wz-reqid>—</strong></div>
+        <a class="btn btn--accent btn--lg" data-wz-continue href="application-status.html" data-i18n="wz_ok_app_cta">متابعة حالة الطلب</a>
+        <p class="wz-success__count" data-wz-countdown></p>
+      </div>
+    </form>
 
         <p class="onboarding__crosslink">لديك حساب مسجل بالفعل؟ <a href="auth.html">تسجيل الدخول</a></p>
       </div>

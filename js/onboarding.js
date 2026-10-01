@@ -38,6 +38,7 @@
     if (signupGeo) return;
     const root = $('#panel-signup [data-geo-root]');
     if (!root || !window.Geo) return;
+    if (root.closest('[data-wizard]')) return;   /* الأداة بتتركّب من js/signup-wizards.js */
     signupGeo = window.Geo.mount(root, {});
   }
 
@@ -56,6 +57,7 @@
     const loginForm = $('#panel-login form');
     const signupForm = $('#panel-signup form');
     if (!loginForm || !signupForm) return;
+    const signupIsWizard = signupForm.hasAttribute('data-wizard');   /* إنشاء الحساب بقى Wizard — المعالج القديم يتخطّاه */
 
     loginForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -83,7 +85,7 @@
       }
     });
 
-    signupForm.addEventListener('submit', async (event) => {
+    if (!signupIsWizard) signupForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       formError(signupForm, '');
       const geoError = $('[data-su-geo-error]', signupForm);
@@ -128,6 +130,7 @@
   /* ---------- مناطق رفع الملفات ---------- */
   function initDropzones() {
     $$('.dropzone').forEach((zone) => {
+      if (zone.closest('[data-wizard]')) return;   /* الـ Wizard بيدير الـ dropzones بتاعته */
       const input = $('input[type="file"]', zone);
       const label = $('[data-dz-label]', zone);
       if (!input) return;
@@ -183,7 +186,7 @@
      المتجر/الحساب لا يعمل فعلياً إلا بعد اعتماد الإدمن له من لوحة الإدارة. */
   function initApplicationForm(formId, kind) {
     const form = $('#' + formId);
-    if (!form) return;
+    if (!form || form.hasAttribute('data-wizard')) return;   /* الـ Wizard بيتولّى الإرسال (js/signup-wizards.js) */
 
     /* موقع المتجر على الخريطة (إلزامي لطلبات البائع فقط) — يحدَّد لحظة تقديم الطلب حتى
        يظهر المتجر لاحقاً للمشترين القريبين منه (٥٠ كم فأقل)، لا حسب المحافظة المكتوبة. */

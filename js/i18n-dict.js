@@ -243,6 +243,741 @@ window.NASAQ_I18N_DICT = {
 "عدد وأدوات",
 "Tools",
 "Werkzeug"
+],
+"wz_progress_label": [
+"مراحل التسجيل",
+"Registration steps",
+"Registrierungsschritte"
+],
+"wz_step_of": [
+"الخطوة {n} من {total}",
+"Step {n} of {total}",
+"Schritt {n} von {total}"
+],
+"wz_step_done": [
+"مكتملة",
+"completed",
+"abgeschlossen"
+],
+"wz_next": [
+"التالي",
+"Next",
+"Weiter"
+],
+"wz_prev": [
+"السابق",
+"Back",
+"Zurück"
+],
+"wz_edit": [
+"تعديل",
+"Edit",
+"Ändern"
+],
+"wz_submitting": [
+"جارٍ الإرسال…",
+"Submitting…",
+"Wird gesendet…"
+],
+"wz_not_provided": [
+"غير مُدخَل",
+"Not provided",
+"Nicht angegeben"
+],
+"wz_optional": [
+"(اختياري)",
+"(optional)",
+"(optional)"
+],
+"wz_masked": [
+"••••••••",
+"••••••••",
+"••••••••"
+],
+"wz_draft_restored": [
+"استرجعنا بياناتك من حيث توقفت.",
+"We restored your progress where you left off.",
+"Wir haben Ihren Fortschritt an der letzten Stelle wiederhergestellt."
+],
+"wz_draft_restored_pw": [
+"استرجعنا بياناتك. لأسباب أمنية لا نحفظ كلمة المرور، من فضلك أعد إدخالها.",
+"We restored your details. For security we don't store your password, so please enter it again.",
+"Wir haben Ihre Angaben wiederhergestellt. Aus Sicherheitsgründen speichern wir Ihr Passwort nicht – bitte geben Sie es erneut ein."
+],
+"wz_file_lost": [
+"اختر الصورة مرة أخرى («{name}») — لا نحفظ الملفات في المسودة.",
+"Please choose the image again (\"{name}\") – files are not kept in the draft.",
+"Bitte wählen Sie das Bild erneut aus („{name}“) – Dateien werden im Entwurf nicht gespeichert."
+],
+"wz_logged_in_note": [
+"أنت مسجَّل الدخول بالفعل، سنستخدم حسابك الحالي ولا تحتاج كلمة مرور جديدة.",
+"You're already signed in. We'll use your current account, so no new password is needed.",
+"Sie sind bereits angemeldet. Wir verwenden Ihr aktuelles Konto – ein neues Passwort ist nicht nötig."
+],
+"wz_err_required": [
+"هذا الحقل مطلوب",
+"This field is required",
+"Dieses Feld ist erforderlich"
+],
+"wz_err_email": [
+"أدخل بريداً إلكترونياً صحيحاً (مثال: name@example.com)",
+"Enter a valid email address (e.g. name@example.com)",
+"Geben Sie eine gültige E-Mail-Adresse ein (z. B. name@example.com)"
+],
+"wz_err_phone": [
+"أدخل رقم موبايل مصري صحيحاً (مثال: 01012345678)",
+"Enter a valid Egyptian mobile number (e.g. 01012345678)",
+"Geben Sie eine gültige ägyptische Handynummer ein (z. B. 01012345678)"
+],
+"wz_err_nid": [
+"الرقم القومي يجب أن يكون 14 رقماً",
+"The national ID must be 14 digits",
+"Die nationale ID muss aus 14 Ziffern bestehen"
+],
+"wz_err_pass_min": [
+"كلمة المرور يجب ألا تقل عن {n} أحرف",
+"Password must be at least {n} characters",
+"Das Passwort muss mindestens {n} Zeichen lang sein"
+],
+"wz_err_pass_match": [
+"كلمتا المرور غير متطابقتين",
+"The passwords don't match",
+"Die Passwörter stimmen nicht überein"
+],
+"wz_err_terms": [
+"يجب الموافقة على الشروط للمتابعة",
+"You must accept the terms to continue",
+"Sie müssen den Bedingungen zustimmen, um fortzufahren"
+],
+"wz_err_geo": [
+"حدّد موقعك على الخريطة بالضغط عليها أو بالبحث عن عنوان أو بزر الموقع الحالي.",
+"Pick your location on the map by tapping it, searching for an address, or using the current-location button.",
+"Wählen Sie Ihren Standort auf der Karte: antippen, eine Adresse suchen oder die Schaltfläche für den aktuellen Standort verwenden."
+],
+"wz_err_geo_store": [
+"حدّد موقع متجرك على الخريطة قبل المتابعة.",
+"Pick your store location on the map before continuing.",
+"Wählen Sie den Standort Ihres Shops auf der Karte, bevor Sie fortfahren."
+],
+"wz_err_geo_egypt": [
+"الموقع المحدّد خارج مصر. الخدمة متاحة داخل مصر فقط.",
+"The selected location is outside Egypt. The service is available in Egypt only.",
+"Der gewählte Standort liegt außerhalb Ägyptens. Der Dienst ist nur in Ägypten verfügbar."
+],
+"wz_err_file_type": [
+"الملف ليس صورة. استخدم JPG أو PNG.",
+"This file isn't an image. Use JPG or PNG.",
+"Diese Datei ist kein Bild. Verwenden Sie JPG oder PNG."
+],
+"wz_err_file_big": [
+"الملف كبير جداً (الحد الأقصى 25 ميجابايت).",
+"The file is too large (25 MB max).",
+"Die Datei ist zu groß (max. 25 MB)."
+],
+"wz_err_img_unreadable": [
+"تعذّر قراءة الصورة «{name}». استخدم JPG أو PNG.",
+"Could not read the image \"{name}\". Use JPG or PNG.",
+"Das Bild „{name}“ konnte nicht gelesen werden. Verwenden Sie JPG oder PNG."
+],
+"wz_err_img_big": [
+"حجم الصورة «{name}» كبير جداً حتى بعد الضغط.",
+"The image \"{name}\" is still too large after compression.",
+"Das Bild „{name}“ ist auch nach der Komprimierung zu groß."
+],
+"wz_err_cloud": [
+"تعذّر الاتصال بالخادم.",
+"Could not reach the server.",
+"Verbindung zum Server fehlgeschlagen."
+],
+"wz_err_network": [
+"تعذّر الاتصال بالخادم. تحقق من الإنترنت وحاول مرة أخرى.",
+"Could not reach the server. Check your connection and try again.",
+"Verbindung zum Server fehlgeschlagen. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut."
+],
+"wz_err_generic": [
+"تعذّر إكمال الطلب، حاول مرة أخرى.",
+"We could not complete your request. Please try again.",
+"Ihre Anfrage konnte nicht abgeschlossen werden. Bitte versuchen Sie es erneut."
+],
+"wz_err_upload": [
+"تعذّر رفع الصورة. حاول مرة أخرى.",
+"Could not upload the image. Please try again.",
+"Das Bild konnte nicht hochgeladen werden. Bitte versuchen Sie es erneut."
+],
+"wz_err_logo_upload": [
+"تعذّر رفع شعار المتجر. جرّب صورة أخرى.",
+"Could not upload the store logo. Try another image.",
+"Das Shop-Logo konnte nicht hochgeladen werden. Versuchen Sie ein anderes Bild."
+],
+"wz_strength_label": [
+"قوة كلمة المرور",
+"Password strength",
+"Passwortstärke"
+],
+"wz_strength_empty": [
+"—",
+"—",
+"—"
+],
+"wz_strength_weak": [
+"ضعيفة",
+"Weak",
+"Schwach"
+],
+"wz_strength_fair": [
+"مقبولة",
+"Fair",
+"Mittel"
+],
+"wz_strength_good": [
+"جيدة",
+"Good",
+"Gut"
+],
+"wz_strength_strong": [
+"قوية",
+"Strong",
+"Stark"
+],
+"wz_pass_hint": [
+"6 أحرف على الأقل. الأفضل خلط الحروف والأرقام والرموز.",
+"At least 6 characters. Mixing letters, numbers and symbols is stronger.",
+"Mindestens 6 Zeichen. Eine Mischung aus Buchstaben, Zahlen und Sonderzeichen ist sicherer."
+],
+"wz_st_info": [
+"البيانات",
+"Details",
+"Angaben"
+],
+"wz_st_password": [
+"كلمة المرور",
+"Password",
+"Passwort"
+],
+"wz_st_location": [
+"الموقع",
+"Location",
+"Standort"
+],
+"wz_st_review": [
+"المراجعة",
+"Review",
+"Prüfung"
+],
+"wz_st_account": [
+"الحساب",
+"Account",
+"Konto"
+],
+"wz_st_store": [
+"المتجر",
+"Store",
+"Shop"
+],
+"wz_st_store_location": [
+"موقع المتجر",
+"Store location",
+"Shop-Standort"
+],
+"wz_st_docs": [
+"المستندات",
+"Documents",
+"Dokumente"
+],
+"wz_st_vehicle": [
+"المركبة",
+"Vehicle",
+"Fahrzeug"
+],
+"wz_b1_title": [
+"بياناتك الأساسية",
+"Your details",
+"Ihre Angaben"
+],
+"wz_b1_desc": [
+"اكتب اسمك وبريدك ورقم هاتفك لنتواصل معك بخصوص طلباتك.",
+"Enter your name, email and phone so we can reach you about your orders.",
+"Geben Sie Name, E-Mail und Telefonnummer an, damit wir Sie zu Ihren Bestellungen erreichen können."
+],
+"wz_b2_title": [
+"اختر كلمة المرور",
+"Choose a password",
+"Passwort wählen"
+],
+"wz_b2_desc": [
+"استخدم كلمة مرور قوية لحماية حسابك.",
+"Use a strong password to protect your account.",
+"Verwenden Sie ein sicheres Passwort, um Ihr Konto zu schützen."
+],
+"wz_b3_title": [
+"أين موقعك؟",
+"Where are you?",
+"Wo befinden Sie sich?"
+],
+"wz_b3_desc": [
+"حدّد موقعك داخل مصر حتى نعرض لك الأقرب إليك من المتاجر ومندوبي التوصيل.",
+"Pick your location in Egypt so we can show you the nearest stores and couriers.",
+"Wählen Sie Ihren Standort in Ägypten, damit wir Ihnen die nächstgelegenen Shops und Kuriere anzeigen."
+],
+"wz_b4_title": [
+"راجع بياناتك",
+"Review your details",
+"Angaben prüfen"
+],
+"wz_review_desc": [
+"تأكد أن كل شيء صحيح، ثم وافق على الشروط لإتمام التسجيل.",
+"Make sure everything is correct, then accept the terms to finish.",
+"Prüfen Sie alles und stimmen Sie den Bedingungen zu, um die Registrierung abzuschließen."
+],
+"wz_s1_title": [
+"حساب التاجر",
+"Seller account",
+"Verkäuferkonto"
+],
+"wz_s1_desc": [
+"بيانات الدخول الخاصة بك كصاحب المتجر.",
+"Your sign-in details as the store owner.",
+"Ihre Anmeldedaten als Shop-Inhaber."
+],
+"wz_s2_title": [
+"بيانات المتجر",
+"Store details",
+"Shop-Angaben"
+],
+"wz_s2_desc": [
+"عرّف المشترين بمتجرك: اسمه ونوع منتجاتك ونبذة قصيرة.",
+"Tell buyers about your store: its name, what you sell and a short intro.",
+"Stellen Sie Ihren Shop vor: Name, Sortiment und eine kurze Beschreibung."
+],
+"wz_s3_title": [
+"موقع المتجر",
+"Store location",
+"Shop-Standort"
+],
+"wz_s3_desc": [
+"الموقع إلزامي، والمتجر بدونه لا يظهر لأي مشترٍ. يرى المشترون متجرك ضمن نطاق 50 كم منهم.",
+"The location is required: a store without one isn't shown to any buyer. Buyers within 50 km will see your store.",
+"Der Standort ist Pflicht: Ein Shop ohne Standort wird keinem Käufer angezeigt. Käufer im Umkreis von 50 km sehen Ihren Shop."
+],
+"wz_s4_title": [
+"الهوية والصور",
+"ID and photos",
+"Ausweis und Fotos"
+],
+"wz_s4_desc": [
+"نراجعها قبل اعتماد المتجر، وتبقى خاصة بفريق نَسَق فقط.",
+"We review them before approving the store, and they stay private to the Nasaq team.",
+"Wir prüfen sie vor der Freigabe des Shops; sie sind nur für das Nasaq-Team sichtbar."
+],
+"wz_apply_review_title": [
+"مراجعة وإرسال الطلب",
+"Review and submit",
+"Prüfen und absenden"
+],
+"wz_r1_title": [
+"حساب المندوب",
+"Courier account",
+"Kurierkonto"
+],
+"wz_r1_desc": [
+"بيانات الدخول الخاصة بك كمندوب توصيل.",
+"Your sign-in details as a delivery courier.",
+"Ihre Anmeldedaten als Lieferkurier."
+],
+"wz_r2_title": [
+"منطقة ووسيلة التوصيل",
+"Area and vehicle",
+"Gebiet und Fahrzeug"
+],
+"wz_r2_desc": [
+"اختر وسيلة التوصيل المتوفرة معك والمنطقة التي تغطيها.",
+"Choose your delivery vehicle and the area you cover.",
+"Wählen Sie Ihr Fahrzeug und das Gebiet, das Sie abdecken."
+],
+"wz_r3_title": [
+"الهوية والصور",
+"ID and photos",
+"Ausweis und Fotos"
+],
+"wz_r3_desc": [
+"نراجعها قبل اعتماد حسابك، وتبقى خاصة بفريق نَسَق فقط.",
+"We review them before approving your account, and they stay private to the Nasaq team.",
+"Wir prüfen sie vor der Freigabe Ihres Kontos; sie sind nur für das Nasaq-Team sichtbar."
+],
+"wz_f_name": [
+"الاسم بالكامل",
+"Full name",
+"Vollständiger Name"
+],
+"wz_f_email": [
+"البريد الإلكتروني",
+"Email",
+"E-Mail"
+],
+"wz_f_phone": [
+"رقم الهاتف",
+"Phone number",
+"Telefonnummer"
+],
+"wz_f_password": [
+"كلمة المرور",
+"Password",
+"Passwort"
+],
+"wz_f_password2": [
+"تأكيد كلمة المرور",
+"Confirm password",
+"Passwort bestätigen"
+],
+"wz_f_location": [
+"الموقع",
+"Location",
+"Standort"
+],
+"wz_f_store_name": [
+"اسم المتجر / المحل التجاري",
+"Store / business name",
+"Shop- / Geschäftsname"
+],
+"wz_f_category": [
+"نوع المنتجات",
+"Product category",
+"Produktkategorie"
+],
+"wz_f_description": [
+"نبذة عن المتجر",
+"About the store",
+"Über den Shop"
+],
+"wz_f_license": [
+"رقم الترخيص / السجل التجاري",
+"License / commercial register no.",
+"Lizenz- / Handelsregisternummer"
+],
+"wz_f_logo": [
+"شعار المتجر",
+"Store logo",
+"Shop-Logo"
+],
+"wz_f_address": [
+"عنوان المحل بالتفصيل",
+"Store address in detail",
+"Detaillierte Shop-Adresse"
+],
+"wz_f_store_location": [
+"موقع المتجر على الخريطة",
+"Store location on the map",
+"Shop-Standort auf der Karte"
+],
+"wz_f_nid": [
+"الرقم القومي (14 رقم)",
+"National ID (14 digits)",
+"Nationale ID (14 Ziffern)"
+],
+"wz_f_nid_short": [
+"الرقم القومي",
+"National ID",
+"Nationale ID"
+],
+"wz_f_photo_personal": [
+"صورة شخصية حديثة",
+"Recent personal photo",
+"Aktuelles Porträtfoto"
+],
+"wz_f_photo_storefront": [
+"صورة واجهة المحل أو اللافتة",
+"Storefront or signboard photo",
+"Foto der Ladenfront oder des Schildes"
+],
+"wz_f_photo_id": [
+"صورة البطاقة الشخصية (وجه وظهر)",
+"ID card photo (front and back)",
+"Foto des Personalausweises (Vorder- und Rückseite)"
+],
+"wz_f_vehicle": [
+"وسيلة التوصيل المتوفرة معك",
+"Your delivery vehicle",
+"Ihr Lieferfahrzeug"
+],
+"wz_f_vehicle_short": [
+"وسيلة التوصيل",
+"Delivery vehicle",
+"Lieferfahrzeug"
+],
+"wz_f_gov": [
+"المحافظة",
+"Governorate",
+"Gouvernement"
+],
+"wz_f_area": [
+"الحي / المدينة",
+"District / city",
+"Stadtteil / Stadt"
+],
+"wz_f_range": [
+"حدود ونطاق التوصيل المتاح لك",
+"Your delivery range",
+"Ihr Liefergebiet"
+],
+"wz_f_files": [
+"الصور المرفقة",
+"Attached photos",
+"Angehängte Fotos"
+],
+"wz_veh_motorbike": [
+"موتوسيكل",
+"Motorbike",
+"Motorrad"
+],
+"wz_veh_scooter": [
+"سكوتر",
+"Scooter",
+"Roller"
+],
+"wz_veh_car": [
+"سيارة",
+"Car",
+"Auto"
+],
+"wz_veh_bike": [
+"عجلة / هوائية",
+"Bicycle",
+"Fahrrad"
+],
+"wz_cat_clothes": [
+"ملابس",
+"Clothing",
+"Kleidung"
+],
+"wz_pick_gov": [
+"اختر المحافظة",
+"Choose governorate",
+"Gouvernement wählen"
+],
+"wz_gov_0": [
+"القاهرة",
+"Cairo",
+"Kairo"
+],
+"wz_gov_1": [
+"الجيزة",
+"Giza",
+"Gizeh"
+],
+"wz_gov_2": [
+"القليوبية",
+"Qalyubia",
+"Qalyubia"
+],
+"wz_gov_3": [
+"الإسكندرية",
+"Alexandria",
+"Alexandria"
+],
+"wz_gov_4": [
+"الدقهلية",
+"Dakahlia",
+"Dakahlia"
+],
+"wz_gov_5": [
+"الشرقية",
+"Sharqia",
+"Scharqia"
+],
+"wz_gov_6": [
+"أخرى",
+"Other",
+"Andere"
+],
+"wz_ph_fullname": [
+"أدخل اسمك الثلاثي أو الرباعي كما في البطاقة",
+"Enter your full name as on your ID",
+"Geben Sie Ihren vollständigen Namen wie im Ausweis ein"
+],
+"wz_ph_nid": [
+"أدخل 14 رقماً بالبطاقة الشخصية",
+"Enter the 14 digits on your ID card",
+"Geben Sie die 14 Ziffern Ihres Ausweises ein"
+],
+"wz_ph_store_name": [
+"مثال: نَسَق تك ستور",
+"e.g. Nasaq Tech Store",
+"z. B. Nasaq Tech Store"
+],
+"wz_ph_license": [
+"رقم السجل التجاري إن وجد",
+"Commercial register number, if any",
+"Handelsregisternummer, falls vorhanden"
+],
+"wz_ph_description": [
+"ماذا تبيع؟ وما الذي يميّز متجرك؟",
+"What do you sell, and what makes your store special?",
+"Was verkaufen Sie und was macht Ihren Shop besonders?"
+],
+"wz_ph_address": [
+"المحافظة، المركز أو الحي، اسم الشارع، علامة مميزة بجوار المحل",
+"Governorate, district, street name, a landmark next to the store",
+"Gouvernement, Bezirk, Straße, ein Wahrzeichen in der Nähe"
+],
+"wz_ph_area": [
+"مثال: المعادي، مدينتي",
+"e.g. Maadi, Madinaty",
+"z. B. Maadi, Madinaty"
+],
+"wz_ph_range": [
+"مثال: التجمع، المعادي، مدينتي (أو نطاق 15 كم)",
+"e.g. New Cairo, Maadi, Madinaty (or a 15 km radius)",
+"z. B. Neu-Kairo, Maadi, Madinaty (oder 15 km Umkreis)"
+],
+"wz_ph_pass": [
+"6 أحرف أو أرقام على الأقل",
+"At least 6 letters or numbers",
+"Mindestens 6 Buchstaben oder Zahlen"
+],
+"wz_ph_pass2": [
+"أعد إدخال كلمة المرور",
+"Re-enter your password",
+"Passwort erneut eingeben"
+],
+"wz_dz_personal": [
+"انقر لرفع الصورة الشخصية",
+"Click to upload your photo",
+"Klicken, um Ihr Foto hochzuladen"
+],
+"wz_dz_personal_hint": [
+"PNG أو JPG (صورة واضحة للوجه)",
+"PNG or JPG (clear photo of your face)",
+"PNG oder JPG (Gesicht gut erkennbar)"
+],
+"wz_dz_storefront": [
+"انقر لرفع صورة واجهة المحل أو اللافتة",
+"Click to upload a storefront or signboard photo",
+"Klicken, um ein Foto der Ladenfront oder des Schildes hochzuladen"
+],
+"wz_dz_storefront_hint": [
+"تساعد صورة الواجهة المتصفحين والعملاء على تمييز موقعك بدقة",
+"The storefront photo helps people recognise your exact location",
+"Das Foto der Ladenfront hilft, Ihren Standort eindeutig zu erkennen"
+],
+"wz_dz_id": [
+"ارفع صورة الوجه والظهر للبطاقة",
+"Upload the front and back of your ID",
+"Laden Sie Vorder- und Rückseite Ihres Ausweises hoch"
+],
+"wz_dz_id_hint": [
+"تأكد من وضوح الأرقام وسريان البطاقة",
+"Make sure the numbers are clear and the card is valid",
+"Achten Sie auf gut lesbare Ziffern und einen gültigen Ausweis"
+],
+"wz_dz_rider_photo": [
+"اضغط لرفع الصورة أو التقاطها",
+"Tap to upload or take a photo",
+"Tippen, um ein Foto hochzuladen oder aufzunehmen"
+],
+"wz_dz_rider_photo_hint": [
+"خلفية بيضاء وواضحة (PNG أو JPG)",
+"Clear photo on a white background (PNG or JPG)",
+"Klares Foto vor weißem Hintergrund (PNG oder JPG)"
+],
+"wz_dz_logo": [
+"انقر لاختيار شعار المتجر",
+"Click to choose the store logo",
+"Klicken, um das Shop-Logo auszuwählen"
+],
+"wz_dz_logo_hint": [
+"صورة مربعة واضحة",
+"A clear square image",
+"Ein klares quadratisches Bild"
+],
+"wz_notice_seller_title": [
+"تنويه هام بشأن اعتماد وتفعيل الحساب",
+"Important: account approval",
+"Wichtig: Freigabe des Kontos"
+],
+"wz_notice_seller": [
+"تتم مراجعة حسابك واعتماده خلال 12 ساعة من فريق عمليات نَسَق بعد التحقق من المستندات والصور المرفقة، وسيصلك إشعار فور الاعتماد.",
+"Your account is reviewed and approved within 12 hours by the Nasaq operations team after verifying your documents and photos. You'll be notified as soon as it's approved.",
+"Ihr Konto wird vom Nasaq-Team innerhalb von 12 Stunden nach Prüfung der Dokumente und Fotos freigegeben. Sie werden benachrichtigt, sobald es freigegeben ist."
+],
+"wz_notice_rider_title": [
+"ملاحظة هامة وتأكيد الحساب",
+"Important: account confirmation",
+"Wichtig: Bestätigung des Kontos"
+],
+"wz_notice_rider": [
+"تتم مراجعة بياناتك وصور المستندات وتفعيل حسابك خلال 12 ساعة من فريق عمليات نَسَق، وسنرسل لك إشعاراً عبر واتساب والرسائل النصية.",
+"Your details and documents are reviewed and your account is activated within 12 hours by the Nasaq operations team. We'll notify you via WhatsApp and text message.",
+"Ihre Angaben und Dokumente werden geprüft und Ihr Konto wird vom Nasaq-Team innerhalb von 12 Stunden aktiviert. Wir benachrichtigen Sie per WhatsApp und SMS."
+],
+"wz_terms_buyer": [
+"أوافق على شروط الاستخدام وسياسة الخصوصية",
+"I agree to the Terms of Use and Privacy Policy",
+"Ich stimme den Nutzungsbedingungen und der Datenschutzerklärung zu"
+],
+"wz_terms_seller": [
+"أوافق على شروط الاستخدام واتفاقية بائعي أسواق نَسَق وسياسة الخصوصية",
+"I agree to the Terms of Use, the Nasaq Marketplace Seller Agreement and the Privacy Policy",
+"Ich stimme den Nutzungsbedingungen, der Nasaq-Marktplatz-Verkäufervereinbarung und der Datenschutzerklärung zu"
+],
+"wz_terms_rider": [
+"أوافق على شروط الاستخدام واتفاقية مندوبي التوصيل وإشعار الخصوصية المعمول به في منصة نَسَق",
+"I agree to the Terms of Use, the Courier Agreement and the Privacy Notice that apply on Nasaq",
+"Ich stimme den Nutzungsbedingungen, der Kurriervereinbarung und den auf Nasaq geltenden Datenschutzhinweisen zu"
+],
+"wz_submit_buyer": [
+"إنشاء الحساب",
+"Create account",
+"Konto erstellen"
+],
+"wz_submit_seller": [
+"تقديم طلب فتح حساب تاجر",
+"Submit seller application",
+"Verkäuferantrag senden"
+],
+"wz_submit_rider": [
+"تقديم طلب الانضمام كمندوب توصيل",
+"Submit courier application",
+"Kurierbewerbung senden"
+],
+"wz_ok_buyer_title": [
+"تم إنشاء حسابك بنجاح",
+"Your account is ready",
+"Ihr Konto wurde erstellt"
+],
+"wz_ok_buyer_desc": [
+"أهلاً بك في نَسَق! سننقلك إلى الصفحة الرئيسية.",
+"Welcome to Nasaq! We're taking you to the home page.",
+"Willkommen bei Nasaq! Sie werden zur Startseite weitergeleitet."
+],
+"wz_ok_buyer_cta": [
+"ابدأ التسوق",
+"Start shopping",
+"Jetzt einkaufen"
+],
+"wz_ok_app_title": [
+"طلبك قيد المراجعة",
+"Your application is under review",
+"Ihr Antrag wird geprüft"
+],
+"wz_ok_app_desc": [
+"استلمنا طلبك وسيراجعه فريق نَسَق خلال 12 ساعة. احتفظ برقم الطلب للمتابعة.",
+"We received your application and the Nasaq team will review it within 12 hours. Keep your request number for follow-up.",
+"Wir haben Ihren Antrag erhalten; das Nasaq-Team prüft ihn innerhalb von 12 Stunden. Bewahren Sie Ihre Antragsnummer auf."
+],
+"wz_ok_app_id": [
+"رقم الطلب",
+"Request number",
+"Antragsnummer"
+],
+"wz_ok_app_cta": [
+"متابعة حالة الطلب",
+"Track your application",
+"Antragsstatus ansehen"
+],
+"wz_redirecting": [
+"سيتم تحويلك تلقائياً خلال {n} ثوانٍ",
+"Redirecting automatically in {n} seconds",
+"Automatische Weiterleitung in {n} Sekunden"
 ]
 },
 "phrases": {
@@ -3301,6 +4036,78 @@ window.NASAQ_I18N_DICT = {
 "ألعاب وأطفال": [
 "Toys & Kids",
 "Spielzeug & Kinder"
+],
+"هذا البريد الإلكتروني مسجَّل من قبل.": [
+"This email address is already registered.",
+"Diese E-Mail-Adresse ist bereits registriert."
+],
+"هذا البريد الإلكتروني مسجَّل بحساب من قبل. سجّل الدخول بدلاً من إنشاء حساب جديد.": [
+"This email is already registered. Sign in instead of creating a new account.",
+"Diese E-Mail ist bereits registriert. Melden Sie sich an, statt ein neues Konto zu erstellen."
+],
+"كلمة المرور قصيرة جدًا (٦ أحرف على الأقل).": [
+"The password is too short (at least 6 characters).",
+"Das Passwort ist zu kurz (mindestens 6 Zeichen)."
+],
+"محاولات كثيرة، حاول بعد قليل.": [
+"Too many attempts, try again shortly.",
+"Zu viele Versuche, bitte versuchen Sie es gleich erneut."
+],
+"أكمل الاسم والبريد والهاتف وكلمة المرور.": [
+"Complete your name, email, phone and password.",
+"Vervollständigen Sie Name, E-Mail, Telefon und Passwort."
+],
+"تم إنشاء الحساب. الرجاء تأكيد بريدك الإلكتروني من الرسالة المُرسلة إليك قبل تسجيل الدخول.": [
+"Your account was created. Please confirm your email using the message we sent you before signing in.",
+"Ihr Konto wurde erstellt. Bitte bestätigen Sie Ihre E-Mail über die gesendete Nachricht, bevor Sie sich anmelden."
+],
+"أكمل اسم المتجر ورقم الهاتف والعنوان.": [
+"Complete the store name, phone number and address.",
+"Vervollständigen Sie Shop-Name, Telefonnummer und Adresse."
+],
+"أنشئ حسابك أولاً قبل تقديم طلب المتجر.": [
+"Create your account first before submitting the store application.",
+"Erstellen Sie zuerst Ihr Konto, bevor Sie den Shop-Antrag senden."
+],
+"أنشئ حسابك أولاً قبل تقديم طلب الانضمام.": [
+"Create your account first before submitting the application.",
+"Erstellen Sie zuerst Ihr Konto, bevor Sie die Bewerbung senden."
+],
+"أنشئ حسابك أولاً قبل رفع الصور.": [
+"Create your account first before uploading photos.",
+"Erstellen Sie zuerst Ihr Konto, bevor Sie Fotos hochladen."
+],
+"أكمل الاسم ورقم الهاتف.": [
+"Complete your name and phone number.",
+"Vervollständigen Sie Namen und Telefonnummer."
+],
+"تعذّر إنشاء المتجر.": [
+"Could not create the store.",
+"Der Shop konnte nicht erstellt werden."
+],
+"تعذّر إنشاء حساب المندوب.": [
+"Could not create the courier account.",
+"Das Kurierkonto konnte nicht erstellt werden."
+],
+"حدث خطأ غير متوقع.": [
+"An unexpected error occurred.",
+"Ein unerwarteter Fehler ist aufgetreten."
+],
+"تعذّر رفع الصورة.": [
+"Could not upload the image.",
+"Das Bild konnte nicht hochgeladen werden."
+],
+"تعذّر الاتصال بالخادم": [
+"Could not reach the server",
+"Verbindung zum Server fehlgeschlagen"
+],
+"حجم الصورة أكبر من 5 ميجابايت.": [
+"The image is larger than 5 MB.",
+"Das Bild ist größer als 5 MB."
+],
+"صيغة الصورة غير مدعومة (JPG أو PNG أو WEBP).": [
+"Unsupported image format (JPG, PNG or WEBP).",
+"Nicht unterstütztes Bildformat (JPG, PNG oder WEBP)."
 ]
 }
 };

@@ -19,6 +19,7 @@
   <script src="js/skeleton.js"></script>
   <link rel="stylesheet" href="css/pages.css">
   <link rel="stylesheet" href="css/onboarding.css">
+  <link rel="stylesheet" href="css/wizard.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
   <script src="js/nasaq-config.js"></script>
@@ -33,6 +34,8 @@
   <script defer src="js/geo.js"></script>
   <script defer src="js/ui.js"></script>
   <script defer src="js/onboarding.js"></script>
+  <script defer src="js/wizard.js"></script>
+  <script defer src="js/signup-wizards.js"></script>
 </head>
 <body data-page="auth">
   <header id="site-header" class="site-header"></header>
@@ -79,37 +82,92 @@
           <h1>إنشاء حساب جديد</h1>
           <p class="onboarding__sub">انضم إلى نَسَق في أقل من دقيقة، وتابع طلباتك وقائمة مفضلاتك بسهولة.</p>
 
-          <form class="auth-form" novalidate>
-            <div class="field">
-              <label for="su-name">الاسم بالكامل</label>
-              <input class="input" id="su-name" type="text" autocomplete="name" required>
-            </div>
-            <div class="field">
-              <label for="su-email">البريد الإلكتروني</label>
-              <input class="input" id="su-email" type="email" autocomplete="email" placeholder="name@example.com" required>
-            </div>
-            <div class="field">
-              <label for="su-phone">رقم الهاتف</label>
-              <input class="input" id="su-phone" type="tel" inputmode="tel" dir="ltr" placeholder="01xxxxxxxxx" autocomplete="tel" required>
-            </div>
-            <div class="field">
-              <label for="su-pass">كلمة المرور</label>
-              <input class="input" id="su-pass" type="password" autocomplete="new-password" required>
-            </div>
-            <div class="field">
-              <div class="field__row">
-                <label id="su-geo-label">موقعك</label>
-              </div>
-              <p class="onboarding__sub" style="margin-top:0">حدّد موقعك على الخريطة حتى يظهر متجرك ومندوب التوصيل الأقرب لك بدقة.</p>
-              <div data-geo-root aria-labelledby="su-geo-label"></div>
-              <p class="field__error" data-su-geo-error role="alert"></p>
-            </div>
-            <label class="check">
-              <input type="checkbox" required>
-              <span>أوافق على شروط الاستخدام وسياسة الخصوصية</span>
-            </label>
-            <button class="btn btn--accent btn--lg btn--block" type="submit">إنشاء الحساب</button>
-          </form>
+          <form id="signup-wizard" class="wz" data-wizard="buyer" novalidate>
+      <div data-wz-stepper></div>
+      <p class="wz-notice" data-wz-notice role="status" hidden></p>
+      <div class="wz-body">
+      <section class="wz-step" data-step="info" data-label="wz_st_info" aria-labelledby="wz-t-info" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-info" data-wz-title tabindex="-1" data-i18n="wz_b1_title">بياناتك الأساسية</h2>
+          <p data-i18n="wz_b1_desc">اكتب اسمك وبريدك ورقم هاتفك لنتواصل معك بخصوص طلباتك.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-fields">
+          <div class="field">
+            <label for="su-name" data-i18n="wz_f_name">الاسم بالكامل</label>
+            <input class="input" id="su-name" name="name" type="text" autocomplete="name" data-rules="required">
+          </div>
+          <div class="field">
+            <label for="su-email" data-i18n="wz_f_email">البريد الإلكتروني</label>
+            <input class="input" id="su-email" name="email" type="email" inputmode="email" dir="ltr" autocapitalize="off" spellcheck="false" placeholder="name@example.com" autocomplete="email" data-rules="required email">
+          </div>
+          <div class="field">
+            <label for="su-phone" data-i18n="wz_f_phone">رقم الهاتف</label>
+            <input class="input" id="su-phone" name="phone" type="tel" inputmode="tel" dir="ltr" placeholder="01xxxxxxxxx" autocomplete="tel" data-rules="required phone">
+          </div>
+        </div>
+      </section>
+      <section class="wz-step" data-step="password" data-label="wz_st_password" aria-labelledby="wz-t-password" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-password" data-wz-title tabindex="-1" data-i18n="wz_b2_title">اختر كلمة المرور</h2>
+          <p data-i18n="wz_b2_desc">استخدم كلمة مرور قوية لحماية حسابك.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-fields">
+          <div class="field">
+            <label for="su-pass" data-i18n="wz_f_password">كلمة المرور</label>
+            <input class="input" id="su-pass" name="password" type="password" placeholder="6 أحرف أو أرقام على الأقل" data-i18n-placeholder="wz_ph_pass" autocomplete="new-password" data-rules="required password:6">
+            <div data-wz-strength data-for="password"></div>
+            <p class="field__hint" id="su-pass-hint" data-i18n="wz_pass_hint">6 أحرف على الأقل. الأفضل خلط الحروف والأرقام والرموز.</p>
+          </div>
+          <div class="field">
+            <label for="su-pass2" data-i18n="wz_f_password2">تأكيد كلمة المرور</label>
+            <input class="input" id="su-pass2" name="password2" type="password" placeholder="أعد إدخال كلمة المرور" data-i18n-placeholder="wz_ph_pass2" autocomplete="new-password" data-rules="required match:#su-pass">
+          </div>
+        </div>
+      </section>
+      <section class="wz-step" data-step="location" data-label="wz_st_location" aria-labelledby="wz-t-location" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-location" data-wz-title tabindex="-1" data-i18n="wz_b3_title">أين موقعك؟</h2>
+          <p data-i18n="wz_b3_desc">حدّد موقعك داخل مصر حتى نعرض لك الأقرب إليك من المتاجر ومندوبي التوصيل.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-fields">
+          <div class="field">
+            <span class="label sr-only" id="su-geo-label" data-i18n="wz_f_location">الموقع</span>
+            <div data-geo-root aria-labelledby="su-geo-label" data-focus-for="geo" tabindex="-1"></div>
+            <p class="field__error" id="su-geo-label-err" data-err-for="geo" data-wz-custom aria-live="polite"></p>
+          </div>
+        </div>
+      </section>
+      <section class="wz-step" data-step="review" data-label="wz_st_review" aria-labelledby="wz-t-review" hidden>
+        <div class="wz-step__head">
+          <h2 id="wz-t-review" data-wz-title tabindex="-1" data-i18n="wz_b4_title">راجع بياناتك</h2>
+          <p data-i18n="wz_review_desc">تأكد أن كل شيء صحيح، ثم وافق على الشروط لإتمام التسجيل.</p>
+        </div>
+        <p class="field__error wz-step-error" data-wz-step-error role="alert"></p>
+        <div class="wz-summary" data-wz-summary></div>
+        <div class="field">
+          <label class="check" for="f-terms">
+            <input type="checkbox" id="f-terms" name="terms" data-nodraft data-rules="checked">
+            <span data-i18n="wz_terms_buyer">أوافق على شروط الاستخدام وسياسة الخصوصية</span>
+          </label>
+        </div>
+      </section>
+      </div>
+      <div class="wz-nav">
+        <button type="button" class="btn btn--ghost btn--lg" data-wz-prev hidden><span data-i18n="wz_prev">السابق</span></button>
+        <button type="button" class="btn btn--accent btn--lg" data-wz-next aria-disabled="true"><span data-i18n="wz_next">التالي</span></button>
+        <button type="submit" class="btn btn--accent btn--lg" data-wz-submit data-label="wz_submit_buyer" hidden><span data-wz-submit-label data-i18n="wz_submit_buyer">إنشاء الحساب</span></button>
+      </div>
+      <div class="wz-success" data-wz-success hidden>
+        <div class="wz-success__icon" aria-hidden="true">✓</div>
+        <h2 data-wz-title tabindex="-1" data-i18n="wz_ok_buyer_title">تم إنشاء حسابك بنجاح</h2>
+        <p data-i18n="wz_ok_buyer_desc">أهلاً بك في نَسَق! سننقلك إلى الصفحة الرئيسية.</p>
+        <a class="btn btn--accent btn--lg" data-wz-continue href="index.html" data-i18n="wz_ok_buyer_cta">ابدأ التسوق</a>
+        <p class="wz-success__count" data-wz-countdown></p>
+      </div>
+    </form>
 
           <div class="form-foot">
             <p>لديك حساب بالفعل؟</p>
