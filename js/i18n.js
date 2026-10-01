@@ -19,7 +19,8 @@
   const KEY = 'nasaq_lang_v1';
   const DEFAULT = 'ar';
   /* [الكود، الاسم بلغته، الاتجاه] */
-  const LANGS = [['ar', 'العربية', 'rtl'], ['en', 'English', 'ltr'], ['de', 'Deutsch', 'ltr']];
+  /* الموقع عربي فقط — باقي اللغات اتشالت */
+  const LANGS = [['ar', 'العربية', 'rtl']];
   const IDX = { ar: 0, en: 1, de: 2 };
   const DICT = window.NASAQ_I18N_DICT || { keys: {}, phrases: {} };
   const AR_RE = /[\u0600-\u06FF]/;
@@ -30,7 +31,7 @@
 
   /* ---------- اللغة الحالية ---------- */
   const valid = (c) => LANGS.some((l) => l[0] === c);
-  function stored() { try { const c = localStorage.getItem(KEY); return valid(c) ? c : DEFAULT; } catch (_) { return DEFAULT; } }
+  function stored() { try { localStorage.removeItem(KEY); } catch (_) { /* تجاهل */ } return DEFAULT; }
   let lang = stored();
   const by = (c) => LANGS.find((l) => l[0] === c) || LANGS[0];
   const dirOf = (c) => (by(c)[2] === 'rtl' ? 'rtl' : 'ltr');
@@ -279,6 +280,7 @@
   const shortCode = () => lang.toUpperCase();
 
   function modalHTML(icon) {
+    return ''; /* لا نافذة لغات */
     return '<div class="modal modal--lang" id="lang-modal" role="dialog" aria-modal="true" aria-labelledby="lang-title" aria-hidden="true">' +
       '<div class="modal__head"><h2 id="lang-title" data-no-i18n>' + t('language') + ' / Language / Sprache</h2>' +
         '<button type="button" class="icon-btn" data-panel-close aria-label="' + t('close') + '" data-i18n-aria-label="close">' + icon('close') + '</button></div>' +
@@ -297,6 +299,7 @@
 
   /* تغيير اللغة فوراً بدون إعادة تحميل الصفحة */
   function set(code) {
+    return; /* عربي فقط */
     if (!valid(code)) return;
     lang = code;
     try { localStorage.setItem(KEY, code); } catch (_) { /* تجاهل */ }

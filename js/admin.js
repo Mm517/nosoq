@@ -603,10 +603,12 @@
     $('#support-empty').hidden = list.length > 0;
     $('#sup-items').innerHTML = list.map((t) => {
       const g = supGroupOf(t);
+      const pt = t.party || {}, pName = pt.name || t.name || 'زائر', pPic = /^(https?:\/\/|data:image\/)/i.test(pt.avatar || '') ? pt.avatar : '';
       return '<li class="sup-item' + (t.admin_unread && isOpenTicket(t) ? ' is-unread' : '') + (supCur === t.ticket_number ? ' is-active' : '') + '" data-open-ticket="' + esc(t.ticket_number) + '">' +
-        '<span class="sup-av sup-av--' + g + '">' + g + '</span>' +
-        '<div><div class="sup-item__name">' + (t.escalated ? '<span class="sup-flag" title="طُلبت مساعدة الإدارة">' + ic('lifebuoy', 14) + '</span>' : '') + esc(t.name || 'زائر') + '<span>' + esc(t.ticket_number) + '</span></div>' +
-        '<div class="sup-item__sub">' + esc(t.subject || t.message || '') + (t.handled_by ? ' · رد: ' + esc(t.handled_by) : '') + '</div></div>' +
+        '<span class="sup-av sup-av--' + g + '" style="position:relative;overflow:hidden">' + esc(pName.trim().charAt(0) || g) + (pPic ? '<img src="' + esc(pPic) + '" alt="" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()">' : '') + '</span>' +
+        '<div><div class="sup-item__name">' + (t.escalated ? '<span class="sup-flag" title="طُلبت مساعدة الإدارة">' + ic('lifebuoy', 14) + '</span>' : '') + esc(pName) + '<span>' + esc(t.ticket_number) + '</span></div>' +
+        (pt.phone ? '<div class="sup-item__sub" dir="ltr" style="text-align:end">' + esc(pt.phone) + '</div>' : '') +
+        '<div class="sup-item__sub">' + esc(t.last_body || t.subject || t.message || '') + (t.handled_by ? ' · رد: ' + esc(t.handled_by) : '') + '</div></div>' +
         '<div class="sup-item__side"><span>' + timeAgo(t.last_message_at || t.created_at) + '</span>' +
         (t.admin_unread && isOpenTicket(t) ? '<i class="sup-unread">جديد</i>' : badge(t.status)) + '</div></li>';
     }).join('');
@@ -632,7 +634,19 @@
     await signPaths(msgs);
     const g = supGroupOf(t);
     $('#sup-title').textContent = t.subject || t.ticket_number;
-    $('#sup-meta').textContent = t.ticket_number + ' · ' + (t.name || 'زائر') + ' (' + (ORIGIN[t.origin] || ORIGIN[{ SL: 'seller', RD: 'rider', US: 'customer' }[g]] || 'زائر') + ')' + (t.email ? ' · ' + t.email : '') + (t.category ? ' · ' + t.category : '');
+    const pt = data.party || {}, kind = ORIGIN[t.origin] || ORIGIN[{ SL: 'seller', RD: 'rider', US: 'customer' }[g]] || 'زائر';
+    const wa = String(pt.phone || '').replace(/\D/g, '').replace(/^00/, '').replace(/^0/, '20');
+    const pic = /^(https?:\/\/|data:image\/)/i.test(pt.avatar || '') ? pt.avatar : '';
+    const bits = [];
+    if (pt.phone) bits.push('<a href="tel:' + esc(pt.phone) + '" dir="ltr"><b>' + esc(pt.phone) + '</b></a> <a href="https://wa.me/' + wa + '" target="_blank" rel="noopener">واتساب</a>');
+    if (pt.email || t.email) bits.push('<span dir="ltr">' + esc(pt.email || t.email) + '</span>');
+    if (pt.store) bits.push('متجر: ' + esc(pt.store.name || '') + (pt.store.category ? ' (' + esc(pt.store.category) + ')' : ''));
+    if (pt.rider) bits.push('مركبة: ' + esc(pt.rider.vehicle || '—') + (pt.rider.city ? ' · ' + esc(pt.rider.city) : ''));
+    if (pt.orders_count > 0) bits.push(pt.orders_count + ' طلب');
+    if (pt.address) bits.push(esc(pt.address));
+    if (t.category) bits.push(esc(t.category));
+    $('#sup-meta').innerHTML = (pic ? '<img src="' + esc(pic) + '" alt="" style="width:30px;height:30px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-inline-end:8px" onerror="this.remove()">' : '') +
+      '<b>' + esc(pt.name || t.name || 'زائر') + '</b> (' + esc(kind) + ') · <span dir="ltr">' + esc(t.ticket_number) + '</span>' + (bits.length ? '<br>' + bits.join(' · ') : '');
     const stick = smEl.thread.scrollHeight - smEl.thread.scrollTop - smEl.thread.clientHeight < 80;
     smEl.thread.innerHTML = msgs.map((m) => {
       const staff = m.role === 'admin' || m.role === 'support';

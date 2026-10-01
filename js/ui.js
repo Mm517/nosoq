@@ -598,9 +598,7 @@
         '<input class="search__input" id="header-search" type="search" name="q" value="' + esc(P.get('q') || '') + '" placeholder="ابحث عن منتج، لون، فئة…" autocomplete="off">' +
         '<button class="search__btn" type="submit" aria-label="بحث">' + icon('search') + '</button></form>' +
       '<div class="header-actions">' +
-        '<button type="button" class="lang-btn" data-lang-open aria-haspopup="dialog" aria-label="تغيير اللغة">' + icon('globe') +
-          '<span class="lang-btn__code notranslate" translate="no">' + (window.I18n ? window.I18n.shortCode() : 'AR') + '</span></button>' +
-        '<div class="acct">' +
+                '<div class="acct">' +
           '<a class="acct__trigger" href="profile.html" aria-label="تسجيل الدخول والحساب">' + icon('user', 'acct__icon') +
             '<span class="acct__text"><small>' + (currentAccount() ? 'مرحباً بعودتك' : 'أهلاً، سجّل الدخول') + '</small><strong>' + (currentAccount() ? esc(currentAccount().name || 'حسابي') : 'الحساب والمفضلة') + '</strong></span></a>' +
           '<div class="acct__menu">' + accountLinks() + '</div>' +
@@ -680,7 +678,6 @@
       '<div class="sidenav__head"><a class="sidenav__user" href="' + (account ? 'profile.html' : 'auth.html') + '">' + icon('user') + '<span id="side-title">' + accountTitle + '</span></a>' +
         '<button type="button" class="icon-btn" data-panel-close aria-label="إغلاق القائمة">' + icon('close') + '</button></div>' +
       '<div class="sidenav__body">' +
-        '<button type="button" class="sidenav__loc" data-lang-open>' + icon('globe') + '<span>اللغة: <strong class="notranslate" translate="no">' + (window.I18n ? window.I18n.label() : 'العربية') + '</strong></span></button>' +
         '<button type="button" class="sidenav__loc" data-loc-open>' + icon('pin') + '<span>التوصيل إلى <strong data-loc-label>' + esc(loc.get() || 'تحديث الموقع') + '</strong></span></button>' +
         '<h3>تسوّق حسب الفئة</h3><ul>' + Products.categories.map((c) => li('shop.html?cat=' + c.id, c.name)).join('') + li('shop.html', 'كل المنتجات') + '</ul>' +
         '<h3>عروض ومزايا</h3><ul>' + li('shop.html?sale=1', 'عروض اليوم') + li('index.html#coupons', 'الكوبونات وأكواد الخصم') + li('shop.html?sort=new', 'وصل حديثاً') + li('shop.html?sort=rating', 'الأعلى تقييماً') + '</ul>' +
@@ -796,9 +793,6 @@
         return;
       }
       if (t.closest('[data-loc-open]')) { ensureGeo(); openPanel($('#loc-modal')); return; }
-      if (t.closest('[data-lang-open]')) { openPanel($('#lang-modal')); return; }
-      const lg = t.closest('[data-lang]');
-      if (lg && window.I18n) { window.I18n.set(lg.dataset.lang); return; }
       if (t.closest('[data-loc-save]')) {
         const v = geoCtl ? geoCtl.getValue() : null;
         if (!v || !(v.city || v.area || v.lat != null)) { toast('حدّد موقعك على الخريطة أو اكتب مدينتك أولاً', { type: 'error' }); return; }

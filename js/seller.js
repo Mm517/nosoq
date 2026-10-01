@@ -98,7 +98,6 @@
             '<form class="dash__search" role="search" data-search><label class="sr-only" for="dash-q">بحث</label>' + ic('search') +
               '<input id="dash-q" class="input" type="search" placeholder="ابحث في المنتجات أو الطلبات…" autocomplete="off"></form>' +
             '<div class="dash__tools">' +
-              '<button type="button" class="lang-btn" data-lang-open aria-label="تغيير اللغة">' + ic('globe') + '<span class="lang-btn__code notranslate" translate="no">' + window.I18n.shortCode() + '</span></button>' +
               '<div class="bell"><button type="button" class="icon-btn bell__btn" data-act="bell" aria-haspopup="true" aria-expanded="false" aria-label="الإشعارات">' + ic('bell') + '<span class="count-badge" data-bell-count hidden>0</span></button>' +
                 '<div class="bell__panel" data-bell-panel hidden></div></div>' +
               '<a class="dash__me" href="#/settings">' + (s.logo ? '<img src="' + esc(s.logo) + '" alt="">' : '<span class="dash__av">' + esc(s.name.trim().charAt(0)) + '</span>') +

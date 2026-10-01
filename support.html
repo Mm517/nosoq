@@ -11,13 +11,14 @@
 <script src="js/icons.js"></script>
 <script src="js/support-common.js"></script>
 <style>
-#app{padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:1320px;margin:auto}
+#app{padding:16px;padding-top:calc(16px + env(safe-area-inset-top,0px));padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:1360px;margin:auto}
 .sp-top{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 18px;background:linear-gradient(135deg,#12294a,#1b3865);color:#fff;border-radius:20px;box-shadow:0 12px 30px rgba(18,41,74,.22)}
 .sp-top .lg{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.14);display:grid;place-items:center;flex:none}
 .sp-top h2{margin:0;font-size:18px;flex:1;font-weight:800}
 .sp-top .pill{background:rgba(255,255,255,.16);color:#fff}
 .sp-top .btn.g{background:transparent;color:#fff;border-color:rgba(255,255,255,.35)}
 .sp-top .btn.g:hover{background:rgba(255,255,255,.12);color:#fff;border-color:#fff}
+@media(max-width:600px){#app{padding:10px;padding-top:calc(10px + env(safe-area-inset-top,0px))}.sp-top{padding:10px 12px;border-radius:16px;margin-bottom:10px}.sp-top h2{font-size:16px}}
 </style>
 </head>
 <body><div id="app"></div>
@@ -29,7 +30,5 @@ Nosoq.login(app,r=>r==='support'||r==='admin',(role,who)=>{
   Nosoq.mountSupport(document.getElementById('m'),role,who);
 });
 </script>
-  <script src="js/i18n-dict.js"></script>
-  <script src="js/i18n.js"></script>
 </body>
 </html>
