@@ -406,7 +406,11 @@
       if (!p) return;
       let html = '<dl>' +
         '<dt>الاسم</dt><dd>' + esc(p.name) + '</dd>' +
+        '<dt>الاسم (English)</dt><dd dir="ltr">' + esc(p.name_en || '—') + '</dd>' +
+        '<dt>الاسم (Deutsch)</dt><dd dir="ltr">' + esc(p.name_de || '—') + '</dd>' +
         '<dt>الوصف</dt><dd>' + esc(p.description || '—') + '</dd>' +
+        '<dt>الوصف (English)</dt><dd dir="ltr">' + esc(p.description_en || '—') + '</dd>' +
+        '<dt>الوصف (Deutsch)</dt><dd dir="ltr">' + esc(p.description_de || '—') + '</dd>' +
         '<dt>السعر</dt><dd>' + formatMoney(p.price) + '</dd>' +
         '<dt>المخزون</dt><dd>' + esc(p.stock) + '</dd>' +
         '<dt>الحالة</dt><dd>' + badge(p.status) + '</dd>' +

@@ -498,7 +498,9 @@
           storeId: row.store_id || null,
           sellerId: row.store_id || null,
           seller: row.store_id ? { id: row.store_id, name: row.store_name, slug: row.store_slug } : null,
-          name: row.name || '',
+          name: row.name_ar || row.name || '',
+          nameAr: row.name_ar || row.name || '', nameEn: row.name_en || '', nameDe: row.name_de || '',
+          descriptionAr: row.description_ar || row.description || '', descriptionEn: row.description_en || '', descriptionDe: row.description_de || '',
           category: row.category || 'clothes',
           price: Number(row.price || 0),
           oldPrice: row.old_price == null ? null : Number(row.old_price),
@@ -512,7 +514,7 @@
           sku: row.sku || ('NQ-' + row.legacy_id),
           addedAt: row.added_at,
           colors,
-          description: row.description || '',
+          description: row.description_ar || row.description || '',
           details: Array.isArray(row.details) ? row.details : [],
           photos: Array.isArray(row.photos) ? row.photos.filter(Boolean) : [],
           video: row.video_url || null,
@@ -523,6 +525,35 @@
   }
 
   const PRODUCTS = buildCatalog();
+
+  /* ---------- الترجمة: أسماء وأوصاف المنتجات (من الداتابيس) + أسماء الأقسام ---------- */
+  function i18nRegister(map, opts) {
+    const q = window.NASAQ_I18N_PENDING = window.NASAQ_I18N_PENDING || [];
+    if (window.I18n && window.I18n.register) window.I18n.register(map, opts);
+    else if (q && q.push) q.push({ map, opts });
+  }
+  (function registerCatalogI18n() {
+    const m = {};
+    PRODUCTS.forEach((p) => {
+      /* fallback: Deutsch → English → العربية ، English → العربية (يُطبَّق داخل I18n.register) */
+      if (p.nameAr && (p.nameEn || p.nameDe)) m[p.nameAr] = { en: p.nameEn, de: p.nameDe };
+      if (p.descriptionAr && (p.descriptionEn || p.descriptionDe)) m[p.descriptionAr] = { en: p.descriptionEn, de: p.descriptionDe };
+    });
+    i18nRegister(m);
+    /* أسماء الأقسام: جدول categories (name_ar/en/de). الأقسام الفرعية أولاً ثم الرئيسية كي تغلب الرئيسية عند تطابق الاسم العربي. */
+    try {
+      let rows = null;
+      const ck = 'nasaq_cats_i18n_v1';
+      try { const c = JSON.parse(sessionStorage.getItem(ck) || 'null'); if (c && Date.now() - c.t < 600000) rows = c.rows; } catch (_) { /* تجاهل */ }
+      if (!rows) {
+        rows = sbGet('categories?select=slug,parent_slug,name_ar,name_en,name_de&order=sort_order.asc&limit=500');
+        if (rows && rows.length) { try { sessionStorage.setItem(ck, JSON.stringify({ t: Date.now(), rows })); } catch (_) { /* تجاهل */ } }
+      }
+      const cm = {};
+      (rows || []).filter((r) => r.parent_slug).concat((rows || []).filter((r) => !r.parent_slug)).forEach((r) => { cm[r.name_ar] = { en: r.name_en, de: r.name_de }; });
+      i18nRegister(cm, { phrase: true });
+    } catch (_) { /* القاموس المدمج يكفي */ }
+  })();
 
   /* ---------- الصور: صور اللون المختار أولاً (إن وُجدت)، وإلا صور المنتج العامة، وإلا رسمة SVG بديلة ---------- */
   /* صور اللون الحالي: فقط لو كان لهذا اللون صور خاصة به (رفعها البائع)؛ غير ذلك null */

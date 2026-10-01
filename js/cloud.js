@@ -89,6 +89,8 @@
       storeId: p.storeId || null,
       sellerExternalId: p.sellerId || (p.seller && p.seller.id) || null,
       name: p.name || '',
+      nameAr: p.name || '', nameEn: p.nameEn || '', nameDe: p.nameDe || '',
+      descriptionAr: p.description || '', descriptionEn: p.descriptionEn || '', descriptionDe: p.descriptionDe || '',
       slug: p.slug || null,
       category: p.category || 'clothes',
       price: Number(p.price || 0),

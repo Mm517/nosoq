@@ -187,9 +187,9 @@
         }))
       : (Array.isArray(row.colors) ? row.colors : []);
     return {
-      id: row.legacy_id, uuid: row.id, name: row.name, category: row.category, price: Number(row.price || 0),
+      id: row.legacy_id, uuid: row.id, name: row.name_ar || row.name, nameEn: row.name_en || '', nameDe: row.name_de || '', descriptionEn: row.description_en || '', descriptionDe: row.description_de || '', category: row.category, price: Number(row.price || 0),
       oldPrice: row.old_price == null ? null : Number(row.old_price), stock: Number(row.stock || 0),
-      status: row.status, sku: row.sku || '', description: row.description || '',
+      status: row.status, sku: row.sku || '', description: row.description_ar || row.description || '',
       details: Array.isArray(row.details) ? row.details : [], sizes: Array.isArray(row.sizes) ? row.sizes : [],
       colors: realColors, photos: Array.isArray(row.photos) ? row.photos : [],
       video: row.video_url || null, videoUrl: row.video_url || null, videoPath: row.video_path || null,

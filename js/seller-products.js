@@ -71,7 +71,7 @@
   function form(p) {
     const edit = !!p;
     const seller = M.seller.get();
-    const d = p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', category: seller.category || 'clothes', price: '', oldPrice: '', stock: 10, sizes: [], colors: [], description: '', details: [], photos: [], video: '', status: 'active' };
+    const d = p ? JSON.parse(JSON.stringify(p)) : { id: null, name: '', category: seller.category || 'clothes', price: '', oldPrice: '', stock: 10, sizes: [], colors: [], description: '', nameEn: '', nameDe: '', descriptionEn: '', descriptionDe: '', details: [], photos: [], video: '', status: 'active' };
     d.photos = d.photos || []; d.colors = d.colors || []; d.sizes = d.sizes || []; d.details = d.details || []; d.video = d.video || d.videoUrl || '';
     d.colors.forEach((c) => { c.images = c.images || []; c.stock = Number(c.stock || 0); });
 
@@ -79,7 +79,7 @@
       pageHead(edit ? 'تعديل المنتج' : 'إضافة منتج جديد', '<a href="#/products">' + BACK_ICON + 'العودة إلى المنتجات</a>') +
       '<div class="dgrid dgrid--form">' +
         '<form class="dcard dform" id="prod-form" novalidate>' +
-          fld('p-name', 'اسم المنتج *', '<input class="input" id="p-name" maxlength="90" value="' + esc(d.name) + '" autocomplete="off">', 'اكتب اسماً واضحاً يذكر النوع والخامة، مثل «حقيبة جلد طبيعي بحزام»') +
+          fld('p-name', 'اسم المنتج بالعربية *', '<input class="input" id="p-name" maxlength="90" value="' + esc(d.name) + '" autocomplete="off">', 'اكتب اسماً واضحاً يذكر النوع والخامة، مثل «حقيبة جلد طبيعي بحزام»') +
           '<div class="dform__row">' +
             fld('p-cat', 'التصنيف *', '<select class="select" id="p-cat">' + P.categories.map((c) => '<option value="' + c.id + '"' + (c.id === d.category ? ' selected' : '') + '>' + c.name + '</option>').join('') + '</select>') +
             fld('p-status', 'الحالة', '<select class="select" id="p-status"><option value="active"' + (d.status === 'active' ? ' selected' : '') + '>نشط (ظاهر في المتجر)</option><option value="paused"' + (d.status !== 'active' ? ' selected' : '') + '>متوقف (مسودة)</option></select>') +
@@ -95,7 +95,14 @@
             '<div class="colorcards" id="colors-box" aria-labelledby="col-l"></div>' +
             '<div class="color-add"><input class="input" id="c-name" placeholder="اسم اللون (مثل: أسود)" maxlength="20"><input type="color" id="c-hex" value="#2f45d4" aria-label="درجة اللون"><input class="input input--sm" id="c-stock" type="number" min="0" inputmode="numeric" dir="ltr" placeholder="الكمية" style="max-width:110px"><button type="button" class="btn btn--ghost btn--sm" data-act="color-add">' + ic('plus') + 'إضافة لون</button></div>' +
             '<p class="hint">أضف لوناً ثم ارفع له صورة أو أكثر؛ عند اختيار المشتري هذا اللون في صفحة المنتج تتغيّر الصور تلقائياً لصوره فقط.</p></div>' +
-          fld('p-desc', 'وصف المنتج (احترافي)', '<textarea class="textarea" id="p-desc" rows="4" maxlength="600">' + esc(d.description) + '</textarea>', '60 حرفاً على الأقل لرفع جودة القائمة') +
+          fld('p-desc', 'الوصف بالعربية (احترافي)', '<textarea class="textarea" id="p-desc" rows="4" maxlength="600">' + esc(d.description) + '</textarea>', '60 حرفاً على الأقل لرفع جودة القائمة') +
+          '<fieldset class="field i18n-fields" style="border:1px solid var(--line,#e3e6ee);border-radius:12px;padding:12px 14px;margin:0 0 12px"><legend class="label" style="padding:0 6px">الترجمات (ar / en / de)</legend>' +
+            '<p class="hint">لو تركت لغة فارغة سيظهر للعميل النص الإنجليزي ثم العربي بدلاً منها.</p>' +
+            fld('p-name-en', 'اسم المنتج بالإنجليزية', '<input class="input" id="p-name-en" maxlength="90" dir="ltr" lang="en" value="' + esc(d.nameEn || '') + '" autocomplete="off">') +
+            fld('p-name-de', 'اسم المنتج بالألمانية', '<input class="input" id="p-name-de" maxlength="90" dir="ltr" lang="de" value="' + esc(d.nameDe || '') + '" autocomplete="off">') +
+            fld('p-desc-en', 'الوصف بالإنجليزية', '<textarea class="textarea" id="p-desc-en" rows="3" maxlength="600" dir="ltr" lang="en">' + esc(d.descriptionEn || '') + '</textarea>') +
+            fld('p-desc-de', 'الوصف بالألمانية', '<textarea class="textarea" id="p-desc-de" rows="3" maxlength="600" dir="ltr" lang="de">' + esc(d.descriptionDe || '') + '</textarea>') +
+          '</fieldset>' +
           fld('p-details', 'المواصفات (سطر لكل مواصفة)', '<textarea class="textarea" id="p-details" rows="4" placeholder="خامة قطنية 100%&#10;غسيل بالماء البارد&#10;صناعة مصرية">' + esc(d.details.join('\n')) + '</textarea>') +
           '<div class="field"><span class="label" id="img-l">صور المنتج العامة (حتى 8، الأولى هي الغلاف الرئيسي)</span>' +
             '<div class="dropzone" id="dropzone" tabindex="-1">' + ic('upload') + '<p>اسحب الصور هنا أو</p><label class="btn btn--ghost btn--sm">اختر من جهازك<input type="file" id="p-files" accept="image/png,image/jpeg,image/webp" multiple hidden></label><small>PNG أو JPG أو WebP، تُضغط تلقائياً</small></div>' +
@@ -109,7 +116,7 @@
 
     function mount(root) {
       const g = (id) => $('#' + id, root);
-      const refresh = () => { d.name = g('p-name').value; d.price = numOf(g('p-price').value); d.oldPrice = numOf(g('p-old').value) || null; d.stock = Math.max(0, Math.floor(numOf(g('p-stock').value))); d.description = g('p-desc').value; d.details = g('p-details').value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 10); d.category = g('p-cat').value; renderCalc(); renderQ(); };
+      const refresh = () => { d.name = g('p-name').value; d.price = numOf(g('p-price').value); d.oldPrice = numOf(g('p-old').value) || null; d.stock = Math.max(0, Math.floor(numOf(g('p-stock').value))); d.description = g('p-desc').value; d.nameEn = g('p-name-en').value.trim(); d.nameDe = g('p-name-de').value.trim(); d.descriptionEn = g('p-desc-en').value.trim(); d.descriptionDe = g('p-desc-de').value.trim(); d.details = g('p-details').value.split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 10); d.category = g('p-cat').value; renderCalc(); renderQ(); };
       function renderCalc() {
         const c = Math.round(CFG.commission * 100), fee = d.price * CFG.commission;
         g('calc').innerHTML = d.price > 0
@@ -223,7 +230,7 @@
       g('prod-form').addEventListener('submit', async (e) => {
         e.preventDefault(); refresh();
         const err = g('prod-error');
-        const bad = d.name.trim().length < 3 ? 'اسم المنتج 3 أحرف على الأقل' : !(d.price > 0) ? 'أدخل سعراً أكبر من صفر' : (d.oldPrice && d.oldPrice <= d.price) ? 'السعر قبل الخصم يجب أن يكون أكبر من السعر الحالي' : '';
+        const bad = d.name.trim().length < 3 ? 'اسم المنتج بالعربية 3 أحرف على الأقل' : !(d.price > 0) ? 'أدخل سعراً أكبر من صفر' : (d.oldPrice && d.oldPrice <= d.price) ? 'السعر قبل الخصم يجب أن يكون أكبر من السعر الحالي' : '';
         if (bad) { err.textContent = bad; return; }
         err.textContent = '';
         const submitBtn = g('prod-form').querySelector('button[type="submit"]');
