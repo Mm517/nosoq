@@ -14,15 +14,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Readex+Pro:wght@400;600;700&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/base.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/mobile-app.css">
-  <script src="js/skeleton.js"></script>
-  <link rel="stylesheet" href="css/pages.css">
-  <link rel="stylesheet" href="css/mobile-home.css">
-  <link rel="stylesheet" href="css/intro.css">
-  <link rel="stylesheet" href="css/app-notify.css">
+  <link rel="stylesheet" href="/assets/css/tokens.css">
+  <link rel="stylesheet" href="/assets/css/base.css">
+  <link rel="stylesheet" href="/assets/css/components.css">
+  <link rel="stylesheet" href="/assets/css/mobile-app.css">
+  <script src="/assets/js/skeleton.js"></script>
+  <link rel="stylesheet" href="/assets/css/pages.css">
+  <link rel="stylesheet" href="/assets/css/mobile-home.css">
+  <link rel="stylesheet" href="/assets/css/intro.css">
+  <link rel="stylesheet" href="/assets/css/app-notify.css">
 
   <script type="application/ld+json">
   {
@@ -30,26 +30,27 @@
     "@graph": [
       { "@type": "Organization", "name": "نَسَق", "url": "/", "email": "hello@nasaq.example" },
       { "@type": "WebSite", "name": "نَسَق", "url": "/",
-        "potentialAction": { "@type": "SearchAction", "target": "shop.html?q={search_term_string}", "query-input": "required name=search_term_string" } }
+        "potentialAction": { "@type": "SearchAction", "target": "/shop?q={search_term_string}", "query-input": "required name=search_term_string" } }
     ]
   }
   </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-    <script src="js/nasaq-config.js"></script>
-    <script src="js/api-shim.js"></script>
-  <script src="js/buyer-location.js"></script>
-    <script defer src="js/cloud.js"></script>
-    <script defer src="js/products.js"></script>
-  <script defer src="js/market.js"></script>
-  <script defer src="js/cart.js"></script>
-  <script defer src="js/i18n-dict.js"></script>
-  <script defer src="js/i18n.js"></script>
-  <script defer src="js/geo.js"></script>
-  <script defer src="js/distance.js"></script>
-  <script defer src="js/ui.js"></script>
-  <script defer src="js/home.js"></script>
-  <script defer src="js/mobile-home.js"></script>
+    <script src="/assets/js/nasaq-config.js"></script>
+  <script src="/assets/js/nasaq-links.js"></script>
+    <script src="/assets/js/api-shim.js"></script>
+  <script src="/assets/js/buyer-location.js"></script>
+    <script defer src="/assets/js/cloud.js"></script>
+    <script defer src="/assets/js/products.js"></script>
+  <script defer src="/assets/js/market.js"></script>
+  <script defer src="/assets/js/cart.js"></script>
+  <script defer src="/assets/js/i18n-dict.js"></script>
+  <script defer src="/assets/js/i18n.js"></script>
+  <script defer src="/assets/js/geo.js"></script>
+  <script defer src="/assets/js/distance.js"></script>
+  <script defer src="/assets/js/ui.js"></script>
+  <script defer src="/assets/js/home.js"></script>
+  <script defer src="/assets/js/mobile-home.js"></script>
 </head>
 <body data-page="home">
   <header id="site-header" class="site-header"></header>
@@ -73,7 +74,7 @@
     <section class="section container desk-only" aria-labelledby="new-title">
       <div class="section__head">
         <h2 class="section__title" id="new-title">وصل حديثاً</h2>
-        <a class="section__link" href="shop.html?sort=new">عرض الكل</a>
+        <a class="section__link" href="/shop?sort=new">عرض الكل</a>
       </div>
       <div class="grid grid--4" id="new-grid" aria-busy="true"></div>
     </section>
@@ -88,8 +89,8 @@
     <section class="container" aria-labelledby="recs-title">
       <div class="recs-cta">
         <h2 id="recs-title">سجّل الدخول لرؤية توصيات تناسبك</h2>
-        <a class="btn btn--accent btn--lg" href="auth.html">تسجيل الدخول</a>
-        <p>ليس لديك حساب؟ <a href="auth.html?tab=signup">أنشئ حسابك</a></p>
+        <a class="btn btn--accent btn--lg" href="/auth">تسجيل الدخول</a>
+        <p>ليس لديك حساب؟ <a href="/auth?tab=signup">أنشئ حسابك</a></p>
       </div>
     </section>
 
@@ -134,7 +135,7 @@
 
   <footer id="site-footer" class="site-footer"></footer>
 
-  <script src="js/intro.js"></script>
-  <script src="js/app-notify.js"></script>
+  <script src="/assets/js/intro.js"></script>
+  <script src="/assets/js/app-notify.js"></script>
 </body>
 </html>
